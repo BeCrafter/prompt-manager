@@ -1,0 +1,31 @@
+name: project_architecture
+description: 当用户想要设计项目架构和目录结构时，可以使用这个提示词，来帮助用户设计合理的项目架构和目录结构
+arguments:
+  - name: project_type
+    description: 项目类型(如Web应用、移动应用、API服务等)
+    required: true
+  - name: technologies
+    description: 使用的技术栈(如React, Node.js, Python等)
+    required: true
+  - name: features
+    description: 项目主要功能和特性
+    required: true
+messages:
+  - role: user
+    content:
+      type: text
+      text: |
+        请为以下项目设计一个合理的架构和目录结构：
+
+        项目类型：{{project_type}}
+        技术栈：{{technologies}}
+        主要功能：{{features}}
+
+        请提供：
+        1. 完整的目录结构
+        2. 主要组件/模块的划分
+        3. 数据流设计
+        4. 各组件之间的交互方式
+        5. 开发和部署建议
+
+        请确保架构设计遵循最佳实践，具有良好的可扩展性、可维护性和性能。

@@ -1,0 +1,11 @@
+.git
+.gitignore
+.env
+env.example
+node_modules
+*.log
+.DS_Store
+.vscode
+.idea
+docs/
+.github/

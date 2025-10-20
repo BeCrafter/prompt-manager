@@ -1,0 +1,35 @@
+#!/usr/bin/env node
+
+/**
+ * CLI包装器脚本
+ * 用于支持 npx @becrafter/prompt-mcp 命令
+ */
+
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { spawn } from 'child_process';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// 获取主入口文件路径
+const mainFile = join(__dirname, '..', 'src', 'server.js');
+
+// 解析命令行参数
+const args = process.argv.slice(2);
+
+// 启动主程序
+const child = spawn('node', [mainFile, ...args], {
+  stdio: 'inherit',
+  cwd: process.cwd()
+});
+
+// 处理进程退出
+child.on('exit', (code) => {
+  process.exit(code);
+});
+
+child.on('error', (error) => {
+  process.stderr.write('启动失败: ' + error.message + '\n');
+  process.exit(1);
+});

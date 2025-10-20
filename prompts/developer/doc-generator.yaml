@@ -1,0 +1,36 @@
+name: doc-generator
+description: "根据代码生成技术文档"
+messages:
+  - role: "user"
+    content:
+      text: |
+        请为以下代码生成详细的技术文档：
+        
+        项目名称: {{projectName}}
+        代码语言: {{language}}
+        代码内容:
+        ```
+        {{code}}
+        ```
+        
+        请生成包含以下部分的文档：
+        1. 功能概述
+        2. API接口说明
+        3. 参数说明
+        4. 使用示例
+        5. 注意事项
+        
+        文档格式要求：使用Markdown格式，结构清晰，易于理解。
+arguments:
+  - name: "projectName"
+    description: "项目名称"
+    type: "string"
+    required: true
+  - name: "language"
+    description: "编程语言"
+    type: "string"
+    required: true
+  - name: "code"
+    description: "要生成文档的代码"
+    type: "string"
+    required: true

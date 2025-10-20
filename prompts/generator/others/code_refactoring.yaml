@@ -1,0 +1,31 @@
+name: code_refactoring
+description: 当用户想要重构代码时，可以使用这个提示词，来帮助用户提高代码质量和可维护性
+arguments:
+  - name: language
+    description: 编程语言
+    required: true
+  - name: code
+    description: 要重构的代码
+    required: true
+  - name: focus_areas
+    description: 重点关注的重构领域(如性能、可读性、模块化等)
+    required: false
+messages:
+  - role: user
+    content:
+      type: text
+      text: |
+        请对以下{{language}}代码进行重构，以提高其质量和可维护性：
+
+        ```{{language}}
+        {{code}}
+        ```
+
+        {{#focus_areas}}
+        重点关注以下方面：{{focus_areas}}
+        {{/focus_areas}}
+
+        请提供：
+        1. 重构后的完整代码
+        2. 详细说明您所做的每项更改及其理由
+        3. 重构如何改进了代码的质量和可维护性

@@ -1,0 +1,46 @@
+{
+  "name": "@becrafter/prompt-server",
+  "version": "0.0.0",
+  "description": "MCP Server for managing and executing prompts",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "src/server.js",
+  "bin": {
+    "prompt-server": "bin/prompt-server"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BeCrafter/prompt-server.git"
+  },
+  "homepage": "https://github.com/BeCrafter/prompt-server#readme",
+  "bugs": {
+    "url": "https://github.com/BeCrafter/prompt-server/issues"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node src/server.js",
+    "help": "node src/server.js --help",
+    "version": "node src/server.js --version"
+  },
+  "keywords": [
+    "prompt",
+    "prompt-server"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "fs-extra": "^11.2.0",
+    "js-yaml": "^4.1.0",
+    "yaml": "^2.4.1",
+    "zod": "^3.23.8"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

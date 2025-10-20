@@ -1,0 +1,28 @@
+name: code_review
+description: 当用户想要审查代码时，可以使用这个提示词，来帮助用户对代码进行全面审查，提供改进建议
+arguments:
+  - name: language
+    description: 编程语言
+    required: true
+  - name: code
+    description: 要审查的代码
+    required: true
+messages:
+  - role: user
+    content:
+      type: text
+      text: |
+        请对以下{{language}}代码进行全面审查，包括但不限于：
+        1. 代码质量和可读性
+        2. 潜在的bug和错误
+        3. 性能优化机会
+        4. 安全隐患
+        5. 最佳实践建议
+        6. 代码结构和组织
+
+        代码：
+        ```{{language}}
+        {{code}}
+        ```
+
+        请提供详细的分析和具体的改进建议。

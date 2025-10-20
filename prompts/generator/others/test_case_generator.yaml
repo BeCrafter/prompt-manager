@@ -1,0 +1,30 @@
+name: test_case_generator
+description: 当用户想要为给定代码生成全面的测试用例时，可以使用这个提示词，来帮助用户生成测试用例
+arguments:
+  - name: language
+    description: 编程语言
+    required: true
+  - name: code
+    description: 要测试的代码
+    required: true
+  - name: test_framework
+    description: 测试框架(如Jest, Pytest, JUnit等)
+    required: true
+messages:
+  - role: user
+    content:
+      type: text
+      text: |
+        请为以下{{language}}代码生成全面的测试用例，使用{{test_framework}}测试框架：
+
+        ```{{language}}
+        {{code}}
+        ```
+
+        测试用例应包括：
+        1. 正常功能测试
+        2. 边界条件测试
+        3. 错误处理测试
+        4. 性能测试(如适用)
+        
+        请确保测试覆盖所有主要功能和边缘情况，并提供每个测试的详细说明。

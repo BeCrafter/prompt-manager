@@ -1,0 +1,32 @@
+name: api_documentation
+description: 当用户想要生成API文档时，可以使用这个提示词，来帮助用户根据代码生成详细的API文档
+arguments:
+  - name: language
+    description: 编程语言
+    required: true
+  - name: code
+    description: 要生成文档的API代码
+    required: true
+  - name: format
+    description: 文档格式(markdown/html/jsdoc等)
+    required: true
+messages:
+  - role: user
+    content:
+      type: text
+      text: |
+        请根据以下{{language}}代码生成详细的API文档，使用{{format}}格式：
+
+        ```{{language}}
+        {{code}}
+        ```
+
+        文档应包括：
+        1. 函数/方法的用途和描述
+        2. 参数列表及其类型、默认值和说明
+        3. 返回值类型和说明
+        4. 可能抛出的异常
+        5. 使用示例
+        6. 注意事项或限制
+
+        请确保文档清晰、准确且易于理解。

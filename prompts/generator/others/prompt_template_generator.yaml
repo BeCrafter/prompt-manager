@@ -1,0 +1,28 @@
+name: prompt_template_generator
+description: 当用户想要生成新的prompt模板时，可以使用这个提示词，来帮助用户生成新的prompt模板文件
+arguments:
+  - name: prompt_name
+    description: 新prompt的名称（唯一标识符）
+    required: true
+  - name: prompt_description
+    description: 对prompt功能的描述
+    required: true
+  - name: task_type
+    description: 任务类型（如代码生成、文档编写、数据分析等）
+    required: true
+messages:
+  - role: user
+    content:
+      type: text
+      text: |
+        请为我生成一个名为"{{prompt_name}}"的新prompt模板，用于{{task_type}}任务。
+        
+        该prompt的描述为：{{prompt_description}}
+        
+        请提供：
+        1. 完整的YAML格式模板文件内容
+        2. 该模板需要的参数列表及其说明
+        3. 模板消息内容，确保包含适当的参数占位符
+        4. 使用该模板的示例
+        
+        请确保模板设计符合最佳实践，能够有效引导Claude完成指定任务。

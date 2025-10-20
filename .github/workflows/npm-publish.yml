@@ -1,0 +1,66 @@
+name: NPM Publish
+
+on:
+  push:
+    tags:
+      - 'v*' # 触发条件：推送以 v 开头的标签
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          registry-url: 'https://registry.npmjs.org'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Extract version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      
+      - name: Update version in files
+        run: |
+          # 更新 package.json 版本
+          npm version ${{ steps.get_version.outputs.VERSION }} --no-git-tag-version
+          
+          # 更新 package-lock.json 中 @becrafter/prompt-server 包的版本
+          sed -i "s/\"name\": \"@becrafter\/prompt-server\",[[:space:]]*\"version\": \"[^\"]*\"/\"name\": \"@becrafter\/prompt-server\",\n      \"version\": \"${{ steps.get_version.outputs.VERSION }}\"/g" package-lock.json
+          
+          # 更新 env.example 中的版本
+          sed -i "s/MCP_SERVER_VERSION=.*/MCP_SERVER_VERSION=${{ steps.get_version.outputs.VERSION }}/" env.example
+          
+          # 更新 README.md 中的版本信息
+          sed -i "s/| \`MCP_SERVER_VERSION\` | 服务器版本 | \`.*\` |/| \`MCP_SERVER_VERSION\` | 服务器版本 | \`${{ steps.get_version.outputs.VERSION }}\` |/" README.md
+          
+          # 更新 config.js 中的默认版本（使用双引号避免单引号嵌套问题）
+          sed -i "s/this\.serverVersion = process\.env\.MCP_SERVER_VERSION || '[^']*';/this.serverVersion = process.env.MCP_SERVER_VERSION || '${{ steps.get_version.outputs.VERSION }}';/g" src/config.js
+      
+      - name: Commit version updates
+        run: |
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git add package.json package-lock.json env.example README.md src/config.js
+          git commit -m "chore: update version to ${{ steps.get_version.outputs.VERSION }}" || echo "No changes to commit"
+          git push origin HEAD:main
+      
+      - name: Cleanup temporary files
+        run: |
+          rm -f *.bak *.tmp
+      
+      - name: Publish to NPM
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,0 +1,35 @@
+name: error-code-fixer
+description: "帮助分析和修复代码错误"
+messages:
+  - role: "user"
+    content:
+      text: |
+        你是一个专业的错误修复助手。请帮助分析和修复以下错误：
+        
+        错误信息: {{errorMessage}}
+        代码语言: {{language}}
+        相关代码:
+        ```
+        {{code}}
+        ```
+        
+        请提供：
+        1. 错误原因分析
+        2. 具体的修复方案
+        3. 修复后的代码
+        4. 预防类似错误的建议
+        
+        如果错误信息不够详细，请说明需要哪些额外信息。
+arguments:
+  - name: "errorMessage"
+    description: "错误信息"
+    type: "string"
+    required: true
+  - name: "language"
+    description: "编程语言"
+    type: "string"
+    required: true
+  - name: "code"
+    description: "出错的代码"
+    type: "string"
+    required: false
