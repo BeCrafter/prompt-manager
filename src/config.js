@@ -85,11 +85,6 @@ export class Config {
                      process.env.PROMPTS_DIR || 
                      path.join(__dirname, '..', 'prompts');
     
-    // 远程服务器配置
-    this.remoteUrl = cliArgs.remoteUrl || process.env.REMOTE_URL || null;
-    this.remoteHeaders = cliArgs.headers || 
-                        (process.env.REMOTE_HEADERS ? JSON.parse(process.env.REMOTE_HEADERS) : null);
-    
     // 服务器端口
     this.port = cliArgs.port || process.env.SERVER_PORT || 3000;
     
