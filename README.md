@@ -1,6 +1,6 @@
 # MCP Prompt Server
 
-[![npm version](https://badge.fury.io/js/%40becrafter%2Fprompt-mcp.svg)](https://www.npmjs.com/package/@becrafter/prompt-mcp)
+[![npm version](https://badge.fury.io/js/%40becrafter%2Fprompt-server.svg)](https://www.npmjs.com/package/@becrafter/prompt-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
 
