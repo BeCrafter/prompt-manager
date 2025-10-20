@@ -1,7 +1,7 @@
 {
   "name": "@becrafter/prompt-server",
   "version": "0.0.2",
-  "description": "MCP Server for managing and executing prompts",
+  "description": "Remote MCP Server for managing prompts",
   "publishConfig": {
     "access": "public"
   },
