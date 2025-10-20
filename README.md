@@ -55,7 +55,7 @@ prompt-server --port 8080
 | `MCP_SERVER_NAME` | 服务器名称 | `prompt-server` |
 | `SERVER_PORT` | 服务器端口 | `3000` |
 | `PROMPTS_DIR` | Prompts目录路径 | 当前工作目录下的 `prompts` 目录 |
-| `MCP_SERVER_VERSION` | 服务器版本 | `0.0.2` |
+| `MCP_SERVER_VERSION` | 服务器版本 | `0.0.3` |
 | `LOG_LEVEL` | 日志级别 (error, warn, info, debug) | `info` |
 | `MAX_PROMPTS` | 最大prompt数量限制 | `100` |
 | `RECURSIVE_SCAN` | 是否启用递归扫描子目录 | `true` |
