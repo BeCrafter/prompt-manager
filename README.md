@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
 
-基于 Model Context Protocol (MCP) 的 Prompt 管理服务器，将 AI 提示词封装为可复用的 MCP 工具。通过简单的配置，可以轻松管理和使用各种提示词模板，提高 AI 交互效率。
+一个基于 模型上下文协议（MCP） 的 Prompt 管理服务器 。可以将分散的、静态的提示词模板，转变为一个可通过 API 调用的、可动态配置的、可复用的服务，从而更高效地管理和使用 AI 提示词。
 
 ## 核心特性
 
