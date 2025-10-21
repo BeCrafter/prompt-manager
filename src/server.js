@@ -41,7 +41,7 @@ function getPromptsFromFiles() {
                 uniqueId: generateUniqueId(prompt.name + '.yaml'),
                 fileName: entry.name,
                 relativePath: relativePath,
-                filePath: fullPath,
+                // filePath: fullPath,
               });
             }
           } catch (error) {
