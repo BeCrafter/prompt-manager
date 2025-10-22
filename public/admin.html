@@ -1,0 +1,1770 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prompt 管理后台</title>
+  <link rel="stylesheet" href="./css/codemirror.css">
+  <link rel="stylesheet" href="./css/codemirror-theme_xq-light.css">
+  <style>
+    :root {
+      --primary: #393939;
+      --primary-dark: #393939;
+      --success: #28a745;
+      --danger: #dc3545;
+      --warning: #ffc107;
+      --dark: #1a1a1a;
+      --light: #f8f9fa;
+      --gray: #6c757d;
+      --gray-light: #dee2e6;
+      --border: #e0e0e0;
+      --sidebar-bg: #f8f9fa;
+      --editor-bg: #263238;
+      --preview-bg: #f5f5f5;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    
+    body {
+      background-color: var(--light);
+      color: var(--dark);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    header {
+      background-color: white;
+      padding: 12px 25px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .logo {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .logo span {
+      /* background: var(--primary);
+      color: white; */
+      color: #8e8989;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 400;
+      border: 1px solid var(--border);
+    }
+    
+    .nav-right {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    
+    .btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+    
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+    
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--dark);
+    }
+    
+    .btn-outline:hover {
+      background: var(--light);
+    }
+    
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 13px;
+    }
+    
+    .btn.loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    
+    .btn-icon {
+      padding: 6px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      height: 93%;
+    }
+    
+    aside {
+      width: 320px;
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      max-height: 100%;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+    
+    .sidebar-header {
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: white;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .new-prompt-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+    }
+    
+    .new-prompt-btn:hover {
+      background: #333;
+    }
+    
+    .search-container {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .search-box {
+      position: relative;
+      flex: 1;
+    }
+    
+    .search-box input {
+      width: 100%;
+      padding: 8px 12px 8px 36px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    
+    .search-box::before {
+      content: '🔍';
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--gray);
+      font-size: 14px;
+    }
+    
+    .folder-btn {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .folder-btn:hover {
+      background: #f5f5f5;
+    }
+    
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 12px;
+      z-index: 1100;
+      align-items: flex-end;
+    }
+
+    .toast {
+      min-width: 280px;
+      max-width: 360px;
+      background: white;
+      border-radius: 12px;
+      padding: 16px 18px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.12);
+      border: 1px solid transparent;
+      opacity: 0;
+      transform: translateY(16px);
+      animation: toast-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      pointer-events: auto;
+    }
+
+    .toast.toast-leave {
+      animation: toast-leave 0.25s ease forwards;
+    }
+
+    .toast-success {
+      border-color: rgba(40,167,69,0.35);
+      background: linear-gradient(145deg, rgba(40,167,69,0.08), rgba(40,167,69,0.02));
+    }
+
+    .toast-error {
+      border-color: rgba(220,53,69,0.35);
+      background: linear-gradient(145deg, rgba(220,53,69,0.08), rgba(220,53,69,0.02));
+    }
+
+    .toast-info {
+      border-color: rgba(0,102,255,0.3);
+      background: linear-gradient(145deg, rgba(0,102,255,0.08), rgba(0,102,255,0.02));
+    }
+
+    .toast-warning {
+      border-color: rgba(255,193,7,0.35);
+      background: linear-gradient(145deg, rgba(255,193,7,0.1), rgba(255,193,7,0.03));
+    }
+
+    .toast-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 600;
+      flex-shrink: 0;
+      background: rgba(0,0,0,0.05);
+      color: var(--dark);
+    }
+
+    .toast-success .toast-icon {
+      background: rgba(40,167,69,0.15);
+      color: var(--success);
+    }
+
+    .toast-error .toast-icon {
+      background: rgba(220,53,69,0.15);
+      color: var(--danger);
+    }
+
+    .toast-info .toast-icon {
+      background: rgba(0,102,255,0.15);
+      color: var(--primary);
+    }
+
+    .toast-warning .toast-icon {
+      background: rgba(255,193,7,0.2);
+      color: #b58100;
+    }
+
+    .toast-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .toast-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .toast-message {
+      font-size: 13px;
+      color: var(--gray);
+      line-height: 1.5;
+      white-space: pre-line;
+    }
+
+    .toast-close {
+      border: none;
+      background: transparent;
+      color: var(--gray);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 2px;
+      line-height: 1;
+      margin-left: 8px;
+      flex-shrink: 0;
+    }
+
+    .toast-close:hover {
+      color: var(--dark);
+    }
+    
+    @keyframes toast-enter {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    @keyframes toast-leave {
+      to {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+    }
+    
+    .variable-desc {
+      font-size: 12px;
+      color: var(--gray);
+      margin-top: 2px;
+    }
+    
+    .group-section {
+      margin-bottom: 8px;
+    }
+    
+    .group-header {
+      padding: 12px 15px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .group-header:hover {
+      background: #f0f0f0;
+    }
+    
+    .group-toggle {
+      transition: transform 0.2s;
+    }
+    
+    .group-toggle.collapsed {
+      transform: rotate(-90deg);
+    }
+    
+    .group-content {
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+    }
+    
+    .group-content.collapsed {
+      max-height: 0;
+    }
+    
+    .group-content.expanded {
+      max-height: 1000px;
+      overflow-y: auto;
+      padding-top: 8px;
+      scrollbar-width: none;
+    }
+    
+    .group-count {
+      background: #9ea2a6;
+      color: white;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 10px;
+    }
+    
+    .prompt-list {
+      padding: 0 15px 15px;
+    }
+    
+    .prompt-item {
+      padding: 12px;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: stretch;
+      background: #f5f5f5;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+      margin-right: 10px; /* 向右边框移动一半的距离 */
+    }
+    
+    .prompt-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0; /* 允许内容收缩 */
+      padding-right: 15px; /* 补充宽度 */
+    }
+    
+    .prompt-name {
+      font-weight: 500;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .prompt-meta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 50px; /* 减小按钮区域宽度 */
+    }
+    
+    .prompt-item:hover {
+      background: #eeeeee;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .prompt-item:hover {
+      border-color: var(--primary);
+      box-shadow: 0 2px 8px rgba(0,102,255,0.1);
+    }
+    
+    .prompt-item.active {
+      background: rgba(0,102,255,0.05);
+      border-color: var(--primary);
+    }
+    
+    .prompt-info {
+      flex: 1;
+    }
+    
+    .prompt-name {
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    
+    .prompt-desc {
+      font-size: 12px;
+      color: var(--gray);
+      line-height: 1.3;
+      height: 16px; /* 单行高度 */
+      overflow: hidden;
+      position: relative;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    
+    /* Tooltip样式 */
+    .tooltip {
+      position: relative;
+    }
+    
+    .tooltip::after {
+      content: attr(title);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      max-width: 300px;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s, visibility 0.2s;
+      pointer-events: none;
+    }
+    
+    .tooltip:hover::after {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    /* 启用状态边框样式 */
+    .prompt-item.enabled {
+      border-left: 4px solid #b8b3b3; /* 浅30%的深灰色，原#333调浅30%约为#666 */
+    }
+    
+    /* 选中状态样式 */
+    .prompt-item.active {
+      border-left: 4px solid #666; /* 选中时的灰色边框 */
+    }
+    
+    /* 悬停状态样式 */
+    .prompt-item:hover {
+      border-color: #666; /* 鼠标悬停时的灰色边框 */
+    }
+    
+    /* 操作按钮样式 */
+    .prompt-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      justify-content: center;
+      height: 100%;
+    }
+    
+    .prompt-item:hover .prompt-actions {
+      opacity: 1;
+    }
+    
+    .action-btn {
+      background: var(--light);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      white-space: nowrap;
+      text-align: center;
+    }
+    
+    .action-btn:hover {
+      background: var(--gray-light);
+    }
+    
+    /* 美化目录三角图标 */
+    .group-toggle {
+      transition: transform 0.3s ease;
+      font-size: 12px;
+      color: var(--gray);
+    }
+    
+    .group-toggle.collapsed {
+      transform: rotate(-90deg);
+    }
+    
+    .prompt-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .prompt-tag {
+      background: rgba(0,102,255,0.1);
+      color: var(--primary);
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+    
+    .prompt-status {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    
+    .prompt-status.enabled {
+      background: var(--success);
+    }
+    
+    .prompt-status.disabled {
+      background: var(--gray-light);
+    }
+    
+    .editor-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: white;
+      border-left: 1px solid var(--border);
+    }
+    
+    .editor-header {
+      padding: 15px 20px;
+      /* border-bottom: 1px solid var(--border); */
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: white;
+    }
+    
+    .editor-header-top {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      width: 100%;
+    }
+    
+    .editor-header-top input,
+    .editor-header-top select,
+    .prompt-description {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      background: white;
+    }
+    
+    .editor-header-top input {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .editor-header-top select {
+      min-width: 140px;
+      flex-shrink: 0;
+    }
+    
+    .editor-header-top input:focus,
+    .editor-header-top select:focus,
+    .prompt-description:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    
+    .prompt-description {
+      width: 100%;
+      min-height: 38px;
+      line-height: 1.5;
+      resize: none;
+      overflow-y: hidden;
+      transition: border-color 0.2s ease;
+    }
+    
+    .prompt-description::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .prompt-description::-webkit-scrollbar-thumb {
+      background: var(--gray-light);
+      border-radius: 3px;
+    }
+    
+    .editor-controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-left: auto;
+    }
+    
+    .mode-toggle {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px;
+      border-radius: 999px;
+      background: var(--light);
+      border: 1px solid var(--border);
+    }
+    
+    .mode-btn {
+      padding: 6px 18px;
+      border: none;
+      background: transparent;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      color: var(--gray);
+      transition: all 0.2s;
+    }
+    
+    .mode-btn.active {
+      background: white;
+      color: var(--primary);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    
+    .editor-body {
+      position: relative;
+      flex: 1;
+      margin: 12px 20px 20px;
+      box-sizing: border-box;
+      min-height: 0;
+    }
+    
+    .workspace-pane {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      background: white;
+      transition: opacity 0.25s ease;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+    }
+    
+    .workspace-pane.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    
+    .pane-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      background: white;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--gray);
+    }
+    
+    .pane-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+      min-height: 0;
+    }
+    
+    .pane-content.preview {
+      background: var(--preview-bg);
+      padding: 24px;
+    }
+    
+    .CodeMirror {
+      flex: 1;
+      height: 100%;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    
+    .CodeMirror-scroll {
+      min-height: 100%;
+    }
+    
+    .preview-content {
+      flex: 1;
+      padding: 24px;
+      overflow: auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+      scrollbar-width: thin;
+      scrollbar-color: var(--gray-light) transparent;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--gray);
+    }
+    
+    .empty-state h3 {
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    
+    .empty-state p {
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    
+    .login-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255,255,255,0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    
+    .login-box {
+      width: 400px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      padding: 40px;
+      text-align: center;
+    }
+    
+    .login-box h2 {
+      margin-bottom: 30px;
+      color: var(--dark);
+    }
+    
+    .login-box input {
+      width: 100%;
+      padding: 12px 15px;
+      margin-bottom: 15px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 15px;
+    }
+    
+    .login-box input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    
+    .login-box button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+    }
+    
+    .error-msg {
+      color: var(--danger);
+      font-size: 13px;
+      margin-top: 5px;
+      text-align: left;
+    }
+    
+    .success-msg {
+      color: var(--success);
+      font-size: 13px;
+      margin-top: 5px;
+      text-align: center;
+    }
+    
+    .loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .status-badge.enabled {
+      background: rgba(40,167,69,0.1);
+      color: var(--success);
+    }
+    
+    .status-badge.disabled {
+      background: rgba(220,53,69,0.1);
+      color: var(--danger);
+    }
+
+    .CodeMirror-gutters {
+      left: -2px !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- 登录界面 -->
+  <div id="login" class="login-container">
+    <div class="login-box">
+      <h2>Prompt 管理后台</h2>
+      <input type="text" id="username" placeholder="用户名" />
+      <input type="password" id="password" placeholder="密码" />
+      <div id="loginError" class="error-msg"></div>
+      <button id="loginBtn" class="btn btn-primary">登录</button>
+    </div>
+  </div>
+
+  <!-- 主界面 -->
+  <div id="main" style="display: none; height: 100vh; flex-direction: column;">
+    <!-- 顶部导航 -->
+    <header>
+      <div class="logo">
+        Prompt Manager <span>Beta</span>
+      </div>
+      <div class="nav-right">
+        <button id="logoutBtn" class="btn btn-outline">退出</button>
+      </div>
+    </header>
+
+    <!-- 主体内容 -->
+    <main>
+      <!-- 左侧边栏 -->
+      <aside>
+        <div class="sidebar-header">
+          <button id="newPromptBtn" class="new-prompt-btn">
+            <span>+</span> 新建 Prompt
+          </button>
+          <div class="search-container">
+            <div class="search-box">
+              <input type="text" id="searchInput" placeholder="搜索Prompts..." />
+            </div>
+            <button id="newGroupBtn" class="folder-btn">
+              📁
+            </button>
+          </div>
+        </div>
+        
+        <div id="groupList"></div>
+      </aside>
+
+      <!-- 右侧编辑器 -->
+      <div class="editor-container">
+        <div class="editor-header">
+          <div class="editor-header-top">
+            <input type="text" id="promptName" placeholder="Prompt 名称" />
+            <select id="promptGroup">
+              <option value="default">default</option>
+              <option value="developer">developer</option>
+              <option value="generator">generator</option>
+              <option value="operation">operation</option>
+            </select>
+            <div class="editor-controls">
+              <div class="mode-toggle">
+                <button id="editModeBtn" class="mode-btn active" data-mode="edit">编辑</button>
+                <button id="previewModeBtn" class="mode-btn" data-mode="preview">预览</button>
+              </div>
+              <button id="saveBtn" class="btn btn-primary btn-sm">
+                保存
+              </button>
+            </div>
+          </div>
+          <textarea id="promptDescription" class="prompt-description" placeholder="Prompt 描述"></textarea>
+        </div>
+
+        <div class="editor-body" id="editorWorkspace">
+          <div class="workspace-pane" id="editorPane">
+            <div class="pane-header">Markdown 编辑器</div>
+            <div class="pane-content">
+              <textarea id="editor"></textarea>
+            </div>
+          </div>
+          <div class="workspace-pane hidden" id="previewPane">
+            <div class="pane-header">实时预览</div>
+            <div class="pane-content preview">
+              <div class="preview-content" id="previewContent">
+                <p>选择或创建prompt开始编辑</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 消息提示 -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script>
+    // 应用状态
+    let currentToken = localStorage.getItem('prompt-admin-token')
+    let currentPrompt = null
+    let currentPromptObject = null
+    let descriptionInputEl = null
+    let allPrompts = []
+    let expandedGroups = new Set()
+    let editor = null
+
+    // API 基础配置
+    const API_BASE = '/api'
+
+    // 动态加载CodeMirror资源
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = src
+        script.onload = resolve
+        script.onerror = () => reject(new Error(`加载失败: ${src}`))
+        document.head.appendChild(script)
+      })
+    }
+
+    // API请求封装
+    async function apiCall(endpoint, options = {}) {
+      const config = {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers
+        },
+        ...options
+      }
+
+      if (currentToken) {
+        config.headers.Authorization = `Bearer ${currentToken}`
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}${endpoint}`, config)
+        
+        if (response.status === 401) {
+          // Token 过期，重新登录
+          localStorage.removeItem('prompt-admin-token')
+          currentToken = null
+          showLogin()
+          throw new Error('登录已过期，请重新登录')
+        }
+
+        if (!response.ok) {
+          const error = await response.text()
+          throw new Error(error || '请求失败')
+        }
+
+        return await response.json()
+      } catch (error) {
+        const handledError = error instanceof Error ? error : new Error(error?.message || '请求失败')
+        handledError.__shown = true
+        console.error('API请求错误:', handledError)
+        showMessage(handledError.message, 'error')
+        throw handledError
+      }
+    }
+
+    // 提示组件
+    function showMessage(message, type = 'success', options = {}) {
+      const container = document.getElementById('toastContainer')
+      if (!container) return
+
+      const normalizedType = ['success', 'error', 'info', 'warning'].includes(type) ? type : 'success'
+      const titleMap = {
+        success: '操作成功',
+        error: '操作失败',
+        info: '提示信息',
+        warning: '注意'
+      }
+      const iconMap = {
+        success: '✓',
+        error: '✕',
+        info: 'ℹ',
+        warning: '!' 
+      }
+
+      const toast = document.createElement('div')
+      toast.className = `toast toast-${normalizedType}`
+      toast.setAttribute('role', normalizedType === 'error' ? 'alert' : 'status')
+      toast.setAttribute('aria-live', normalizedType === 'error' ? 'assertive' : 'polite')
+
+      const iconEl = document.createElement('span')
+      iconEl.className = 'toast-icon'
+      iconEl.textContent = options.icon || iconMap[normalizedType]
+
+      const contentEl = document.createElement('div')
+      contentEl.className = 'toast-content'
+
+      const titleText = options.title || titleMap[normalizedType]
+      if (titleText) {
+        const titleEl = document.createElement('div')
+        titleEl.className = 'toast-title'
+        titleEl.textContent = titleText
+        contentEl.appendChild(titleEl)
+      }
+
+      const messageEl = document.createElement('div')
+      messageEl.className = 'toast-message'
+      messageEl.textContent = message
+      contentEl.appendChild(messageEl)
+
+      const closeBtn = document.createElement('button')
+      closeBtn.className = 'toast-close'
+      closeBtn.type = 'button'
+      closeBtn.setAttribute('aria-label', '关闭提示')
+      closeBtn.innerHTML = '&times;'
+
+      toast.appendChild(iconEl)
+      toast.appendChild(contentEl)
+      toast.appendChild(closeBtn)
+      container.appendChild(toast)
+
+      let hideTimer
+      let removed = false
+
+      const removeToast = () => {
+        if (removed) return
+        removed = true
+        toast.classList.add('toast-leave')
+        toast.removeEventListener('mouseenter', pauseTimer)
+        toast.removeEventListener('mouseleave', resumeTimer)
+        setTimeout(() => {
+          if (toast.parentNode === container) {
+            container.removeChild(toast)
+          }
+        }, 250)
+      }
+
+      const pauseTimer = () => clearTimeout(hideTimer)
+      const resumeTimer = () => {
+        clearTimeout(hideTimer)
+        hideTimer = setTimeout(removeToast, Number(options.duration) || 5000)
+      }
+
+      closeBtn.addEventListener('click', () => {
+        pauseTimer()
+        removeToast()
+      })
+
+      toast.addEventListener('mouseenter', pauseTimer)
+      toast.addEventListener('mouseleave', resumeTimer)
+
+      resumeTimer()
+    }
+
+    // 登录功能
+    async function login(username, password) {
+      try {
+        const result = await apiCall('/login', {
+          method: 'POST',
+          body: JSON.stringify({ username, password })
+        })
+        
+        currentToken = result.token
+        localStorage.setItem('prompt-admin-token', currentToken)
+        showMain()
+        loadPrompts()
+      } catch (error) {
+        document.getElementById('loginError').textContent = error.message || '登录失败'
+      }
+    }
+
+    // 退出登录
+    function logout() {
+      localStorage.removeItem('prompt-admin-token')
+      currentToken = null
+      showLogin()
+    }
+
+    // 显示登录界面
+    function showLogin() {
+      document.getElementById('login').style.display = 'flex'
+      document.getElementById('main').style.display = 'none'
+    }
+
+    // 显示主界面
+    function showMain() {
+      document.getElementById('login').style.display = 'none'
+      document.getElementById('main').style.display = 'block'
+    }
+
+    // 加载prompt列表
+    async function loadPrompts(search = '', enabledOnly = false, group = null) {
+      try {
+        const queryParams = new URLSearchParams()
+        if (search) queryParams.append('search', search)
+        if (enabledOnly) queryParams.append('enabled', 'true')
+        if (group) queryParams.append('group', group)
+        
+        const prompts = await apiCall(`/prompts?${queryParams}`)
+        allPrompts = prompts
+        renderGroupList(prompts)
+      } catch (error) {
+        console.error('加载prompt列表失败:', error)
+      }
+    }
+
+    function createDefaultPromptObject() {
+      return {
+        name: 'new-prompt',
+        description: '新prompt描述',
+        enabled: true,
+        messages: [
+          {
+            role: 'user',
+            content: {
+              text: `这是一个新的prompt模板\n{{variable1}}`
+            }
+          }
+        ],
+        variables: [
+          {
+            name: 'variable1',
+            type: 'string',
+            required: false,
+            default: '',
+            description: '示例变量'
+          }
+        ]
+      }
+    }
+
+    function clonePromptObject(obj) {
+      return obj ? JSON.parse(JSON.stringify(obj)) : null
+    }
+
+    function getFirstUserMessage(promptObj) {
+      if (!promptObj || !Array.isArray(promptObj.messages)) return null
+      return promptObj.messages.find(message => message?.role === 'user') || null
+    }
+
+    function buildPromptObjectFromUI() {
+      const nameInput = document.getElementById('promptName')
+      const name = (nameInput?.value || '').trim() || 'new-prompt'
+      const description = descriptionInputEl?.value || ''
+      const markdown = editor ? editor.getValue() : ''
+
+      const base = clonePromptObject(currentPromptObject) || createDefaultPromptObject()
+      base.name = name
+      base.description = description
+
+      if (!Array.isArray(base.messages)) {
+        base.messages = []
+      }
+
+      let userMessage = getFirstUserMessage(base)
+      if (!userMessage) {
+        userMessage = { role: 'user', content: { text: '' } }
+        base.messages.push(userMessage)
+      }
+
+      if (!userMessage.content || typeof userMessage.content !== 'object') {
+        userMessage.content = {}
+      }
+
+      userMessage.content.text = markdown
+
+      return base
+    }
+
+    function adjustDescriptionHeight() {
+      if (!descriptionInputEl) return
+
+      const style = window.getComputedStyle(descriptionInputEl)
+      const lineHeight = parseFloat(style.lineHeight) || 20
+      const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) || 0
+      const border = parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth) || 0
+      const maxHeight = lineHeight * 4 + padding + border
+      const baseHeight = lineHeight + padding + border
+
+      descriptionInputEl.style.height = 'auto'
+      const contentHeight = descriptionInputEl.scrollHeight
+      const newHeight = Math.max(baseHeight, Math.min(maxHeight, contentHeight))
+      descriptionInputEl.style.height = `${newHeight}px`
+      descriptionInputEl.style.overflowY = descriptionInputEl.scrollHeight > maxHeight ? 'auto' : 'hidden'
+    }
+
+    
+
+    // 渲染分组列表
+    async function renderGroupList(prompts) {
+      try {
+        // 从API获取所有分组及数量信息
+        const groups = await apiCall('/groups');
+        const container = document.getElementById('groupList');
+        container.innerHTML = '';
+
+        const validGroupNames = new Set(groups.map(group => group.name));
+        expandedGroups = new Set([...expandedGroups].filter(name => validGroupNames.has(name)));
+
+        // 按照目录顺序渲染分组
+        groups.forEach(groupInfo => {
+          const groupName = groupInfo.name;
+          // 找出属于该分组的prompts
+          const groupPrompts = prompts.filter(prompt => (prompt.group || 'default') === groupName);
+          const section = document.createElement('div');
+          section.className = 'group-section';
+          section.innerHTML = `
+            <div class="group-header" data-group="${groupName}">
+              <span>${groupName}</span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span class="group-count" id="group-count-${groupName}">0</span>
+                <span class="group-toggle">▼</span>
+              </div>
+            </div>
+            <div class="group-content collapsed">
+              <div class="prompt-list" id="promptList-${groupName}">
+                <!-- Prompt列表将通过JavaScript动态生成 -->
+              </div>
+            </div>
+          `;
+          container.appendChild(section);
+          
+          // 渲染该分组的prompt列表
+          renderGroupPromptList(groupName, groupPrompts);
+          
+          // 更新分组计数
+          const countElement = document.getElementById(`group-count-${groupName}`);
+          if (countElement) {
+            countElement.textContent = groupPrompts.length;
+          }
+          
+          // 添加点击事件处理
+          const header = section.querySelector('.group-header');
+          const toggle = section.querySelector('.group-toggle');
+          const content = section.querySelector('.group-content');
+
+          const isExpanded = expandedGroups.has(groupName);
+          content.classList.toggle('expanded', isExpanded);
+          content.classList.toggle('collapsed', !isExpanded);
+          toggle.classList.toggle('collapsed', !isExpanded);
+          
+          header.addEventListener('click', (e) => {
+            // 检查点击的目标元素，只在点击分组标题文本部分时才展开/折叠，避开操作按钮
+            const isClickOnActions = e.target.closest('.toggle-btn') || e.target.closest('.delete-btn') || e.target.closest('.prompt-actions');
+            if (!isClickOnActions) {
+              // 只有未点击操作按钮时才执行展开/折叠
+              const nextExpanded = !content.classList.contains('expanded');
+              content.classList.toggle('expanded', nextExpanded);
+              content.classList.toggle('collapsed', !nextExpanded);
+              toggle.classList.toggle('collapsed', !nextExpanded);
+
+              if (nextExpanded) {
+                expandedGroups.add(groupName);
+              } else {
+                expandedGroups.delete(groupName);
+              }
+            }
+          });
+        });
+      } catch (error) {
+        console.error('渲染分组列表失败:', error);
+      }
+    }
+    
+    // 加载分组列表
+    async function loadGroups() {
+      try {
+        const groups = await apiCall('/groups')
+        return groups.map(group => group.name)
+      } catch (error) {
+        console.error('加载分组列表失败:', error)
+        return ['default']
+      }
+    }
+    
+    // 渲染分组内的prompt列表
+    function renderGroupPromptList(groupName, prompts) {
+      const container = document.getElementById(`promptList-${groupName}`)
+      container.innerHTML = ''
+
+      prompts.forEach(prompt => {
+        const item = document.createElement('div')
+        item.className = `prompt-item ${prompt.enabled ? 'enabled' : ''} ${currentPrompt?.name === prompt.name ? 'active' : ''}`
+        item.innerHTML = `
+          <div class="prompt-info">
+            <div class="prompt-name">${prompt.name}</div>
+            <div class="prompt-desc" title="${prompt.description || ''}">${prompt.description || ''}</div>
+          </div>
+          <div class="prompt-meta">
+            <div class="prompt-actions">
+              <button class="action-btn toggle-btn" data-prompt="${prompt.name}">
+                ${prompt.enabled ? '停用' : '启用'}
+              </button>
+              <button class="action-btn delete-btn" data-prompt="${prompt.name}" style="color: var(--danger);">
+                删除
+              </button>
+            </div>
+          </div>
+        `
+        
+        item.addEventListener('click', (e) => {
+          // 只有点击prompt信息区域才选择prompt，点击操作按钮不触发
+          if (!e.target.closest('.prompt-actions') && !e.target.classList.contains('toggle-btn') && !e.target.classList.contains('delete-btn')) {
+            selectPrompt(prompt, e)
+          }
+        })
+        
+        // 阻止操作按钮的点击事件冒泡，避免触发目录折叠
+        const actions = item.querySelector('.prompt-actions');
+        if (actions) {
+          actions.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          });
+          
+          // 为每个操作按钮单独添加事件监听器，确保完全阻止事件冒泡
+          const toggleBtn = item.querySelector('.toggle-btn');
+          const deleteBtn = item.querySelector('.delete-btn');
+          
+          if (toggleBtn) {
+            toggleBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              togglePromptByName(prompt.name);
+              // 重新加载列表，传递搜索参数
+              const searchInput = document.getElementById('searchInput');
+              const searchValue = searchInput ? searchInput.value : '';
+              loadPrompts(searchValue);
+            });
+          }
+          
+          if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              if (confirm(`确定要删除 "${prompt.name}" 吗？`)) {
+                deletePromptByName(prompt.name);
+                // 重新加载列表，传递搜索参数
+                const searchInput = document.getElementById('searchInput');
+                const searchValue = searchInput ? searchInput.value : '';
+                loadPrompts(searchValue);
+              }
+            });
+          }
+        }
+        
+        container.appendChild(item)
+      })
+      
+      // 操作按钮事件监听已移到上面的item.addEventListener中，避免重复绑定
+    }
+    
+    // 根据名称切换prompt启用状态
+    async function togglePromptByName(promptName) {
+      try {
+        const result = await apiCall(`/prompts/${promptName}/toggle`, {
+          method: 'POST'
+        })
+        // 重新加载列表，传递搜索参数
+        const searchInput = document.getElementById('searchInput');
+        const searchValue = searchInput ? searchInput.value : '';
+        loadPrompts(searchValue)
+        const statusText = result?.enabled ? '已启用' : '已停用'
+        showMessage(`“${promptName}” ${statusText}`, result?.enabled ? 'success' : 'info')
+      } catch (error) {
+        console.error('切换prompt状态失败:', error)
+        showMessage('启用状态切换失败: ' + error.message, 'error')
+      }
+    }
+    
+    // 根据名称删除prompt
+    async function deletePromptByName(promptName) {
+      try {
+        await apiCall(`/prompts/${promptName}`, {
+          method: 'DELETE'
+        })
+        showMessage('删除成功')
+        // 重新加载列表，传递搜索参数
+        const searchInput = document.getElementById('searchInput');
+        const searchValue = searchInput ? searchInput.value : '';
+        loadPrompts(searchValue)
+      } catch (error) {
+        console.error('删除prompt失败:', error)
+        showMessage('删除失败: ' + error.message, 'error')
+      }
+    }
+
+    // 选择prompt
+    async function selectPrompt(prompt, triggerEvent) {
+      try {
+        const promptData = await apiCall(`/prompts/${prompt.name}`)
+        currentPrompt = promptData
+
+        let parsedPrompt = null
+        try {
+          parsedPrompt = window.jsyaml?.load(promptData.yaml || '') || null
+        } catch (err) {
+          console.error('解析提示词失败:', err)
+        }
+
+        currentPromptObject = parsedPrompt ? clonePromptObject(parsedPrompt) : createDefaultPromptObject()
+
+        const nameInput = document.getElementById('promptName')
+        if (nameInput) nameInput.value = currentPromptObject.name || promptData.name || ''
+        document.getElementById('promptGroup').value = promptData.group || 'default'
+
+        if (descriptionInputEl) {
+          descriptionInputEl.value = currentPromptObject.description || ''
+          adjustDescriptionHeight()
+        }
+
+        const userMessage = getFirstUserMessage(currentPromptObject)
+        const messageText = userMessage?.content?.text || ''
+        if (editor) {
+          editor.setValue(messageText)
+        }
+
+        // 更新UI状态
+        document.querySelectorAll('.prompt-item').forEach(el => el.classList.remove('active'))
+        const targetItem = triggerEvent?.currentTarget || triggerEvent?.target?.closest('.prompt-item')
+        if (targetItem) {
+          targetItem.classList.add('active')
+        }
+
+        // 更新预览
+        updatePreview(true)
+      } catch (error) {
+        console.error('加载prompt详情失败:', error)
+      }
+    }
+
+
+
+    // 切换工作区模式
+    function setWorkspaceMode(mode) {
+      const isPreview = mode === 'preview'
+      const editorPane = document.getElementById('editorPane')
+      const previewPane = document.getElementById('previewPane')
+      const editModeBtn = document.getElementById('editModeBtn')
+      const previewModeBtn = document.getElementById('previewModeBtn')
+
+      if (!editorPane || !previewPane || !editModeBtn || !previewModeBtn) return
+
+      editModeBtn.classList.toggle('active', !isPreview)
+      previewModeBtn.classList.toggle('active', isPreview)
+      editorPane.classList.toggle('hidden', isPreview)
+      previewPane.classList.toggle('hidden', !isPreview)
+
+      if (isPreview) {
+        updatePreview(true)
+      } else if (editor) {
+        editor.refresh()
+      }
+    }
+
+    // 更新预览
+    async function updatePreview(force = false) {
+      if (!editor) return
+
+      const previewPane = document.getElementById('previewPane')
+      if (!force && previewPane?.classList.contains('hidden')) {
+        return
+      }
+
+      if (!window.jsyaml) return
+
+      const promptObject = buildPromptObjectFromUI()
+      const yaml = window.jsyaml.dump(promptObject)
+
+      try {
+        const result = await apiCall('/md-preview', {
+          method: 'POST',
+          body: JSON.stringify({ yaml, vars: {} })
+        })
+        
+        document.getElementById('previewContent').innerHTML = result.html || '<p>预览内容</p>'
+      } catch (error) {
+        document.getElementById('previewContent').innerHTML = '<p style="color: red;">预览生成失败</p>'
+      }
+    }
+
+    // 保存prompt
+    async function savePrompt() {
+      if (!editor) return
+
+      const saveBtn = document.getElementById('saveBtn')
+      if (saveBtn?.disabled) return
+
+      const name = document.getElementById('promptName').value.trim()
+      const group = document.getElementById('promptGroup').value.trim()
+
+      if (!window.jsyaml) {
+        showMessage('资源未准备就绪，请刷新重试', 'error')
+        return
+      }
+
+      if (!name) {
+        showMessage('请输入prompt名称', 'error')
+        return
+      }
+
+      const promptObject = buildPromptObjectFromUI()
+      const yaml = window.jsyaml.dump(promptObject)
+
+      let originalText = ''
+      if (saveBtn) {
+        originalText = (saveBtn.textContent || '保存').trim()
+        saveBtn.disabled = true
+        saveBtn.classList.add('loading')
+        saveBtn.textContent = '保存中...'
+      }
+      
+      try {
+        await apiCall('/prompts', {
+          method: 'POST',
+          body: JSON.stringify({
+            name,
+            group,
+            yaml
+          })
+        })
+        
+        showMessage('保存成功')
+        currentPromptObject = clonePromptObject(promptObject)
+        currentPrompt = { ...(currentPrompt || {}), name }
+        // 重新加载列表，传递搜索参数
+        const searchInput = document.getElementById('searchInput');
+        const searchValue = searchInput ? searchInput.value : '';
+        loadPrompts(searchValue)
+      } catch (error) {
+        console.error('保存失败:', error)
+        if (!error?.__shown) {
+          showMessage('保存失败: ' + (error?.message || '未知错误'), 'error')
+        }
+      } finally {
+        if (saveBtn) {
+          saveBtn.disabled = false
+          saveBtn.classList.remove('loading')
+          saveBtn.textContent = originalText
+        }
+      }
+    }
+
+    // 重置编辑器
+    function resetEditor() {
+      document.getElementById('promptName').value = ''
+      document.getElementById('promptGroup').value = 'default'
+      if (editor) editor.setValue('')
+      if (descriptionInputEl) {
+        descriptionInputEl.value = ''
+        adjustDescriptionHeight()
+      }
+      currentPrompt = null
+      currentPromptObject = null
+      document.getElementById('previewContent').innerHTML = '<p>选择或创建prompt开始编辑</p>'
+      setWorkspaceMode('edit')
+    }
+
+    // 新建prompt
+    function newPrompt() {
+      currentPrompt = null
+      currentPromptObject = createDefaultPromptObject()
+
+      const nameInput = document.getElementById('promptName')
+      if (nameInput) nameInput.value = currentPromptObject.name
+      document.getElementById('promptGroup').value = 'default'
+
+      const defaultMessage = getFirstUserMessage(currentPromptObject)
+      if (editor) {
+        editor.setValue(defaultMessage?.content?.text || '')
+      }
+
+      if (descriptionInputEl) {
+        descriptionInputEl.value = currentPromptObject.description || ''
+        adjustDescriptionHeight()
+      }
+
+      document.getElementById('previewContent').innerHTML = '<p>选择或创建prompt开始编辑</p>'
+      setWorkspaceMode('edit')
+
+      document.querySelectorAll('.prompt-item').forEach(el => el.classList.remove('active'))
+      updatePreview(true)
+    }
+    
+    // 创建新分组
+    async function createNewGroup() {
+      const groupName = prompt('请输入新分组名称:')
+      if (!groupName) return
+      
+      try {
+        await apiCall('/groups', {
+          method: 'POST',
+          body: JSON.stringify({ name: groupName })
+        })
+        
+        showMessage('分组创建成功')
+        loadPrompts()
+      } catch (error) {
+        console.error('创建分组失败:', error)
+        showMessage('创建分组失败: ' + error.message, 'error')
+      }
+    }
+
+    // 初始化应用
+    async function initApp() {
+      try {
+        // 样式资源：https://codemirror.net/5/theme/
+        // 效果预览：https://toolshu.com/codemirror-theme-prev#default
+
+        // 并行加载资源
+        await Promise.all([
+          loadScript('./js/codemirror.min.js'),
+          loadScript('./js/markdown.min.js'),
+          loadScript('./js/closebrackets.min.js'),
+          loadScript('./js/js-yaml.min.js')
+        ])
+
+        // 初始化编辑器
+        editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
+          mode: 'markdown',
+          lineNumbers: true,
+          theme: 'xq-light',
+          lineWrapping: true,
+          autoCloseBrackets: true,
+          value: '请选择或创建prompt开始编辑'
+        })
+
+        editor.on('change', () => updatePreview())
+
+        const editModeBtn = document.getElementById('editModeBtn')
+        const previewModeBtn = document.getElementById('previewModeBtn')
+        editModeBtn.addEventListener('click', () => setWorkspaceMode('edit'))
+        previewModeBtn.addEventListener('click', () => setWorkspaceMode('preview'))
+        setWorkspaceMode('edit')
+
+        descriptionInputEl = document.getElementById('promptDescription')
+        if (descriptionInputEl) {
+          descriptionInputEl.addEventListener('input', adjustDescriptionHeight)
+          adjustDescriptionHeight()
+        }
+
+        // 绑定事件
+        document.getElementById('loginBtn').addEventListener('click', () => {
+          const username = document.getElementById('username').value.trim()
+          const password = document.getElementById('password').value.trim()
+          
+          if (!username || !password) {
+            document.getElementById('loginError').textContent = '请输入用户名和密码'
+            return
+          }
+          
+          login(username, password)
+        })
+
+        document.getElementById('logoutBtn').addEventListener('click', logout)
+        document.getElementById('newPromptBtn').addEventListener('click', newPrompt)
+        document.getElementById('newGroupBtn').addEventListener('click', createNewGroup)
+        document.getElementById('saveBtn').addEventListener('click', savePrompt)
+
+        // 搜索功能
+        const searchInput = document.getElementById('searchInput')
+        let searchTimeout
+        searchInput.addEventListener('input', () => {
+          clearTimeout(searchTimeout)
+          searchTimeout = setTimeout(() => {
+            loadPrompts(searchInput.value)
+          }, 300)
+        })
+
+        // 检查登录状态
+        if (currentToken) {
+          showMain()
+          loadPrompts()
+        } else {
+          showLogin()
+        }
+
+      } catch (err) {
+        console.error('初始化错误:', err)
+        document.getElementById('loginError').textContent = '资源加载失败，请刷新重试'
+        throw err
+      }
+    }
+
+    // 启动应用
+    document.addEventListener('DOMContentLoaded', initApp)
+  </script>
+</body>
+</html>

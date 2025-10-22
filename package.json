@@ -23,7 +23,8 @@
     "dev": "node --watch src/server.js",
     "test": "node src/server.js",
     "help": "node src/server.js --help",
-    "version": "node src/server.js --version"
+    "version": "node src/server.js --version",
+    "admin": "ADMIN_ENABLE=true ADMIN_USERNAME=admin ADMIN_PASSWORD=admin123 node src/server.js -p ./prompts"
   },
   "keywords": [
     "prompt",

@@ -78,6 +78,91 @@ GET /prompts
 
 返回所有可用的提示词列表。
 
+### 获取单个提示词详情
+
+```
+GET /prompts/:name
+```
+
+返回指定名称的提示词详细信息。
+
+### 创建新提示词
+
+```
+POST /prompts
+```
+
+创建新的提示词文件。
+
+请求体示例：
+```json
+{
+  "name": "my-prompt",
+  "description": "我的自定义提示词",
+  "messages": [
+    {
+      "role": "user",
+      "content": {
+        "text": "这是一个{{参数}}示例"
+      }
+    }
+  ],
+  "arguments": [
+    {
+      "name": "参数",
+      "description": "示例参数",
+      "type": "string",
+      "required": true
+    }
+  ]
+}
+```
+
+### 更新提示词
+
+```
+PUT /prompts/:name
+```
+
+更新现有的提示词文件。修改前会自动创建备份。
+
+请求体格式与创建相同。
+
+### 删除提示词
+
+```
+DELETE /prompts/:name
+```
+
+删除指定的提示词文件。删除前会自动创建备份。
+
+### 验证YAML格式
+
+```
+POST /prompts/validate
+```
+
+验证提示词YAML格式是否正确。
+
+请求体示例：
+```yaml
+yaml: |
+  name: test-prompt
+  description: 测试提示词
+  messages:
+    - role: user
+      content:
+        text: 测试内容
+```
+
+### 获取备份列表
+
+```
+GET /backups
+```
+
+获取所有提示词备份文件列表。
+
 ### 处理提示词
 
 ```

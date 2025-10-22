@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -95,6 +96,23 @@ export class Config {
     this.maxPrompts = parseInt(process.env.MAX_PROMPTS) || 100;
     this.recursiveScan = process.env.RECURSIVE_SCAN !== 'false'; // 默认启用递归扫描
     
+    // 管理员配置
+    this.adminEnable = process.env.ADMIN_ENABLE !== 'false'; // 默认启用管理员功能
+    this.adminPath = process.env.ADMIN_PATH || '/admin';
+    this.exportToken = process.env.EXPORT_TOKEN || crypto.randomBytes(32).toString('hex');
+    
+    // 管理员账户（从环境变量或默认值）
+    const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin';
+    this.admins = [
+      {
+        username: adminUsername,
+        // 在实际应用中，这里应该是哈希值而不是明文密码
+        password: adminPassword,
+        token: process.env.ADMIN_TOKEN || crypto.randomBytes(32).toString('hex')
+      }
+    ];
+    
     if (cliArgs.version) {
       process.stderr.write(this.serverVersion + '\n');
       process.exit(0);
@@ -103,6 +121,7 @@ export class Config {
     // 存储CLI参数
     this.cliArgs = cliArgs;
   }
+
 
   /**
    * 确保prompts目录存在
