@@ -727,6 +727,8 @@
       flex: 1;
       gap: 16px;
       margin: 12px 20px 20px;
+      overflow-y: auto;
+      scrollbar-width: none;
     }
 
     .arguments-section {
@@ -1067,6 +1069,8 @@
       overflow: hidden;
       border: 1px solid var(--border);
       box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+      min-height: 400px;
+      scrollbar-width: none;
     }
     
     .workspace-pane.hidden {
@@ -1387,10 +1391,6 @@
     <option value="string">字符串</option>
     <option value="number">数字</option>
     <option value="boolean">布尔值</option>
-    <option value="array">数组</option>
-    <option value="object">对象</option>
-    <option value="json">JSON</option>
-    <option value="enum">枚举</option>
   </datalist>
 
   <script>
@@ -2256,6 +2256,7 @@
       const previewPane = document.getElementById('previewPane')
       const editModeBtn = document.getElementById('editModeBtn')
       const previewModeBtn = document.getElementById('previewModeBtn')
+      const argumentsSection = document.getElementById('argumentsSection')
 
       if (!editorPane || !previewPane || !editModeBtn || !previewModeBtn) return
 
@@ -2263,6 +2264,11 @@
       previewModeBtn.classList.toggle('active', isPreview)
       editorPane.classList.toggle('hidden', isPreview)
       previewPane.classList.toggle('hidden', !isPreview)
+      
+      // 在预览模式下隐藏参数配置区域，编辑模式下显示
+      if (argumentsSection) {
+        argumentsSection.style.display = isPreview ? 'none' : 'flex'
+      }
 
       if (isPreview) {
         updatePreview(true)
