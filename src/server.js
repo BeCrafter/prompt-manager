@@ -314,7 +314,7 @@ app.post('/api/prompts', adminAuthMiddleware, (req, res) => {
     }
     
     // 验证名称格式
-    if (!/^[a-zA-Z0-9-]{1,64}$/.test(name)) {
+    if (!/^[a-zA-Z0-9-_]{1,64}$/.test(name)) {
       return res.status(400).json({ error: '名称格式无效' });
     }
     

@@ -1175,6 +1175,11 @@
       height: 100%;
       font-size: 14px;
       line-height: 1.5;
+      padding-left: 8px;
+    }
+    
+    .CodeMirror-gutters {
+      display: none;
     }
     
     .CodeMirror-scroll {
@@ -1190,6 +1195,31 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.08);
       scrollbar-width: thin;
       scrollbar-color: var(--gray-light) transparent;
+    }
+    
+    /* 预览模式下的 CodeMirror 样式调整 */
+    .preview-content .CodeMirror {
+      height: auto;
+      background: transparent;
+      border: none;
+      padding: 0;
+      font-size: 14px;
+    }
+
+    .preview-content .CodeMirror-scroll {
+      overflow: hidden !important;
+    }
+
+    .preview-content .CodeMirror-sizer {
+      border-right: none !important;
+    }
+
+    .preview-content .CodeMirror-gutters {
+      display: none;
+    }
+    
+    .preview-content .CodeMirror-cursor {
+      display: none !important;
     }
 
     @media (max-width: 1100px) {
@@ -1392,7 +1422,7 @@
           </section>
           <div class="editor-body" id="editorWorkspace">
             <div class="workspace-pane" id="editorPane">
-              <div class="pane-header">Markdown 编辑器</div>
+              <div class="pane-header">编辑器</div>
               <div class="pane-content">
                 <textarea id="editor"></textarea>
               </div>
@@ -2341,12 +2371,24 @@
 
       if (isPreview) {
         updatePreview(true)
-      } else if (editor) {
-        editor.refresh()
+      } else {
+        if (editor) {
+          editor.refresh()
+        }
+        // 在切换回编辑模式时清理预览编辑器
+        if (previewEditor) {
+          const previewContent = document.getElementById('previewContent')
+          if (previewContent) {
+            previewContent.innerHTML = '<p>切换到预览模式查看内容</p>'
+          }
+          previewEditor = null
+        }
       }
     }
 
     // 更新预览
+    let previewEditor = null;
+
     async function updatePreview(force = false) {
       if (!editor) return
 
@@ -2355,19 +2397,40 @@
         return
       }
 
-      if (!window.jsyaml) return
-
-      const promptObject = buildPromptObjectFromUI()
-      const yaml = window.jsyaml.dump(promptObject)
-
       try {
-        const result = await apiCall('/md-preview', {
-          method: 'POST',
-          body: JSON.stringify({ yaml, vars: {} })
-        })
+        const previewContent = document.getElementById('previewContent')
+        if (!previewContent) return
+
+        const content = editor.getValue()
         
-        document.getElementById('previewContent').innerHTML = result.html || '<p>预览内容</p>'
+        // 如果预览编辑器不存在，创建一个
+        if (!previewEditor) {
+          previewContent.innerHTML = ''
+          previewEditor = CodeMirror((elt) => {
+            previewContent.appendChild(elt)
+          }, {
+            value: content,
+            mode: 'markdown',
+            theme: 'xq-light',
+            lineWrapping: true,
+            readOnly: true,
+            lineNumbers: false,
+            cursorHeight: 0
+          })
+        } else {
+          // 更新预览内容
+          previewEditor.setValue(content)
+        }
+
+        // 确保预览区域的 CodeMirror 实例能正确显示
+        setTimeout(() => {
+          if (previewEditor) {
+            previewEditor.refresh()
+          }
+        }, 10)
+
       } catch (error) {
+        console.error('预览更新失败:', error)
         document.getElementById('previewContent').innerHTML = '<p style="color: red;">预览生成失败</p>'
       }
     }
@@ -2545,7 +2608,7 @@
         // 初始化编辑器
         editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
           mode: 'markdown',
-          lineNumbers: true,
+          lineNumbers: false,
           theme: 'xq-light',
           lineWrapping: true,
           autoCloseBrackets: true,
