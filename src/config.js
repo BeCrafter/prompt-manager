@@ -91,7 +91,7 @@ export class Config {
     
     // 其他配置
     this.serverName = process.env.MCP_SERVER_NAME || 'prompt-server';
-    this.serverVersion = process.env.MCP_SERVER_VERSION || '0.0.5';
+    this.serverVersion = process.env.MCP_SERVER_VERSION || '0.0.6';
     this.logLevel = process.env.LOG_LEVEL || 'info';
     this.maxPrompts = parseInt(process.env.MAX_PROMPTS) || 100;
     this.recursiveScan = process.env.RECURSIVE_SCAN !== 'false'; // 默认启用递归扫描
