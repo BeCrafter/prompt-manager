@@ -77,6 +77,144 @@
       display: flex;
       gap: 12px;
       align-items: center;
+      position: relative;
+    }
+
+    .user-profile {
+      position: relative;
+    }
+
+    .avatar-btn {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: none;
+      background: rgba(0,0,0,0.02);
+      cursor: pointer;
+      border-radius: 50%;
+      overflow: hidden;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .avatar-btn:hover {
+      transform: translateY(-1px);
+      background: rgba(0,0,0,0.04);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .avatar-img {
+      width: 26px;
+      height: 26px;
+      object-fit: cover;
+      border-radius: 50%;
+      opacity: 0.75;
+      transition: opacity 0.2s ease;
+    }
+
+    .avatar-btn:hover .avatar-img {
+      opacity: 0.9;
+    }
+
+    .dropdown-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      width: 240px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-8px) scale(0.96);
+      transform-origin: top right;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 1000;
+      border: 1px solid var(--border);
+    }
+
+    .dropdown-menu.show {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+    }
+
+    .dropdown-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--light);
+      padding: 3px;
+      opacity: 0.8;
+    }
+
+    .user-details {
+      flex: 1;
+      min-width: 0;
+      padding: 2px 0;
+    }
+
+    .user-name {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--dark);
+      margin-bottom: 2px;
+    }
+
+    .user-role {
+      font-size: 13px;
+      color: var(--gray);
+    }
+
+    .dropdown-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 8px 0;
+    }
+
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 12px 16px;
+      border: none;
+      background: none;
+      font-size: 14px;
+      color: var(--dark);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .dropdown-item:last-child {
+      border-radius: 0 0 12px 12px;
+    }
+
+    .dropdown-item:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .dropdown-item .dropdown-icon {
+      width: 18px;
+      height: 18px;
+      color: var(--gray);
+    }
+
+    .dropdown-item:hover .dropdown-icon {
+      color: var(--primary);
     }
     
     .btn {
@@ -1623,7 +1761,27 @@
         Prompt Manager <span>Beta</span>
       </div>
       <div class="nav-right">
-        <button id="logoutBtn" class="btn btn-outline">退出</button>
+        <div class="user-profile">
+          <button class="avatar-btn" id="avatarBtn" aria-haspopup="true" aria-expanded="false">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239ca3af'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E" alt="用户头像" class="avatar-img">
+          </button>
+          <div class="dropdown-menu" id="userMenu">
+            <div class="dropdown-header">
+              <div class="user-info">
+                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239ca3af'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E" alt="用户头像" class="user-avatar">
+                <div class="user-details">
+                  <div class="user-name">管理员</div>
+                  <div class="user-role">Admin</div>
+                </div>
+              </div>
+            </div>
+            <div class="dropdown-divider"></div>
+            <button id="logoutBtn" class="dropdown-item">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dropdown-icon"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+              退出登录
+            </button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -1940,6 +2098,65 @@
       }
     }
 
+    // 处理登录页面的回车事件和按钮点击
+    function setupLoginEvents() {
+      const loginForm = document.getElementById('login')
+      const usernameInput = document.getElementById('username')
+      const passwordInput = document.getElementById('password')
+      const loginBtn = document.getElementById('loginBtn')
+
+      // 自动聚焦到用户名输入框
+      usernameInput.focus()
+
+      function handleLogin() {
+        const username = usernameInput.value.trim()
+        const password = passwordInput.value
+        if (username && password) {
+          login(username, password)
+        }
+      }
+
+      // 监听整个页面的回车事件
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && loginForm.style.display !== 'none') {
+          e.preventDefault()
+          handleLogin()
+        }
+      })
+
+      // 登录按钮点击事件
+      loginBtn.addEventListener('click', (e) => {
+        e.preventDefault()
+        handleLogin()
+      })
+
+      // Tab 键切换焦点时的优化
+      usernameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          if (!usernameInput.value.trim()) {
+            usernameInput.focus()
+          } else {
+            passwordInput.focus()
+          }
+        }
+      })
+
+      passwordInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          if (!passwordInput.value) {
+            passwordInput.focus()
+          } else {
+            handleLogin()
+          }
+        }
+      })
+    }
+
+    // 页面加载完成后初始化登录事件
+    document.addEventListener('DOMContentLoaded', setupLoginEvents)
+
     function escapeHtml(input) {
       if (input === null || input === undefined) {
         return ''
@@ -2028,6 +2245,33 @@
         ]
       }
     }
+
+    // 用户头像下拉菜单控制
+    const avatarBtn = document.getElementById('avatarBtn')
+    const userMenu = document.getElementById('userMenu')
+    
+    // 点击头像显示/隐藏下拉菜单
+    avatarBtn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      userMenu.classList.toggle('show')
+      avatarBtn.setAttribute('aria-expanded', userMenu.classList.contains('show'))
+    })
+    
+    // 点击页面其他地方关闭下拉菜单
+    document.addEventListener('click', (e) => {
+      if (!userMenu.contains(e.target) && !avatarBtn.contains(e.target)) {
+        userMenu.classList.remove('show')
+        avatarBtn.setAttribute('aria-expanded', 'false')
+      }
+    })
+    
+    // ESC 键关闭下拉菜单
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && userMenu.classList.contains('show')) {
+        userMenu.classList.remove('show')
+        avatarBtn.setAttribute('aria-expanded', 'false')
+      }
+    })
 
     function clonePromptObject(obj) {
       return obj ? JSON.parse(JSON.stringify(obj)) : null
