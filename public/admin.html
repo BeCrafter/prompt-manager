@@ -115,6 +115,16 @@
       padding: 6px 12px;
       font-size: 13px;
     }
+
+    #addArgumentBtn {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    button#saveBtn{
+      padding: 10px 18px;
+      font-size: 14px;
+    }
     
     .btn.loading {
       opacity: 0.6;
@@ -974,6 +984,7 @@
       height: 100%;
       display: flex;
       align-items: flex-end;
+      padding-top: 26px;
     }
 
     .argument-modal label {
@@ -1295,16 +1306,15 @@
             <div class="arguments-header">
               <div class="arguments-title">
                 <span>参数配置</span>
-                <small>管理接口返回的 arguments 字段</small>
               </div>
               <div class="arguments-actions">
-                <button id="addArgumentBtn" class="btn btn-primary btn-sm" type="button">
-                  新增参数
+                <button id="addArgumentBtn" class="btn btn-outline btn-sm" type="button">
+                  新增
                 </button>
               </div>
             </div>
             <div class="arguments-list" id="argumentsList">
-              <div class="arguments-empty">暂无参数，点击“新增参数”开始配置</div>
+              <div class="arguments-empty">暂无参数，点击“新增”开始配置</div>
             </div>
           </section>
           <div class="editor-body" id="editorWorkspace">
