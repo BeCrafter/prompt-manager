@@ -614,13 +614,7 @@
       background: #f0f0f0;
     }
     
-    .group-toggle {
-      transition: transform 0.2s;
-    }
     
-    .group-toggle.collapsed {
-      transform: rotate(-90deg);
-    }
     
     .group-content {
       overflow: hidden;
@@ -714,37 +708,7 @@
       cursor: pointer;
     }
 
-    /* 操作按钮容器样式 */
-    .prompt-actions {
-      position: absolute;
-      right: 0;
-      top: 0;
-      bottom: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      opacity: 0;
-      visibility: hidden;
-      padding: 8px;
-      transition: all 0.25s ease;
-      background: linear-gradient(to left,
-        rgba(238, 238, 238, 0.95) 0%,
-        rgba(238, 238, 238, 0.9) 60%,
-        rgba(238, 238, 238, 0) 100%);
-      transform: translateX(100%);
-      justify-content: center;
-      width: 80px;
-    }
-
-    .prompt-item:hover .prompt-actions {
-      opacity: 1;
-      visibility: visible;
-      transform: translateX(0);
-      background: linear-gradient(to left, 
-        rgba(255, 255, 255, 0.95) 0%,
-        rgba(255, 255, 255, 0.9) 50%,
-        rgba(255, 255, 255, 0.1) 100%);
-    }
+    
     
     /* Tooltip样式 */
     .tooltip {
@@ -1851,131 +1815,6 @@
     .status-badge.disabled {
       background: rgba(220,53,69,0.1);
       color: var(--danger);
-    }
-
-    .CodeMirror-gutters {
-      left: -2px !important;
-    }
-
-    /* 新建目录弹窗样式 */
-    .modal {
-      position: fixed;
-      inset: 0;
-      background: rgba(17, 17, 17, 0.35);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1200;
-      padding: 24px;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      backdrop-filter: blur(4px);
-    }
-
-    .modal.hidden {
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    .modal.hidden .modal-content {
-      transform: scale(0.95) translateY(10px);
-    }
-
-    .modal-dialog {
-      width: min(420px, 90vw);
-      margin: auto;
-    }
-
-    .modal-content {
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15);
-      overflow: hidden;
-      transform: scale(1) translateY(0);
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      border: 1px solid rgba(0,0,0,0.08);
-    }
-
-    .modal-header {
-      padding: 20px 24px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: linear-gradient(to bottom, rgba(255,255,255,1), rgba(255,255,255,0.95));
-    }
-
-    .modal-header h3 {
-      font-size: 18px;
-      font-weight: 580;
-      color: var(--dark);
-      letter-spacing: -0.01em;
-      margin: 0;
-    }
-
-    .modal-close {
-      width: 32px;
-      height: 32px;
-      border: none;
-      background: transparent;
-      border-radius: 8px;
-      color: var(--gray);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s ease;
-      padding: 0;
-    }
-
-    .modal-close:hover {
-      background: rgba(0,0,0,0.04);
-      color: var(--dark);
-    }
-
-    .modal-body {
-      padding: 24px;
-    }
-
-    .modal-footer {
-      padding: 16px 24px;
-      border-top: 1px solid var(--border);
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-      background: rgba(248,249,250,0.65);
-    }
-
-    .form-group {
-      margin-bottom: 0;
-    }
-
-    .form-group label {
-      display: block;
-      margin-bottom: 8px;
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--gray);
-    }
-
-    .form-group input {
-      width: 100%;
-      padding: 12px 14px;
-      border: 1.5px solid var(--border);
-      border-radius: 10px;
-      font-size: 15px;
-      transition: all 0.2s ease;
-      background: white;
-    }
-
-    .form-group input:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(57,57,57,0.08);
-    }
-
-    .form-group input::placeholder {
-      color: #adb5bd;
-      opacity: 0.8;
     }
   </style>
 </head>
