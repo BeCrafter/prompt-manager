@@ -711,10 +711,336 @@
       box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     }
     
+    .editor-content {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      gap: 16px;
+      margin: 12px 20px 20px;
+    }
+
+    .arguments-section {
+      padding: 18px 20px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .arguments-section.has-error {
+      border-color: rgba(220,53,69,0.4);
+      box-shadow: 0 0 0 2px rgba(220,53,69,0.08), 0 8px 24px rgba(220,53,69,0.08);
+    }
+
+    .arguments-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .arguments-title {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .arguments-title span {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .arguments-title small {
+      font-size: 12px;
+      color: var(--gray);
+    }
+
+    .arguments-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .arguments-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
+    }
+
+    .arguments-empty {
+      grid-column: 1 / -1;
+      font-size: 13px;
+      color: var(--gray);
+      background: var(--light);
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .argument-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(248,249,250,0.9), rgba(255,255,255,0.9));
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 150px;
+      position: relative;
+    }
+
+    .argument-card.argument-card-unused {
+      border-color: rgba(220,53,69,0.45);
+      box-shadow: 0 0 0 1px rgba(220,53,69,0.18);
+      background: rgba(220,53,69,0.04);
+    }
+
+    .argument-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .argument-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--primary);
+      word-break: break-all;
+    }
+
+    .argument-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .argument-badge {
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      background: rgba(0,0,0,0.04);
+      color: var(--gray);
+    }
+
+    .argument-required {
+      background: rgba(220,53,69,0.12);
+      color: var(--danger);
+      font-weight: 600;
+    }
+
+    .argument-body {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      color: var(--gray);
+      font-size: 12px;
+    }
+
+    .argument-body .argument-description {
+      color: var(--dark);
+      font-size: 13px;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .argument-body .argument-placeholder {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background: rgba(0,0,0,0.04);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--primary);
+      display: inline-block;
+    }
+
+    .argument-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: auto;
+    }
+
+    .argument-action-btn {
+      border: none;
+      background: rgba(0,0,0,0.04);
+      color: var(--primary);
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .argument-action-btn:hover {
+      background: rgba(0,0,0,0.08);
+    }
+
+    .argument-action-btn.delete {
+      color: var(--danger);
+      background: rgba(220,53,69,0.08);
+    }
+
+    .argument-action-btn.delete:hover {
+      background: rgba(220,53,69,0.12);
+    }
+
+    .argument-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(17, 17, 17, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1200;
+      padding: 24px;
+      transition: opacity 0.2s ease;
+    }
+
+    .argument-modal.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .argument-modal-dialog {
+      width: min(520px, 100%);
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid rgba(0,0,0,0.06);
+    }
+
+    .argument-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .argument-modal-header h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .argument-modal-close {
+      border: none;
+      background: transparent;
+      font-size: 24px;
+      line-height: 1;
+      color: var(--gray);
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .argument-modal-close:hover {
+      color: var(--dark);
+    }
+
+    .argument-modal-body {
+      padding: 20px 24px 8px;
+    }
+
+    .argument-form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px 18px;
+    }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-field.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .form-field-inline {
+      align-self: end;
+      height: 100%;
+      display: flex;
+      align-items: flex-end;
+    }
+
+    .argument-modal label {
+      font-size: 13px;
+      color: var(--gray);
+      font-weight: 500;
+    }
+
+    .argument-modal .required {
+      color: var(--danger);
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    .argument-modal input[type="text"],
+    .argument-modal textarea {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 14px;
+      background: white;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .argument-modal input[type="text"]:focus,
+    .argument-modal textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(57,57,57,0.08);
+    }
+
+    .argument-modal textarea {
+      resize: vertical;
+      min-height: 96px;
+    }
+
+    .checkbox-field {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--dark);
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+
+    .checkbox-field input {
+      accent-color: var(--primary);
+    }
+
+    .argument-modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 16px 24px 20px;
+      border-top: 1px solid var(--border);
+      background: rgba(248,249,250,0.65);
+    }
+
+    body.modal-open {
+      overflow: hidden;
+    }
+
     .editor-body {
       position: relative;
       flex: 1;
-      margin: 12px 20px 20px;
       box-sizing: border-box;
       min-height: 0;
     }
@@ -759,7 +1085,7 @@
       background: var(--preview-bg);
       padding: 24px;
     }
-    
+
     .CodeMirror {
       flex: 1;
       height: 100%;
@@ -780,6 +1106,12 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.08);
       scrollbar-width: thin;
       scrollbar-color: var(--gray-light) transparent;
+    }
+
+    @media (max-width: 1100px) {
+      .arguments-list {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      }
     }
     
     .empty-state {
@@ -958,18 +1290,36 @@
           <textarea id="promptDescription" class="prompt-description" placeholder="Prompt 描述"></textarea>
         </div>
 
-        <div class="editor-body" id="editorWorkspace">
-          <div class="workspace-pane" id="editorPane">
-            <div class="pane-header">Markdown 编辑器</div>
-            <div class="pane-content">
-              <textarea id="editor"></textarea>
+        <div class="editor-content">
+          <section class="arguments-section" id="argumentsSection">
+            <div class="arguments-header">
+              <div class="arguments-title">
+                <span>参数配置</span>
+                <small>管理接口返回的 arguments 字段</small>
+              </div>
+              <div class="arguments-actions">
+                <button id="addArgumentBtn" class="btn btn-primary btn-sm" type="button">
+                  新增参数
+                </button>
+              </div>
             </div>
-          </div>
-          <div class="workspace-pane hidden" id="previewPane">
-            <div class="pane-header">实时预览</div>
-            <div class="pane-content preview">
-              <div class="preview-content" id="previewContent">
-                <p>选择或创建prompt开始编辑</p>
+            <div class="arguments-list" id="argumentsList">
+              <div class="arguments-empty">暂无参数，点击“新增参数”开始配置</div>
+            </div>
+          </section>
+          <div class="editor-body" id="editorWorkspace">
+            <div class="workspace-pane" id="editorPane">
+              <div class="pane-header">Markdown 编辑器</div>
+              <div class="pane-content">
+                <textarea id="editor"></textarea>
+              </div>
+            </div>
+            <div class="workspace-pane hidden" id="previewPane">
+              <div class="pane-header">实时预览</div>
+              <div class="pane-content preview">
+                <div class="preview-content" id="previewContent">
+                  <p>选择或创建prompt开始编辑</p>
+                </div>
               </div>
             </div>
           </div>
@@ -981,6 +1331,58 @@
   <!-- 消息提示 -->
   <div id="toastContainer" class="toast-container"></div>
 
+  <!-- 参数编辑弹窗 -->
+  <div id="argumentModal" class="argument-modal hidden" role="dialog" aria-modal="true" aria-labelledby="argumentModalTitle">
+    <div class="argument-modal-dialog">
+      <div class="argument-modal-header">
+        <h3 id="argumentModalTitle">新增参数</h3>
+        <button type="button" id="argumentModalClose" class="argument-modal-close" aria-label="关闭">×</button>
+      </div>
+      <form id="argumentForm" class="argument-modal-form">
+        <div class="argument-modal-body">
+          <div class="argument-form-grid">
+            <div class="form-field">
+              <label for="argumentNameInput">参数名称 <span class="required">*</span></label>
+              <input type="text" id="argumentNameInput" placeholder="例如：language" />
+            </div>
+            <div class="form-field">
+              <label for="argumentTypeInput">类型</label>
+              <input type="text" id="argumentTypeInput" list="argumentTypeOptions" placeholder="例如：string" />
+            </div>
+            <div class="form-field">
+              <label for="argumentDefaultInput">默认值</label>
+              <input type="text" id="argumentDefaultInput" placeholder="可选" />
+            </div>
+            <div class="form-field form-field-inline">
+              <label class="checkbox-field">
+                <input type="checkbox" id="argumentRequiredInput" />
+                <span>必填</span>
+              </label>
+            </div>
+            <div class="form-field full-width">
+              <label for="argumentDescriptionInput">参数说明</label>
+              <textarea id="argumentDescriptionInput" rows="3" placeholder="用于提示词中的描述"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="argument-modal-footer">
+          <button type="button" class="btn btn-outline" id="argumentCancelBtn">取消</button>
+          <button type="submit" class="btn btn-primary">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <datalist id="argumentTypeOptions">
+    <option value="string">字符串</option>
+    <option value="number">数字</option>
+    <option value="boolean">布尔值</option>
+    <option value="array">数组</option>
+    <option value="object">对象</option>
+    <option value="json">JSON</option>
+    <option value="enum">枚举</option>
+  </datalist>
+
   <script>
     // 应用状态
     let currentToken = localStorage.getItem('prompt-admin-token')
@@ -990,6 +1392,17 @@
     let allPrompts = []
     let expandedGroups = new Set()
     let editor = null
+    let argumentsState = []
+    let unusedArgumentNames = new Set()
+    let editingArgumentIndex = null
+    let argumentModalEl = null
+    let argumentFormEl = null
+    let argumentModalTitleEl = null
+    let argumentNameInput = null
+    let argumentTypeInput = null
+    let argumentRequiredInput = null
+    let argumentDefaultInput = null
+    let argumentDescriptionInput = null
 
     // API 基础配置
     const API_BASE = '/api'
@@ -1150,6 +1563,26 @@
       }
     }
 
+    function escapeHtml(input) {
+      if (input === null || input === undefined) {
+        return ''
+      }
+      return String(input).replace(/[&<>"']/g, (match) => {
+        const map = {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        }
+        return map[match] || match
+      })
+    }
+
+    function escapeRegExp(input) {
+      return String(input).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    }
+
     // 退出登录
     function logout() {
       localStorage.removeItem('prompt-admin-token')
@@ -1196,6 +1629,15 @@
             content: {
               text: `这是一个新的prompt模板\n{{variable1}}`
             }
+          }
+        ],
+        arguments: [
+          {
+            name: 'variable1',
+            type: 'string',
+            required: false,
+            default: '',
+            description: '示例变量'
           }
         ],
         variables: [
@@ -1245,6 +1687,35 @@
 
       userMessage.content.text = markdown
 
+      const sanitizedArguments = Array.isArray(argumentsState)
+        ? argumentsState
+            .map(arg => {
+              const nameValue = (arg.name || '').trim()
+              if (!nameValue) return null
+              const typeValue = (arg.type || '').trim()
+              const descriptionValue = (arg.description || '').trim()
+              const defaultValue = arg.default
+              const argumentResult = {
+                name: nameValue,
+                type: typeValue || 'string',
+                required: Boolean(arg.required)
+              }
+              if (descriptionValue) {
+                argumentResult.description = descriptionValue
+              }
+              if (defaultValue !== undefined && defaultValue !== null) {
+                const defaultText = String(defaultValue).trim()
+                if (defaultText) {
+                  argumentResult.default = defaultText
+                }
+              }
+              return argumentResult
+            })
+            .filter(Boolean)
+        : []
+
+      base.arguments = sanitizedArguments
+
       return base
     }
 
@@ -1265,7 +1736,262 @@
       descriptionInputEl.style.overflowY = descriptionInputEl.scrollHeight > maxHeight ? 'auto' : 'hidden'
     }
 
-    
+    function normalizeArgument(argument = {}) {
+      return {
+        name: argument?.name ? String(argument.name) : '',
+        description: argument?.description ? String(argument.description) : '',
+        type: argument?.type ? String(argument.type) : 'string',
+        required: Boolean(argument?.required),
+        default: argument?.default ?? ''
+      }
+    }
+
+    function setArgumentsState(list = []) {
+      argumentsState = Array.isArray(list) ? list.map(item => normalizeArgument(item)) : []
+      unusedArgumentNames = new Set()
+      const section = document.getElementById('argumentsSection')
+      if (section) {
+        section.classList.remove('has-error')
+      }
+      renderArgumentsEditor()
+    }
+
+    function removeArgument(index) {
+      if (index < 0 || index >= argumentsState.length) return
+      argumentsState.splice(index, 1)
+      setUnusedArgumentHighlights([])
+    }
+
+    function renderArgumentsEditor() {
+      const listEl = document.getElementById('argumentsList')
+      if (!listEl) return
+
+      listEl.innerHTML = ''
+
+      if (!argumentsState.length) {
+        listEl.innerHTML = '<div class="arguments-empty">暂无参数，点击“新增参数”开始配置</div>'
+        return
+      }
+
+      const fragment = document.createDocumentFragment()
+
+      argumentsState.forEach((rawArgument, index) => {
+        const argument = normalizeArgument(rawArgument)
+        const displayName = argument.name?.trim() || `参数 ${index + 1}`
+        const normalizedName = argument.name?.trim() || ''
+        const safeType = escapeHtml(argument.type || 'string')
+        const safeDefault = argument.default ? escapeHtml(String(argument.default)) : ''
+        const safeDescription = argument.description ? escapeHtml(argument.description) : ''
+
+        const card = document.createElement('div')
+        card.className = 'argument-card'
+        card.dataset.index = index
+
+        if (normalizedName && unusedArgumentNames.has(normalizedName)) {
+          card.classList.add('argument-card-unused')
+        }
+
+        const badgeParts = [`<span class="argument-badge">类型：${safeType || 'string'}</span>`]
+        if (argument.required) {
+          badgeParts.push('<span class="argument-badge argument-required">必填</span>')
+        }
+        if (safeDefault) {
+          badgeParts.push(`<span class="argument-badge">默认：${safeDefault}</span>`)
+        }
+
+        const placeholderSnippet = normalizedName
+          ? `<div>变量占位：<span class="argument-placeholder">{{${escapeHtml(normalizedName)}}}</span></div>`
+          : ''
+
+        card.innerHTML = `
+          <div class="argument-card-header">
+            <div class="argument-name">${escapeHtml(displayName)}</div>
+            <div class="argument-badges">${badgeParts.join('')}</div>
+          </div>
+          <div class="argument-body">
+            ${safeDescription ? `<div class="argument-description">${safeDescription}</div>` : '<div class="argument-description" style="color: var(--gray);">暂无说明</div>'}
+            ${placeholderSnippet}
+          </div>
+          <div class="argument-actions">
+            <button type="button" class="argument-action-btn edit" data-action="edit" data-index="${index}">编辑</button>
+            <button type="button" class="argument-action-btn delete" data-action="delete" data-index="${index}">删除</button>
+          </div>
+        `
+
+        fragment.appendChild(card)
+      })
+
+      listEl.appendChild(fragment)
+    }
+
+    function setUnusedArgumentHighlights(names = []) {
+      unusedArgumentNames = new Set(Array.isArray(names) ? names.map(name => String(name).trim()).filter(Boolean) : [])
+      const section = document.getElementById('argumentsSection')
+      if (section) {
+        section.classList.toggle('has-error', unusedArgumentNames.size > 0)
+      }
+      renderArgumentsEditor()
+    }
+
+    function openArgumentModal(index = null) {
+      if (!argumentModalEl) return
+      editingArgumentIndex = Number.isInteger(index) && index >= 0 ? index : null
+      const isEdit = editingArgumentIndex !== null && argumentsState[editingArgumentIndex]
+      const payload = isEdit ? normalizeArgument(argumentsState[editingArgumentIndex]) : normalizeArgument({ type: 'string' })
+
+      if (argumentModalTitleEl) {
+        argumentModalTitleEl.textContent = isEdit ? '编辑参数' : '新增参数'
+      }
+      if (argumentNameInput) {
+        argumentNameInput.value = payload.name || ''
+      }
+      if (argumentTypeInput) {
+        argumentTypeInput.value = payload.type || 'string'
+      }
+      if (argumentRequiredInput) {
+        argumentRequiredInput.checked = Boolean(payload.required)
+      }
+      if (argumentDefaultInput) {
+        const modalDefaultValue = payload.default
+        argumentDefaultInput.value = modalDefaultValue === undefined || modalDefaultValue === null ? '' : String(modalDefaultValue)
+      }
+      if (argumentDescriptionInput) {
+        argumentDescriptionInput.value = payload.description || ''
+      }
+
+      argumentModalEl.classList.remove('hidden')
+      argumentModalEl.setAttribute('aria-hidden', 'false')
+      document.body.classList.add('modal-open')
+
+      requestAnimationFrame(() => {
+        if (argumentNameInput) {
+          argumentNameInput.focus()
+          argumentNameInput.select()
+        }
+      })
+    }
+
+    function closeArgumentModal() {
+      if (!argumentModalEl) return
+      argumentModalEl.classList.add('hidden')
+      argumentModalEl.setAttribute('aria-hidden', 'true')
+      document.body.classList.remove('modal-open')
+      editingArgumentIndex = null
+
+      if (argumentFormEl) {
+        argumentFormEl.reset()
+      }
+      if (argumentNameInput) {
+        argumentNameInput.value = ''
+      }
+      if (argumentTypeInput) {
+        argumentTypeInput.value = 'string'
+      }
+      if (argumentRequiredInput) {
+        argumentRequiredInput.checked = false
+      }
+      if (argumentDefaultInput) {
+        argumentDefaultInput.value = ''
+      }
+      if (argumentDescriptionInput) {
+        argumentDescriptionInput.value = ''
+      }
+    }
+
+    function handleArgumentFormSubmit(event) {
+      event.preventDefault()
+      if (!argumentNameInput || !argumentTypeInput) return
+
+      const name = (argumentNameInput.value || '').trim()
+      if (!name) {
+        showMessage('请输入参数名称', 'error')
+        argumentNameInput.focus()
+        return
+      }
+
+      const type = (argumentTypeInput.value || 'string').trim() || 'string'
+      const required = argumentRequiredInput ? argumentRequiredInput.checked : false
+      const defaultValue = argumentDefaultInput ? argumentDefaultInput.value : ''
+      const description = argumentDescriptionInput ? argumentDescriptionInput.value.trim() : ''
+
+      const payload = normalizeArgument({
+        name,
+        type,
+        required,
+        default: defaultValue,
+        description
+      })
+
+      if (editingArgumentIndex !== null && argumentsState[editingArgumentIndex]) {
+        argumentsState[editingArgumentIndex] = payload
+      } else {
+        argumentsState.push(payload)
+      }
+
+      closeArgumentModal()
+      setUnusedArgumentHighlights([])
+    }
+
+    function collectPromptTextContent(promptObject) {
+      const segments = []
+      if (!promptObject || !Array.isArray(promptObject.messages)) {
+        return ''
+      }
+      promptObject.messages.forEach(message => {
+        if (!message) return
+        const content = message.content
+        if (Array.isArray(content)) {
+          content.forEach(item => {
+            if (typeof item === 'string') {
+              segments.push(item)
+            } else if (item && typeof item === 'object') {
+              Object.values(item).forEach(value => {
+                if (typeof value === 'string') {
+                  segments.push(value)
+                }
+              })
+            }
+          })
+        } else if (typeof content === 'string') {
+          segments.push(content)
+        } else if (content && typeof content === 'object') {
+          Object.values(content).forEach(value => {
+            if (typeof value === 'string') {
+              segments.push(value)
+            }
+          })
+        }
+      })
+      return segments.join('\n')
+    }
+
+    function findUnusedArguments(promptObject) {
+      const args = Array.isArray(promptObject?.arguments) ? promptObject.arguments : []
+      if (!args.length) return []
+      const combinedContent = collectPromptTextContent(promptObject)
+      return args.filter(arg => {
+        const name = arg?.name?.trim()
+        if (!name) return false
+        const pattern = new RegExp(`{{\\s*${escapeRegExp(name)}\\s*}}`)
+        return !pattern.test(combinedContent)
+      })
+    }
+
+    function handleArgumentListClick(event) {
+      const target = event.target.closest('[data-action]')
+      if (!target) return
+      const action = target.dataset.action
+      const index = Number(target.dataset.index)
+      if (!Number.isInteger(index)) return
+      if (action === 'delete') {
+        const argumentName = argumentsState[index]?.name || `参数 ${index + 1}`
+        const confirmed = window.confirm(`确定要删除参数 "${argumentName}" 吗？`)
+        if (!confirmed) return
+        removeArgument(index)
+      } else if (action === 'edit') {
+        openArgumentModal(index)
+      }
+    }
 
     // 渲染分组列表
     async function renderGroupList(prompts) {
@@ -1480,6 +2206,7 @@
         }
 
         currentPromptObject = parsedPrompt ? clonePromptObject(parsedPrompt) : createDefaultPromptObject()
+        setArgumentsState(currentPromptObject.arguments || [])
 
         const nameInput = document.getElementById('promptName')
         if (nameInput) nameInput.value = currentPromptObject.name || promptData.name || ''
@@ -1581,6 +2308,37 @@
       }
 
       const promptObject = buildPromptObjectFromUI()
+      const unusedArguments = findUnusedArguments(promptObject)
+      if (unusedArguments.length > 0) {
+        const missingNames = unusedArguments.map(arg => arg.name).filter(Boolean)
+        if (missingNames.length) {
+          setUnusedArgumentHighlights(missingNames)
+          const argumentsSection = document.getElementById('argumentsSection')
+          if (argumentsSection) {
+            argumentsSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+          showMessage(`以下参数未在内容中使用：${missingNames.join(', ')}`, 'error')
+          const firstMissing = missingNames[0]
+          requestAnimationFrame(() => {
+            const listEl = document.getElementById('argumentsList')
+            if (!listEl) return
+            const targetCard = Array.from(listEl.querySelectorAll('.argument-card')).find(card => {
+              const idx = Number(card.dataset.index)
+              const argName = argumentsState[idx]?.name?.trim()
+              return argName === firstMissing
+            })
+            if (targetCard) {
+              const targetIndex = Number(targetCard.dataset.index)
+              if (Number.isInteger(targetIndex)) {
+                openArgumentModal(targetIndex)
+              }
+            }
+          })
+          return
+        }
+      } else {
+        setUnusedArgumentHighlights([])
+      }
       const yaml = window.jsyaml.dump(promptObject)
 
       let originalText = ''
@@ -1631,6 +2389,7 @@
         descriptionInputEl.value = ''
         adjustDescriptionHeight()
       }
+      setArgumentsState([])
       currentPrompt = null
       currentPromptObject = null
       document.getElementById('previewContent').innerHTML = '<p>选择或创建prompt开始编辑</p>'
@@ -1650,6 +2409,8 @@
       if (editor) {
         editor.setValue(defaultMessage?.content?.text || '')
       }
+
+      setArgumentsState(currentPromptObject.arguments || [])
 
       if (descriptionInputEl) {
         descriptionInputEl.value = currentPromptObject.description || ''
@@ -1719,6 +2480,59 @@
           descriptionInputEl.addEventListener('input', adjustDescriptionHeight)
           adjustDescriptionHeight()
         }
+
+        setArgumentsState([])
+
+        argumentModalEl = document.getElementById('argumentModal')
+        argumentFormEl = document.getElementById('argumentForm')
+        argumentModalTitleEl = document.getElementById('argumentModalTitle')
+        argumentNameInput = document.getElementById('argumentNameInput')
+        argumentTypeInput = document.getElementById('argumentTypeInput')
+        argumentRequiredInput = document.getElementById('argumentRequiredInput')
+        argumentDefaultInput = document.getElementById('argumentDefaultInput')
+        argumentDescriptionInput = document.getElementById('argumentDescriptionInput')
+
+        if (argumentTypeInput && !argumentTypeInput.value) {
+          argumentTypeInput.value = 'string'
+        }
+
+        const addArgumentBtn = document.getElementById('addArgumentBtn')
+        if (addArgumentBtn) {
+          addArgumentBtn.addEventListener('click', () => openArgumentModal(null))
+        }
+
+        const argumentsListEl = document.getElementById('argumentsList')
+        if (argumentsListEl) {
+          argumentsListEl.addEventListener('click', handleArgumentListClick)
+        }
+
+        if (argumentFormEl) {
+          argumentFormEl.addEventListener('submit', handleArgumentFormSubmit)
+        }
+
+        const argumentCancelBtn = document.getElementById('argumentCancelBtn')
+        if (argumentCancelBtn) {
+          argumentCancelBtn.addEventListener('click', closeArgumentModal)
+        }
+
+        const argumentModalClose = document.getElementById('argumentModalClose')
+        if (argumentModalClose) {
+          argumentModalClose.addEventListener('click', closeArgumentModal)
+        }
+
+        if (argumentModalEl) {
+          argumentModalEl.addEventListener('click', (event) => {
+            if (event.target === argumentModalEl) {
+              closeArgumentModal()
+            }
+          })
+        }
+
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && argumentModalEl && !argumentModalEl.classList.contains('hidden')) {
+            closeArgumentModal()
+          }
+        })
 
         // 绑定事件
         document.getElementById('loginBtn').addEventListener('click', () => {
