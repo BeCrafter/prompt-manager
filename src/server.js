@@ -48,13 +48,17 @@ function getPromptsFromFiles() {
             const prompt = yaml.load(fileContent);
             if (prompt && prompt.name) {
               const relativePath = path.relative(promptsDir, fullPath);
+              const normalizedRelativePath = relativePath.split(path.sep).join('/');
+              const relativeDir = path.dirname(normalizedRelativePath);
+              const topLevelGroup = relativeDir && relativeDir !== '.' ? relativeDir.split('/')[0] : (prompt.group || 'default');
+              const groupPath = relativeDir && relativeDir !== '.' ? relativeDir : topLevelGroup;
               prompts.push({
                 ...prompt,
                 uniqueId: generateUniqueId(prompt.name + '.yaml'),
                 fileName: entry.name,
-                relativePath: relativePath,
-                // filePath: fullPath,
-                group: relativePath.split('/')[0],
+                relativePath: normalizedRelativePath,
+                group: topLevelGroup,
+                groupPath,
               });
             }
           } catch (error) {
@@ -274,6 +278,39 @@ app.get('/api/prompts', adminAuthMiddleware, (req, res) => {
     if (enabled) {
       filteredPrompts = filteredPrompts.filter(prompt => prompt.enabled);
     }
+
+    // 根据名称进行去重，优先返回启用且目录层级较浅的项
+    const uniqueMap = new Map();
+    for (const prompt of filteredPrompts) {
+      const key = (prompt.name || '').toLowerCase();
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, prompt);
+        continue;
+      }
+
+      const existing = uniqueMap.get(key);
+      const existingEnabled = Boolean(existing?.enabled);
+      const candidateEnabled = Boolean(prompt?.enabled);
+      const existingPathLen = (existing?.relativePath || '').length;
+      const candidatePathLen = (prompt?.relativePath || '').length;
+
+      let useCandidate = false;
+      if (!existingEnabled && candidateEnabled) {
+        useCandidate = true;
+      } else if (existingEnabled === candidateEnabled) {
+        if (candidatePathLen && (!existingPathLen || candidatePathLen < existingPathLen)) {
+          useCandidate = true;
+        } else if (candidatePathLen === existingPathLen && (prompt.relativePath || '') < (existing.relativePath || '')) {
+          useCandidate = true;
+        }
+      }
+
+      if (useCandidate) {
+        uniqueMap.set(key, prompt);
+      }
+    }
+
+    filteredPrompts = Array.from(uniqueMap.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN'));
     
     res.json(filteredPrompts);
   } catch (error) {
@@ -307,7 +344,7 @@ app.get('/api/prompts/:name', adminAuthMiddleware, (req, res) => {
 // 保存提示词
 app.post('/api/prompts', adminAuthMiddleware, (req, res) => {
   try {
-    const { name, group, yaml: yamlContent } = req.body;
+    const { name, group, yaml: yamlContent, relativePath: originalRelativePath } = req.body;
     
     if (!name || !yamlContent) {
       return res.status(400).json({ error: '名称和YAML内容是必需的' });
@@ -318,17 +355,44 @@ app.post('/api/prompts', adminAuthMiddleware, (req, res) => {
       return res.status(400).json({ error: '名称格式无效' });
     }
     
-    // 确定文件路径
+    // 计算目标路径
     const groupName = group || 'default';
-    const groupDir = path.join(promptsDir, groupName);
-    const filePath = path.join(groupDir, `${name}.yaml`);
+    const normalizedOriginalPath = originalRelativePath ? path.normalize(originalRelativePath).replace(/\\/g, '/') : null;
+    const originalDirParts = normalizedOriginalPath ? path.posix.dirname(normalizedOriginalPath).split('/').filter(Boolean) : [];
+    let subPathSegments = [];
+
+    if (normalizedOriginalPath && originalDirParts.length > 1) {
+      subPathSegments = originalDirParts.slice(1);
+    }
+
+    const targetSegments = [];
+    if (groupName) {
+      targetSegments.push(groupName);
+    }
+    if (subPathSegments.length) {
+      targetSegments.push(...subPathSegments);
+    }
+
+    const finalFileName = `${name}.yaml`;
+    targetSegments.push(finalFileName);
+
+    const targetRelativePath = path.posix.join(...targetSegments);
+    const targetDir = path.join(promptsDir, path.posix.dirname(targetRelativePath));
+    const filePath = path.join(promptsDir, targetRelativePath);
+
+    fse.ensureDirSync(targetDir);
     
-    // 确保分组目录存在
-    fse.ensureDirSync(groupDir);
-    
-    // 检查是否重名
+    // 检查是否重名（同目录下）
     const prompts = getPromptsFromFiles();
-    const existingPrompt = prompts.find(p => p.name === name && p.relativePath !== path.relative(promptsDir, filePath));
+    const existingPrompt = prompts.find(p => {
+      if (p.name !== name) return false;
+      const isOriginalFile = normalizedOriginalPath && p.relativePath === normalizedOriginalPath;
+      if (isOriginalFile) return false;
+      const sameRelativePath = p.relativePath === targetRelativePath;
+      if (sameRelativePath) return false;
+      const sameDirectory = path.posix.dirname(p.relativePath || '') === path.posix.dirname(targetRelativePath);
+      return sameDirectory;
+    });
     
     if (existingPrompt) {
       return res.status(400).json({ error: '名称已存在' });
@@ -336,8 +400,16 @@ app.post('/api/prompts', adminAuthMiddleware, (req, res) => {
     
     // 保存文件
     fs.writeFileSync(filePath, yamlContent, 'utf8');
-    
-    res.json({ message: '保存成功' });
+
+    // 如果目标路径与原始路径不同，删除旧文件
+    if (normalizedOriginalPath && normalizedOriginalPath !== targetRelativePath) {
+      const originalFilePath = path.join(promptsDir, normalizedOriginalPath);
+      if (fs.existsSync(originalFilePath)) {
+        fs.unlinkSync(originalFilePath);
+      }
+    }
+
+    res.json({ message: '保存成功', relativePath: targetRelativePath, group: groupName });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

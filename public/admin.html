@@ -487,20 +487,20 @@
       display: flex;
       flex-direction: column-reverse;
       gap: 12px;
-      z-index: 1100;
+      z-index: 5000;
       align-items: flex-end;
     }
 
     .toast {
       min-width: 280px;
       max-width: 360px;
-      background: white;
+      background: rgba(255, 255, 255, 0.96);
       border-radius: 12px;
       padding: 16px 18px;
       display: flex;
       align-items: flex-start;
       gap: 14px;
-      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.12);
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.18);
       border: 1px solid transparent;
       opacity: 0;
       transform: translateY(16px);
@@ -734,6 +734,13 @@
       text-overflow: ellipsis;
       white-space: nowrap;
       cursor: pointer;
+    }
+
+    .prompt-meta-hint {
+      font-size: 11px;
+      color: var(--gray);
+      margin-top: 4px;
+      text-transform: none;
     }
 
     
@@ -2919,10 +2926,13 @@
       prompts.forEach(prompt => {
         const item = document.createElement('div')
         item.className = `prompt-item ${prompt.enabled ? 'enabled' : ''} ${currentPrompt?.name === prompt.name ? 'active' : ''}`
+        const hasSubGroup = prompt.groupPath && prompt.groupPath.includes('/')
+        const groupHint = hasSubGroup ? prompt.groupPath : (prompt.group || 'default')
         item.innerHTML = `
           <div class="prompt-info">
             <div class="prompt-name">${prompt.name}</div>
             <div class="prompt-desc" title="${prompt.description || ''}">${prompt.description || ''}</div>
+            ${hasSubGroup ? `<div class="prompt-meta-hint">${groupHint}</div>` : ''}
           </div>
           <div class="prompt-meta">
             <div class="prompt-actions">
@@ -3007,6 +3017,9 @@
           method: 'DELETE'
         })
         showMessage('删除成功')
+        if (currentPrompt?.name === promptName) {
+          resetEditor()
+        }
         // 重新加载列表，传递搜索参数
         const searchInput = document.getElementById('searchInput');
         const searchValue = searchInput ? searchInput.value : '';
@@ -3214,18 +3227,25 @@
       }
       
       try {
-        await apiCall('/prompts', {
+        const result = await apiCall('/prompts', {
           method: 'POST',
           body: JSON.stringify({
             name,
             group,
-            yaml
+            yaml,
+            relativePath: currentPrompt?.relativePath || null
           })
         })
         
         showMessage('保存成功')
         currentPromptObject = clonePromptObject(promptObject)
-        currentPrompt = { ...(currentPrompt || {}), name }
+        const updatedRelativePath = result?.relativePath || currentPrompt?.relativePath || null
+        currentPrompt = {
+          ...(currentPrompt || {}),
+          name,
+          relativePath: updatedRelativePath,
+          group
+        }
         // 重新加载列表，传递搜索参数
         const searchInput = document.getElementById('searchInput');
         const searchValue = searchInput ? searchInput.value : '';
