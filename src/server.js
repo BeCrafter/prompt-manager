@@ -216,34 +216,37 @@ app.post('/api/login', (req, res) => {
 });
 
 // 获取所有分组（直接从目录读取）
+function buildGroupTree(baseDir, relativePath = '') {
+  const nodes = [];
+  try {
+    const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      if (entry.name.startsWith('.')) continue;
+      const childRelativePath = relativePath ? `${relativePath}/${entry.name}` : entry.name;
+      const childDir = path.join(baseDir, entry.name);
+      const children = buildGroupTree(childDir, childRelativePath);
+      nodes.push({
+        name: entry.name,
+        path: childRelativePath,
+        children
+      });
+    }
+  } catch (error) {
+    logger.error('读取分组目录失败:', error);
+  }
+  nodes.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+  return nodes;
+}
+
 app.get('/api/groups', adminAuthMiddleware, (req, res) => {
   try {
-    const groupDir = promptsDir;
-    const groups = [];
-    
-    // 获取所有分组目录
-    const entries = fs.readdirSync(groupDir, { withFileTypes: true });
-    const directories = [];
-    
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        directories.push(entry.name);
-      }
+    const tree = buildGroupTree(promptsDir);
+    const hasDefault = tree.some(node => node.path === 'default');
+    if (!hasDefault) {
+      tree.unshift({ name: 'default', path: 'default', children: [] });
     }
-    
-    // 确保 default 目录存在
-    if (!directories.includes('default')) {
-      directories.push('default');
-    }
-    
-    // 为每个目录添加名称
-    directories.forEach(dirName => {
-      groups.push({
-        name: dirName
-      });
-    });
-    
-    res.json(groups);
+    res.json(tree);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -257,12 +260,15 @@ app.get('/api/prompts', adminAuthMiddleware, (req, res) => {
     // 处理搜索参数
     const search = req.query.search;
     const enabled = req.query.enabled === 'true';
+    const groupPathFilter = req.query.groupPath;
     const group = req.query.group;
     
     let filteredPrompts = prompts;
     
     // 应用分组过滤
-    if (group) {
+    if (groupPathFilter) {
+      filteredPrompts = filteredPrompts.filter(prompt => (prompt.groupPath || prompt.group || 'default') === groupPathFilter);
+    } else if (group) {
       filteredPrompts = filteredPrompts.filter(prompt => (prompt.group || 'default') === group);
     }
     
@@ -279,38 +285,7 @@ app.get('/api/prompts', adminAuthMiddleware, (req, res) => {
       filteredPrompts = filteredPrompts.filter(prompt => prompt.enabled);
     }
 
-    // 根据名称进行去重，优先返回启用且目录层级较浅的项
-    const uniqueMap = new Map();
-    for (const prompt of filteredPrompts) {
-      const key = (prompt.name || '').toLowerCase();
-      if (!uniqueMap.has(key)) {
-        uniqueMap.set(key, prompt);
-        continue;
-      }
-
-      const existing = uniqueMap.get(key);
-      const existingEnabled = Boolean(existing?.enabled);
-      const candidateEnabled = Boolean(prompt?.enabled);
-      const existingPathLen = (existing?.relativePath || '').length;
-      const candidatePathLen = (prompt?.relativePath || '').length;
-
-      let useCandidate = false;
-      if (!existingEnabled && candidateEnabled) {
-        useCandidate = true;
-      } else if (existingEnabled === candidateEnabled) {
-        if (candidatePathLen && (!existingPathLen || candidatePathLen < existingPathLen)) {
-          useCandidate = true;
-        } else if (candidatePathLen === existingPathLen && (prompt.relativePath || '') < (existing.relativePath || '')) {
-          useCandidate = true;
-        }
-      }
-
-      if (useCandidate) {
-        uniqueMap.set(key, prompt);
-      }
-    }
-
-    filteredPrompts = Array.from(uniqueMap.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN'));
+    filteredPrompts.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN'));
     
     res.json(filteredPrompts);
   } catch (error) {
@@ -322,7 +297,14 @@ app.get('/api/prompts', adminAuthMiddleware, (req, res) => {
 app.get('/api/prompts/:name', adminAuthMiddleware, (req, res) => {
   try {
     const prompts = getPromptsFromFiles();
-    const prompt = prompts.find(p => p.name === req.params.name);
+    const targetPath = req.query.path;
+    let prompt;
+    if (targetPath) {
+      prompt = prompts.find(p => p.relativePath === targetPath);
+    }
+    if (!prompt) {
+      prompt = prompts.find(p => p.name === req.params.name);
+    }
     
     if (!prompt) {
       return res.status(404).json({ error: `Prompt "${req.params.name}" 未找到` });
@@ -449,7 +431,14 @@ app.post('/api/groups', adminAuthMiddleware, (req, res) => {
 app.post('/api/prompts/:name/toggle', adminAuthMiddleware, (req, res) => {
   try {
     const prompts = getPromptsFromFiles();
-    const prompt = prompts.find(p => p.name === req.params.name);
+    const targetPath = req.query.path;
+    let prompt;
+    if (targetPath) {
+      prompt = prompts.find(p => p.relativePath === targetPath);
+    }
+    if (!prompt) {
+      prompt = prompts.find(p => p.name === req.params.name);
+    }
     
     if (!prompt) {
       return res.status(404).json({ error: `Prompt "${req.params.name}" 未找到` });
@@ -479,7 +468,14 @@ app.post('/api/prompts/:name/toggle', adminAuthMiddleware, (req, res) => {
 app.delete('/api/prompts/:name', adminAuthMiddleware, (req, res) => {
   try {
     const prompts = getPromptsFromFiles();
-    const prompt = prompts.find(p => p.name === req.params.name);
+    const targetPath = req.query.path;
+    let prompt;
+    if (targetPath) {
+      prompt = prompts.find(p => p.relativePath === targetPath);
+    }
+    if (!prompt) {
+      prompt = prompts.find(p => p.name === req.params.name);
+    }
     
     if (!prompt) {
       return res.status(404).json({ error: `Prompt "${req.params.name}" 未找到` });

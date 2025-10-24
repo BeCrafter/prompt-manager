@@ -654,10 +654,16 @@
     }
     
     .group-content.expanded {
-      max-height: 1000px;
-      overflow-y: auto;
+      max-height: 2400px;
+      overflow: visible;
       padding-top: 8px;
       scrollbar-width: none;
+    }
+
+    .group-children {
+      display: flex;
+      flex-direction: column;
+      margin-top: 4px;
     }
     
     .group-count {
@@ -2110,6 +2116,7 @@
     let deletePromptCancelBtn = null
     let deletePromptCloseBtn = null
     let pendingDeletePromptName = null
+    let pendingDeletePromptPath = null
 
     function refreshModalOpenState() {
       const hasOpenModal =
@@ -2391,7 +2398,7 @@
         
         const prompts = await apiCall(`/prompts?${queryParams}`)
         allPrompts = prompts
-        renderGroupList(prompts)
+        await renderGroupList(prompts)
       } catch (error) {
         console.error('加载prompt列表失败:', error)
       }
@@ -2639,11 +2646,12 @@
       renderArgumentsEditor()
     }
 
-    function openDeletePromptModal(promptName) {
+    function openDeletePromptModal(promptName, relativePath) {
       if (!deletePromptModalEl) return
       pendingDeletePromptName = promptName
+      pendingDeletePromptPath = relativePath || null
       if (deletePromptNameEl) {
-        deletePromptNameEl.textContent = `“${promptName}”`
+        deletePromptNameEl.textContent = relativePath ? `“${promptName}” (${relativePath})` : `“${promptName}”`
       }
       deletePromptModalEl.classList.remove('hidden')
       deletePromptModalEl.setAttribute('aria-hidden', 'false')
@@ -2659,6 +2667,7 @@
       deletePromptModalEl.setAttribute('aria-hidden', 'true')
       refreshModalOpenState()
       pendingDeletePromptName = null
+      pendingDeletePromptPath = null
     }
 
     async function confirmDeletePrompt() {
@@ -2667,8 +2676,9 @@
         return
       }
       const promptToDelete = pendingDeletePromptName
+      const pathToDelete = pendingDeletePromptPath
       closeDeletePromptModal()
-      await deletePromptByName(promptToDelete)
+      await deletePrompt(promptToDelete, pathToDelete)
     }
 
     function openArgumentModal(index = null) {
@@ -2831,101 +2841,175 @@
       }
     }
 
-    // 渲染分组列表
+    function sanitizeGroupId(pathValue = 'default') {
+      return pathValue.replace(/[^a-zA-Z0-9-_]/g, '__') || 'default'
+    }
+
+    function collectAncestorPaths(pathValue) {
+      if (!pathValue) return []
+      const segments = pathValue.split('/')
+      const paths = []
+      let current = ''
+      segments.forEach(segment => {
+        current = current ? `${current}/${segment}` : segment
+        paths.push(current)
+      })
+      return paths
+    }
+
     async function renderGroupList(prompts) {
       try {
-        // 从API获取所有分组及数量信息
-        const groups = await apiCall('/groups');
-        const container = document.getElementById('groupList');
-        container.innerHTML = '';
+        const groupTree = await apiCall('/groups')
+        const container = document.getElementById('groupList')
+        container.innerHTML = ''
 
-        const validGroupNames = new Set(groups.map(group => group.name));
-        expandedGroups = new Set([...expandedGroups].filter(name => validGroupNames.has(name)));
-
-        // 按照目录顺序渲染分组
-        groups.forEach(groupInfo => {
-          const groupName = groupInfo.name;
-          // 找出属于该分组的prompts
-          const groupPrompts = prompts.filter(prompt => (prompt.group || 'default') === groupName);
-          const section = document.createElement('div');
-          section.className = 'group-section';
-          section.innerHTML = `
-            <div class="group-header" data-group="${groupName}">
-              <span>${groupName}</span>
-              <div style="display: flex; align-items: center; gap: 6px;">
-                <span class="group-count" id="group-count-${groupName}">0</span>
-                <span class="group-toggle"></span>
-              </div>
-            </div>
-            <div class="group-content collapsed">
-              <div class="prompt-list" id="promptList-${groupName}">
-                <!-- Prompt列表将通过JavaScript动态生成 -->
-              </div>
-            </div>
-          `;
-          container.appendChild(section);
-          
-          // 渲染该分组的prompt列表
-          renderGroupPromptList(groupName, groupPrompts);
-          
-          // 更新分组计数
-          const countElement = document.getElementById(`group-count-${groupName}`);
-          if (countElement) {
-            countElement.textContent = groupPrompts.length;
+        const promptMap = new Map()
+        ;(Array.isArray(prompts) ? prompts : []).forEach(prompt => {
+          const pathValue = prompt.groupPath || prompt.group || 'default'
+          if (!promptMap.has(pathValue)) {
+            promptMap.set(pathValue, [])
           }
-          
-          // 添加点击事件处理
-          const header = section.querySelector('.group-header');
-          const toggle = section.querySelector('.group-toggle');
-          const content = section.querySelector('.group-content');
+          promptMap.get(pathValue).push(prompt)
+        })
 
-          const isExpanded = expandedGroups.has(groupName);
-          content.classList.toggle('expanded', isExpanded);
-          content.classList.toggle('collapsed', !isExpanded);
-          toggle.classList.toggle('collapsed', !isExpanded);
-          
+        if (currentPrompt) {
+          const activePath = currentPrompt.groupPath || currentPrompt.group || 'default'
+          collectAncestorPaths(activePath).forEach(pathValue => expandedGroups.add(pathValue))
+        }
+
+        const ensureDefaultNode = nodes => {
+          const hasDefault = nodes.some(node => node.path === 'default')
+          if (!hasDefault) {
+            nodes.unshift({ name: 'default', path: 'default', children: [] })
+          }
+        }
+
+        ensureDefaultNode(groupTree)
+
+        const validPaths = new Set()
+        const collectPaths = nodes => {
+          nodes.forEach(node => {
+            const nodePath = node.path || 'default'
+            validPaths.add(nodePath)
+            if (Array.isArray(node.children) && node.children.length) {
+              collectPaths(node.children)
+            }
+          })
+        }
+        collectPaths(groupTree)
+        expandedGroups = new Set([...expandedGroups].filter(pathValue => validPaths.has(pathValue)))
+
+        const renderNode = (node, parentEl, depth = 0) => {
+          const pathValue = node.path || 'default'
+          const promptsInGroup = promptMap.get(pathValue) || []
+
+          const section = document.createElement('div')
+          section.className = 'group-section'
+          section.dataset.path = pathValue
+          section.dataset.depth = depth
+
+          const header = document.createElement('div')
+          header.className = 'group-header'
+          header.dataset.group = pathValue
+          header.style.paddingLeft = `${16 + depth * 18}px`
+
+          const titleSpan = document.createElement('span')
+          titleSpan.textContent = node.name
+          header.appendChild(titleSpan)
+
+          const headerActions = document.createElement('div')
+          headerActions.style.display = 'flex'
+          headerActions.style.alignItems = 'center'
+          headerActions.style.gap = '6px'
+
+          const countEl = document.createElement('span')
+          countEl.className = 'group-count'
+          countEl.id = `group-count-${sanitizeGroupId(pathValue)}`
+          countEl.textContent = promptsInGroup.length
+
+          const toggleEl = document.createElement('span')
+          toggleEl.className = 'group-toggle'
+
+          headerActions.appendChild(countEl)
+          headerActions.appendChild(toggleEl)
+          header.appendChild(headerActions)
+
+          const content = document.createElement('div')
+          content.className = 'group-content collapsed'
+
+          const promptListEl = document.createElement('div')
+          promptListEl.className = 'prompt-list'
+          promptListEl.id = `promptList-${sanitizeGroupId(pathValue)}`
+          content.appendChild(promptListEl)
+
+          renderGroupPromptList(promptListEl, pathValue, promptsInGroup)
+
+          let totalCount = promptsInGroup.length
+
+          if (Array.isArray(node.children) && node.children.length) {
+            const childrenWrap = document.createElement('div')
+            childrenWrap.className = 'group-children'
+            node.children.forEach(child => {
+              const childCount = renderNode(child, childrenWrap, depth + 1)
+              totalCount += childCount
+            })
+            if (childrenWrap.childNodes.length) {
+              content.appendChild(childrenWrap)
+            }
+          }
+
+          countEl.textContent = totalCount
+
+          const shouldExpandByDefault = expandedGroups.size === 0 && depth === 0
+          const isExpanded = expandedGroups.has(pathValue) || shouldExpandByDefault
+          if (shouldExpandByDefault) {
+            expandedGroups.add(pathValue)
+          }
+
+          content.classList.toggle('expanded', isExpanded)
+          content.classList.toggle('collapsed', !isExpanded)
+          toggleEl.classList.toggle('collapsed', !isExpanded)
+
           header.addEventListener('click', (e) => {
-            // 检查点击的目标元素，只在点击分组标题文本部分时才展开/折叠，避开操作按钮
-            const isClickOnActions = e.target.closest('.toggle-btn') || e.target.closest('.delete-btn') || e.target.closest('.prompt-actions');
+            const isClickOnActions = e.target.closest('.toggle-btn') || e.target.closest('.delete-btn') || e.target.closest('.prompt-actions')
             if (!isClickOnActions) {
-              // 只有未点击操作按钮时才执行展开/折叠
-              const nextExpanded = !content.classList.contains('expanded');
-              content.classList.toggle('expanded', nextExpanded);
-              content.classList.toggle('collapsed', !nextExpanded);
-              toggle.classList.toggle('collapsed', !nextExpanded);
-
+              const nextExpanded = !content.classList.contains('expanded')
+              content.classList.toggle('expanded', nextExpanded)
+              content.classList.toggle('collapsed', !nextExpanded)
+              toggleEl.classList.toggle('collapsed', !nextExpanded)
               if (nextExpanded) {
-                expandedGroups.add(groupName);
+                expandedGroups.add(pathValue)
               } else {
-                expandedGroups.delete(groupName);
+                expandedGroups.delete(pathValue)
               }
             }
-          });
-        });
+          })
+
+          section.appendChild(header)
+          section.appendChild(content)
+          parentEl.appendChild(section)
+          return totalCount
+        }
+
+        const fragment = document.createDocumentFragment()
+        groupTree.forEach(node => renderNode(node, fragment, 0))
+        container.appendChild(fragment)
       } catch (error) {
-        console.error('渲染分组列表失败:', error);
+        console.error('渲染分组列表失败:', error)
       }
     }
-    
-    // 加载分组列表
-    async function loadGroups() {
-      try {
-        const groups = await apiCall('/groups')
-        return groups.map(group => group.name)
-      } catch (error) {
-        console.error('加载分组列表失败:', error)
-        return ['default']
-      }
-    }
-    
-    // 渲染分组内的prompt列表
-    function renderGroupPromptList(groupName, prompts) {
-      const container = document.getElementById(`promptList-${groupName}`)
+
+    function renderGroupPromptList(container, groupPath, prompts) {
       container.innerHTML = ''
 
-      prompts.forEach(prompt => {
+      const sortedPrompts = [...prompts].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN'))
+
+      sortedPrompts.forEach(prompt => {
         const item = document.createElement('div')
-        item.className = `prompt-item ${prompt.enabled ? 'enabled' : ''} ${currentPrompt?.name === prompt.name ? 'active' : ''}`
+        const isActive = currentPrompt?.relativePath
+          ? prompt.relativePath === currentPrompt.relativePath
+          : currentPrompt?.name === prompt.name
+        item.className = `prompt-item ${prompt.enabled ? 'enabled' : ''} ${isActive ? 'active' : ''}`
         const hasSubGroup = prompt.groupPath && prompt.groupPath.includes('/')
         const groupHint = hasSubGroup ? prompt.groupPath : (prompt.group || 'default')
         item.innerHTML = `
@@ -2936,105 +3020,109 @@
           </div>
           <div class="prompt-meta">
             <div class="prompt-actions">
-              <button class="action-btn toggle-btn" data-prompt="${prompt.name}">
+              <button class="action-btn toggle-btn" data-prompt="${prompt.name}" data-path="${prompt.relativePath || ''}">
                 ${prompt.enabled ? '停用' : '启用'}
               </button>
-              <button class="action-btn delete-btn" data-prompt="${prompt.name}" style="color: var(--danger);">
+              <button class="action-btn delete-btn" data-prompt="${prompt.name}" data-path="${prompt.relativePath || ''}" style="color: var(--danger);">
                 删除
               </button>
             </div>
           </div>
         `
-        
+
         item.addEventListener('click', (e) => {
-          // 只有点击prompt信息区域才选择prompt，点击操作按钮不触发
           if (!e.target.closest('.prompt-actions') && !e.target.classList.contains('toggle-btn') && !e.target.classList.contains('delete-btn')) {
             selectPrompt(prompt, e)
           }
         })
-        
-        // 阻止操作按钮的点击事件冒泡，避免触发目录折叠
-        const actions = item.querySelector('.prompt-actions');
+
+        const actions = item.querySelector('.prompt-actions')
         if (actions) {
           actions.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-          });
-          
-          // 为每个操作按钮单独添加事件监听器，确保完全阻止事件冒泡
-          const toggleBtn = item.querySelector('.toggle-btn');
-          const deleteBtn = item.querySelector('.delete-btn');
-          
+            e.stopPropagation()
+            e.preventDefault()
+          })
+
+          const toggleBtn = item.querySelector('.toggle-btn')
+          const deleteBtn = item.querySelector('.delete-btn')
+
           if (toggleBtn) {
             toggleBtn.addEventListener('click', (e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              togglePromptByName(prompt.name);
-              // 重新加载列表，传递搜索参数
-              const searchInput = document.getElementById('searchInput');
-              const searchValue = searchInput ? searchInput.value : '';
-              loadPrompts(searchValue);
-            });
+              e.stopPropagation()
+              e.preventDefault()
+              const targetPath = toggleBtn.getAttribute('data-path')
+              togglePrompt(prompt.name, targetPath)
+            })
           }
-          
+
           if (deleteBtn) {
             deleteBtn.addEventListener('click', (e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              openDeletePromptModal(prompt.name);
-            });
+              e.stopPropagation()
+              e.preventDefault()
+              const targetPath = deleteBtn.getAttribute('data-path')
+              openDeletePromptModal(prompt.name, targetPath)
+            })
           }
         }
-        
+
         container.appendChild(item)
       })
-      
-      // 操作按钮事件监听已移到上面的item.addEventListener中，避免重复绑定
     }
-    
-    // 根据名称切换prompt启用状态
-    async function togglePromptByName(promptName) {
+
+    async function togglePrompt(promptName, relativePath) {
       try {
-        const result = await apiCall(`/prompts/${promptName}/toggle`, {
+        const query = relativePath ? `?path=${encodeURIComponent(relativePath)}` : ''
+        const result = await apiCall(`/prompts/${encodeURIComponent(promptName)}/toggle${query}`, {
           method: 'POST'
         })
-        // 重新加载列表，传递搜索参数
-        const searchInput = document.getElementById('searchInput');
-        const searchValue = searchInput ? searchInput.value : '';
-        loadPrompts(searchValue)
+        const searchInput = document.getElementById('searchInput')
+        const searchValue = searchInput ? searchInput.value : ''
+        await loadPrompts(searchValue)
+        const descriptor = relativePath ? `${promptName} (${relativePath})` : promptName
         const statusText = result?.enabled ? '已启用' : '已停用'
-        showMessage(`“${promptName}” ${statusText}`, result?.enabled ? 'success' : 'info')
+        showMessage(`“${descriptor}” ${statusText}`, result?.enabled ? 'success' : 'info')
+        if (currentPrompt?.relativePath === relativePath) {
+          currentPrompt.enabled = result?.enabled
+          currentPromptObject = currentPromptObject ? { ...currentPromptObject, enabled: result?.enabled } : currentPromptObject
+        }
       } catch (error) {
         console.error('切换prompt状态失败:', error)
         showMessage('启用状态切换失败: ' + error.message, 'error')
       }
     }
-    
-    // 根据名称删除prompt
-    async function deletePromptByName(promptName) {
+
+    async function deletePrompt(promptName, relativePath) {
       try {
-        await apiCall(`/prompts/${promptName}`, {
+        const query = relativePath ? `?path=${encodeURIComponent(relativePath)}` : ''
+        await apiCall(`/prompts/${encodeURIComponent(promptName)}${query}`, {
           method: 'DELETE'
         })
-        showMessage('删除成功')
-        if (currentPrompt?.name === promptName) {
+        if (currentPrompt?.relativePath === relativePath || (!currentPrompt?.relativePath && currentPrompt?.name === promptName)) {
           resetEditor()
         }
-        // 重新加载列表，传递搜索参数
-        const searchInput = document.getElementById('searchInput');
-        const searchValue = searchInput ? searchInput.value : '';
-        loadPrompts(searchValue)
+        const searchInput = document.getElementById('searchInput')
+        const searchValue = searchInput ? searchInput.value : ''
+        await loadPrompts(searchValue)
+        const descriptor = relativePath ? `${promptName} (${relativePath})` : promptName
+        showMessage(`已删除 “${descriptor}”`)
       } catch (error) {
         console.error('删除prompt失败:', error)
         showMessage('删除失败: ' + error.message, 'error')
       }
     }
 
+
     // 选择prompt
     async function selectPrompt(prompt, triggerEvent) {
       try {
-        const promptData = await apiCall(`/prompts/${prompt.name}`)
-        currentPrompt = promptData
+        const query = prompt.relativePath ? `?path=${encodeURIComponent(prompt.relativePath)}` : ''
+        const promptData = await apiCall(`/prompts/${encodeURIComponent(prompt.name)}${query}`)
+        currentPrompt = {
+          ...promptData,
+          relativePath: promptData.relativePath || prompt.relativePath || null,
+          groupPath: promptData.groupPath || prompt.groupPath || null,
+          group: promptData.group || prompt.group || null
+        }
 
         let parsedPrompt = null
         try {
@@ -3240,16 +3328,19 @@
         showMessage('保存成功')
         currentPromptObject = clonePromptObject(promptObject)
         const updatedRelativePath = result?.relativePath || currentPrompt?.relativePath || null
+        const pathSegments = updatedRelativePath ? updatedRelativePath.split('/') : []
+        const updatedGroupPath = pathSegments.length > 1 ? pathSegments.slice(0, -1).join('/') : (pathSegments[0] || currentPrompt?.groupPath || group || 'default')
         currentPrompt = {
           ...(currentPrompt || {}),
           name,
           relativePath: updatedRelativePath,
-          group
+          group: result?.group || group,
+          groupPath: updatedGroupPath
         }
         // 重新加载列表，传递搜索参数
         const searchInput = document.getElementById('searchInput');
         const searchValue = searchInput ? searchInput.value : '';
-        loadPrompts(searchValue)
+        await loadPrompts(searchValue)
       } catch (error) {
         console.error('保存失败:', error)
         if (!error?.__shown) {
