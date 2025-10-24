@@ -910,6 +910,24 @@
     .prompt-status.disabled {
       background: var(--gray-light);
     }
+
+    .prompt-list-empty {
+      padding: 16px 14px;
+      border: 1px dashed rgba(0,0,0,0.12);
+      border-radius: 10px;
+      color: var(--gray);
+      font-size: 13px;
+      line-height: 1.6;
+      background: rgba(0,0,0,0.02);
+      text-align: left;
+    }
+    
+    .prompt-list-empty span {
+      display: block;
+      color: var(--dark);
+      font-weight: 550;
+      margin-bottom: 4px;
+    }
     
     .editor-container {
       flex: 1;
@@ -1356,14 +1374,28 @@
       background: rgba(248,249,250,0.65);
     }
 
-    .group-modal-body {
-      display: flex;
+    .group-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      width: 420px;
+      max-height: 420px;
+      padding: 16px;
+      border-radius: 14px;
+      background: white;
+      border: 1px solid rgba(0,0,0,0.08);
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18);
+      display: none;
       flex-direction: column;
       gap: 14px;
-      max-height: min(60vh, 460px);
+      z-index: 1200;
     }
 
-    .group-modal-search input {
+    .group-dropdown.show {
+      display: flex;
+    }
+
+    .group-dropdown-search input {
       width: 100%;
       padding: 10px 14px;
       border: 1px solid var(--border);
@@ -1372,203 +1404,175 @@
       transition: all 0.2s ease;
     }
 
-    .group-modal-search input:focus {
+    .group-dropdown-search input:focus {
       outline: none;
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(57, 57, 57, 0.08);
     }
 
-    .group-modal-list {
+    .group-dropdown-body {
       display: flex;
       flex-direction: column;
+      gap: 10px;
+      min-height: 220px;
+    }
+
+    .group-cascader {
+      display: flex;
+      gap: 12px;
+    }
+
+    .group-cascader-column {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 260px;
+      overflow-y: auto;
+      padding-right: 4px;
+      border-right: 1px solid rgba(0,0,0,0.06);
+    }
+
+    .group-cascader-column:last-child {
+      border-right: none;
+    }
+
+    .group-cascader-title {
+      font-size: 12px;
+      color: var(--gray);
+      letter-spacing: 0;
+      padding: 0 6px;
+    }
+
+    .group-cascader-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .group-cascader-empty {
+      padding: 6px 4px;
+      font-size: 12px;
+      color: var(--gray);
+    }
+
+    .group-cascader-item {
+      border: none;
+      background: transparent;
+      text-align: left;
+      padding: 6px 8px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--dark);
+      cursor: pointer;
+      transition: background 0.18s ease, color 0.18s ease, padding-left 0.18s ease;
+      position: relative;
+    }
+
+    .group-cascader-item:hover {
+      background: rgba(0,0,0,0.05);
+      color: var(--primary);
+      padding-left: 12px;
+    }
+
+    .group-cascader-item.active {
+      background: rgba(0,0,0,0.04);
+      color: var(--primary);
+    }
+
+    .group-cascader-label {
+      display: inline-flex;
+      align-items: center;
       gap: 6px;
+    }
+
+    .group-cascader-path-hint {
+      font-size: 11px;
+      color: var(--gray);
+      letter-spacing: 0;
+      margin-left: 6px;
+    }
+
+    .group-cascader-suffix {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--gray);
+      transition: color 0.18s ease;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .group-cascader-item:hover .group-cascader-suffix,
+    .group-cascader-item.active .group-cascader-suffix,
+    .group-cascader-item.selected .group-cascader-suffix {
+      color: var(--primary);
+    }
+
+    .group-cascader-check {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--primary);
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .group-search-results {
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 280px;
       overflow-y: auto;
       padding-right: 4px;
     }
 
-    .group-modal-option {
+    .group-search-results.show {
+      display: flex;
+    }
+
+    .group-search-item {
       border: 1px solid rgba(0,0,0,0.06);
       border-radius: 10px;
-      padding: 10px 12px;
+      padding: 8px 10px;
       display: flex;
       flex-direction: column;
       gap: 4px;
-      background: white;
       cursor: pointer;
       transition: all 0.2s ease;
+      background: white;
       text-align: left;
+      font-size: 13px;
+      color: var(--dark);
     }
 
-    .group-modal-option:hover {
+    .group-search-item:hover {
       border-color: var(--primary);
-      box-shadow: 0 10px 24px rgba(0,0,0,0.08);
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
       transform: translateY(-1px);
     }
 
-    .group-modal-option.active {
+    .group-search-item.selected {
       border-color: var(--primary);
-      background: rgba(57,57,57,0.06);
       box-shadow: inset 0 0 0 1px var(--primary);
     }
 
-    .group-modal-name {
-      font-size: 14px;
-      font-weight: 560;
-      color: var(--dark);
-      letter-spacing: -0.01em;
-    }
-
-    .group-modal-path {
+    .group-search-path {
       font-size: 12px;
       color: var(--gray);
       letter-spacing: 0;
     }
 
-    .group-modal-empty {
-      padding: 20px;
+    .group-dropdown-empty {
+      padding: 18px 12px;
+      border-radius: 10px;
       text-align: center;
-      color: var(--gray);
-      font-size: 14px;
       background: rgba(0,0,0,0.03);
-      border-radius: 10px;
-    }
-
-    .group-modal-empty.hidden {
-      display: none;
-    }
-
-    .group-modal-tree {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .group-modal-node {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .group-modal-node-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      width: 100%;
-      padding: 6px 10px;
-      border-radius: 10px;
-      transition: background 0.2s ease, color 0.2s ease;
-    }
-
-    .group-modal-node-row:hover {
-      background: rgba(0,0,0,0.04);
-    }
-
-    .group-modal-node-row.active {
-      background: rgba(57,57,57,0.08);
-    }
-
-    .group-modal-node-row:hover .group-modal-name,
-    .group-modal-node-row.active .group-modal-name {
-      color: var(--primary);
-    }
-
-    .group-modal-toggle,
-    .group-modal-toggle-placeholder {
-      position: relative;
-      width: 22px;
-      height: 22px;
-      border-radius: 6px;
-      border: 1px solid rgba(0,0,0,0.15);
-      background: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
       color: var(--gray);
-      padding: 0;
-      flex-shrink: 0;
-      transition: color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      font-size: 13px;
     }
 
-    .group-modal-toggle::before {
-      content: '';
-      width: 10px;
-      height: 2px;
-      background: currentColor;
-      border-radius: 1px;
-      transition: transform 0.2s ease;
-      transform-origin: center;
-    }
-
-    .group-modal-toggle::after {
-      content: '';
-      position: absolute;
-      width: 2px;
-      height: 10px;
-      background: currentColor;
-      border-radius: 1px;
-      transition: opacity 0.2s ease, transform 0.2s ease;
-      transform-origin: center;
-    }
-
-    .group-modal-toggle.expanded::after {
-      opacity: 0;
-      transform: scaleY(0);
-    }
-
-    .group-modal-toggle:hover {
-      color: var(--primary);
-      border-color: rgba(57,57,57,0.35);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-    }
-
-    .group-modal-toggle-placeholder {
-      border: none;
-      background: transparent;
-      box-shadow: none;
-      cursor: default;
-      pointer-events: none;
-      opacity: 0;
-    }
-
-    .group-modal-option {
-      flex: 1;
-    }
-
-    .group-modal-children {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .group-modal-children.collapsed {
+    .group-dropdown-empty.hidden {
       display: none;
-    }
-
-    .group-modal-tree .group-modal-option {
-      border: none;
-      border-radius: 0;
-      background: transparent;
-      box-shadow: none;
-      padding: 0;
-      margin: 0;
-      gap: 2px;
-      align-items: flex-start;
-      justify-content: center;
-      flex: 1;
-      text-align: left;
-      transition: color 0.2s ease;
-    }
-
-    .group-modal-tree .group-modal-option:hover {
-      border: none;
-      box-shadow: none;
-      color: var(--primary);
-    }
-
-    .group-modal-tree .group-modal-option.active {
-      color: var(--primary);
-      font-weight: 560;
     }
 
     .form-group {
@@ -2223,8 +2227,8 @@
           <div class="editor-header-top">
             <input type="text" id="promptName" placeholder="Prompt 名称" />
             <div class="group-selector">
-              <button type="button" id="promptGroupBtn" class="group-selector-btn" aria-haspopup="dialog" aria-expanded="false">
-                <span class="group-selector-label">关联类目</span>
+              <button type="button" id="promptGroupBtn" class="group-selector-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="promptGroupDropdown">
+                <span class="group-selector-label" style="display: none;">关联类目</span>
                 <span class="group-selector-value" id="promptGroupLabel">default</span>
                 <span class="group-selector-icon" aria-hidden="true">
                   <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
@@ -2238,6 +2242,16 @@
                 <option value="generator">generator</option>
                 <option value="operation">operation</option>
               </select>
+              <div class="group-dropdown" id="promptGroupDropdown" role="dialog" aria-modal="false">
+                <div class="group-dropdown-search">
+                  <input type="text" id="promptGroupSearch" placeholder="搜索类目..." autocomplete="off" />
+                </div>
+                <div class="group-dropdown-body">
+                  <div class="group-cascader" id="promptGroupCascader"></div>
+                  <div class="group-search-results" id="promptGroupSearchResults"></div>
+                  <div class="group-dropdown-empty hidden" id="promptGroupEmpty">暂无匹配的类目</div>
+                </div>
+              </div>
             </div>
             <div class="editor-controls">
               <div class="mode-toggle">
@@ -2312,31 +2326,6 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-light" id="deletePromptCancelBtn">取消</button>
           <button type="button" class="btn btn-danger" id="deletePromptConfirmBtn">删除</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 类目选择弹窗 -->
-  <div id="promptGroupModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="promptGroupModalTitle">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 id="promptGroupModalTitle">选择关联类目</h3>
-          <button type="button" class="modal-close" id="promptGroupModalClose" aria-label="关闭">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="group-modal-body">
-            <div class="group-modal-search">
-              <input type="text" id="promptGroupSearch" placeholder="搜索类目..." />
-            </div>
-            <div class="group-modal-list" id="promptGroupList"></div>
-            <div class="group-modal-empty hidden" id="promptGroupEmpty">没有匹配的类目</div>
-          </div>
         </div>
       </div>
     </div>
@@ -2417,21 +2406,21 @@
     let deletePromptCloseBtn = null
     let pendingDeletePromptName = null
     let pendingDeletePromptPath = null
-    let promptGroupModalEl = null
     let promptGroupBtnEl = null
     let promptGroupLabelEl = null
+    let promptGroupDropdownEl = null
     let promptGroupSearchInput = null
-    let promptGroupListEl = null
+    let promptGroupCascaderEl = null
+    let promptGroupSearchResultsEl = null
     let promptGroupEmptyEl = null
-    let promptGroupModalCloseBtn = null
     let groupTreeState = []
-    let expandedModalGroups = new Set()
+    let cascaderActivePaths = []
+    let isGroupDropdownOpen = false
 
     function refreshModalOpenState() {
       const hasOpenModal =
         (argumentModalEl && !argumentModalEl.classList.contains('hidden')) ||
-        (deletePromptModalEl && !deletePromptModalEl.classList.contains('hidden')) ||
-        (promptGroupModalEl && !promptGroupModalEl.classList.contains('hidden'))
+        (deletePromptModalEl && !deletePromptModalEl.classList.contains('hidden'))
       if (hasOpenModal) {
         document.body.classList.add('modal-open')
       } else {
@@ -2961,7 +2950,7 @@
       pendingDeletePromptName = promptName
       pendingDeletePromptPath = relativePath || null
       if (deletePromptNameEl) {
-        deletePromptNameEl.textContent = relativePath ? `“${promptName}” (${relativePath})` : `“${promptName}”`
+        deletePromptNameEl.textContent = `“${promptName}”`
       }
       deletePromptModalEl.classList.remove('hidden')
       deletePromptModalEl.setAttribute('aria-hidden', 'false')
@@ -3185,101 +3174,215 @@
       return accumulator
     }
 
-    function syncExpandedModalGroups() {
-      const valid = new Set(flattenGroupTree(groupTreeState || []).map(item => item.value))
-      expandedModalGroups = new Set([...expandedModalGroups].filter(value => valid.has(value)))
+    function findNodeByPath(nodes, targetPath) {
+      if (!Array.isArray(nodes)) return null
+      for (const node of nodes) {
+        if (!node) continue
+        const nodePath = node.path || 'default'
+        if (nodePath === targetPath) {
+          return node
+        }
+        if (Array.isArray(node.children) && node.children.length) {
+          const found = findNodeByPath(node.children, targetPath)
+          if (found) return found
+        }
+      }
+      return null
     }
 
-    function ensureModalAncestorsExpanded(pathValue) {
-      if (!pathValue) return
-      collectAncestorPaths(pathValue).forEach(value => {
-        if (value) {
-          expandedModalGroups.add(value)
+    function setCascaderActivePathsByValue(pathValue = 'default') {
+      const target = pathValue || 'default'
+      const candidates = collectAncestorPaths(target)
+      const validated = []
+      candidates.forEach(path => {
+        if (findNodeByPath(groupTreeState, path) || path === 'default') {
+          validated.push(path)
         }
       })
+      cascaderActivePaths = validated.length ? validated : ['default']
     }
 
-    function renderModalGroupTree(nodes, container, depth = 0) {
-      if (!Array.isArray(nodes) || !container) return
+    function renderGroupDropdownContent(keyword = '') {
+      const trimmed = (keyword || '').trim()
+      if (!isGroupDropdownOpen) return
+      if (trimmed) {
+        renderGroupSearchResults(trimmed)
+      } else {
+        renderGroupCascader()
+      }
+    }
+
+    function renderGroupCascader() {
+      if (!promptGroupCascaderEl) return
       const selectEl = document.getElementById('promptGroup')
       const currentValue = selectEl?.value || 'default'
 
-      nodes.forEach(node => {
-        const pathValue = node?.path || 'default'
-        const nameValue = node?.name || pathValue
-        const hasChildren = Array.isArray(node?.children) && node.children.length > 0
-        const isExpanded = expandedModalGroups.has(pathValue)
+      promptGroupCascaderEl.innerHTML = ''
+      promptGroupCascaderEl.style.display = 'flex'
 
-        const nodeEl = document.createElement('div')
-        nodeEl.className = 'group-modal-node'
+      if (promptGroupSearchResultsEl) {
+        promptGroupSearchResultsEl.classList.remove('show')
+        promptGroupSearchResultsEl.innerHTML = ''
+      }
 
-        const row = document.createElement('div')
-        row.className = 'group-modal-node-row'
-        row.style.paddingLeft = `${10 + depth * 18}px`
+      if (!Array.isArray(groupTreeState) || !groupTreeState.length) {
+        promptGroupCascaderEl.innerHTML = ''
+        promptGroupCascaderEl.style.display = 'none'
+        if (promptGroupEmptyEl) {
+          promptGroupEmptyEl.classList.remove('hidden')
+          promptGroupEmptyEl.textContent = '暂未配置类目'
+        }
+        return
+      }
 
-        let childrenContainer = null
+      if (promptGroupEmptyEl) {
+        promptGroupEmptyEl.classList.add('hidden')
+      }
 
-        if (hasChildren) {
-          const toggleBtn = document.createElement('button')
-          toggleBtn.type = 'button'
-          toggleBtn.className = `group-modal-toggle${isExpanded ? ' expanded' : ''}`
-          toggleBtn.setAttribute('aria-label', isExpanded ? '折叠子类目' : '展开子类目')
-          toggleBtn.setAttribute('aria-expanded', String(isExpanded))
-          toggleBtn.addEventListener('click', () => {
-            const nextExpanded = !expandedModalGroups.has(pathValue)
-            if (nextExpanded) {
-              expandedModalGroups.add(pathValue)
-            } else {
-              expandedModalGroups.delete(pathValue)
-            }
-            toggleBtn.classList.toggle('expanded', nextExpanded)
-            toggleBtn.setAttribute('aria-expanded', String(nextExpanded))
-            toggleBtn.setAttribute('aria-label', nextExpanded ? '折叠子类目' : '展开子类目')
-            if (childrenContainer) {
-              childrenContainer.classList.toggle('collapsed', !nextExpanded)
-            }
+      const columns = []
+      let depth = 0
+      let nodes = groupTreeState
+      columns.push({ depth, nodes, title: '全部类目' })
+
+      while (true) {
+        const activePath = cascaderActivePaths[depth]
+        if (!activePath) break
+        const activeNode = findNodeByPath(nodes, activePath)
+        if (activeNode && Array.isArray(activeNode.children) && activeNode.children.length) {
+          depth += 1
+          nodes = activeNode.children
+          columns.push({
+            depth,
+            nodes,
+            title: activeNode.name || activeNode.path || '子类目'
           })
-          row.appendChild(toggleBtn)
         } else {
-          const placeholder = document.createElement('div')
-          placeholder.className = 'group-modal-toggle-placeholder'
-          row.appendChild(placeholder)
+          break
+        }
+      }
+
+      columns.forEach(({ depth, nodes, title }) => {
+        const columnEl = document.createElement('div')
+        columnEl.className = 'group-cascader-column'
+
+        const titleEl = document.createElement('div')
+        titleEl.className = 'group-cascader-title'
+        titleEl.textContent = title || '子类目'
+        columnEl.appendChild(titleEl)
+
+        const listEl = document.createElement('div')
+        listEl.className = 'group-cascader-list'
+        columnEl.appendChild(listEl)
+
+        if (!Array.isArray(nodes) || !nodes.length) {
+          const emptyEl = document.createElement('div')
+          emptyEl.className = 'group-cascader-empty'
+          emptyEl.textContent = '无子类目'
+          listEl.appendChild(emptyEl)
+        } else {
+          nodes.forEach(node => {
+            if (!node) return
+            const nodePath = node.path || 'default'
+            const nodeName = node.name || nodePath
+            const hasChildren = Array.isArray(node.children) && node.children.length > 0
+            const isActivePath = cascaderActivePaths[depth] === nodePath
+            const isSelected = currentValue === nodePath
+
+            const itemBtn = document.createElement('button')
+            itemBtn.type = 'button'
+            let itemClass = 'group-cascader-item'
+            if (hasChildren) itemClass += ' has-children'
+            if (isActivePath) itemClass += ' active'
+            if (isSelected) itemClass += ' selected'
+            itemBtn.className = itemClass
+
+            const safeName = escapeHtml(nodeName)
+            const safePath = escapeHtml(nodePath)
+            let suffix = ''
+            if (hasChildren) {
+              suffix = '<span class="group-cascader-suffix">›</span>'
+              if (isSelected) {
+                suffix = `<span class="group-cascader-check">✓</span>${suffix}`
+              }
+            } else if (isSelected) {
+              suffix = '<span class="group-cascader-check">✓</span>'
+            }
+            const hint = nodePath.includes('/') ? `<span class="group-cascader-path-hint">${safePath}</span>` : ''
+
+            itemBtn.innerHTML = `
+              <span class="group-cascader-label">${safeName}${hint}</span>
+              ${suffix}
+            `
+
+            itemBtn.addEventListener('click', () => {
+              handleCascaderItemClick(node, depth)
+            })
+
+            listEl.appendChild(itemBtn)
+          })
         }
 
-        const optionBtn = document.createElement('button')
-        optionBtn.type = 'button'
-        const isActive = pathValue === currentValue
-        optionBtn.className = `group-modal-option${isActive ? ' active' : ''}`
-        optionBtn.dataset.value = pathValue
-        const safeName = escapeHtml(nameValue)
-        const safePath = escapeHtml(pathValue)
-        optionBtn.innerHTML = `
-          <span class="group-modal-name">${safeName}</span>
-          <span class="group-modal-path">${safePath}</span>
-        `
-        if (isActive) {
-          row.classList.add('active')
-        }
-        optionBtn.addEventListener('click', () => {
-          if (selectEl) {
-            selectEl.value = pathValue
-            updatePromptGroupDisplay()
-          }
-          closePromptGroupModal()
-        })
-
-        row.appendChild(optionBtn)
-        nodeEl.appendChild(row)
-
-        if (hasChildren) {
-          childrenContainer = document.createElement('div')
-          childrenContainer.className = `group-modal-children${isExpanded ? '' : ' collapsed'}`
-          renderModalGroupTree(node.children, childrenContainer, depth + 1)
-          nodeEl.appendChild(childrenContainer)
-        }
-
-        container.appendChild(nodeEl)
+        promptGroupCascaderEl.appendChild(columnEl)
       })
+    }
+
+    function renderGroupSearchResults(keyword) {
+      if (!promptGroupSearchResultsEl) return
+      const selectEl = document.getElementById('promptGroup')
+      const currentValue = selectEl?.value || 'default'
+      const options = getFilteredGroupOptions(keyword)
+
+      if (promptGroupCascaderEl) {
+        promptGroupCascaderEl.style.display = 'none'
+      }
+
+      promptGroupSearchResultsEl.innerHTML = ''
+
+      if (!options.length) {
+        promptGroupSearchResultsEl.classList.remove('show')
+        if (promptGroupEmptyEl) {
+          promptGroupEmptyEl.classList.remove('hidden')
+          promptGroupEmptyEl.textContent = '没有匹配的类目'
+        }
+        return
+      }
+
+      promptGroupSearchResultsEl.classList.add('show')
+      if (promptGroupEmptyEl) {
+        promptGroupEmptyEl.classList.add('hidden')
+      }
+
+      const fragment = document.createDocumentFragment()
+      options.forEach(option => {
+        const item = document.createElement('button')
+        item.type = 'button'
+        const isSelected = option.value === currentValue
+        item.className = `group-search-item${isSelected ? ' selected' : ''}`
+        const safeName = escapeHtml(option.name)
+        const safePath = escapeHtml(option.path)
+        item.innerHTML = `
+          <span>${safeName}</span>
+          <span class="group-search-path">${safePath}</span>
+        `
+        item.addEventListener('click', () => {
+          selectGroupValue(option.value)
+          closeGroupDropdown()
+        })
+        fragment.appendChild(item)
+      })
+
+      promptGroupSearchResultsEl.appendChild(fragment)
+    }
+
+    function handleCascaderItemClick(node, depth) {
+      const nodePath = node?.path || 'default'
+      const hasChildren = Array.isArray(node?.children) && node.children.length > 0
+      cascaderActivePaths = cascaderActivePaths.slice(0, depth)
+      cascaderActivePaths[depth] = nodePath
+      selectGroupValue(nodePath, !hasChildren)
+      if (hasChildren) {
+        renderGroupCascader()
+      }
     }
 
     function updatePromptGroupDisplay() {
@@ -3306,10 +3409,10 @@
       })
       const hasPrevious = optionsData.some(optionData => optionData.value === previousValue)
       selectEl.value = hasPrevious ? previousValue : (optionsData[0]?.value || 'default')
-      syncExpandedModalGroups()
       updatePromptGroupDisplay()
-      if (promptGroupModalEl && !promptGroupModalEl.classList.contains('hidden')) {
-        populatePromptGroupModal(promptGroupSearchInput?.value || '')
+      if (isGroupDropdownOpen) {
+        setCascaderActivePathsByValue(selectEl.value || 'default')
+        renderGroupDropdownContent(promptGroupSearchInput?.value || '')
       }
     }
 
@@ -3339,98 +3442,71 @@
       })
     }
 
-    function populatePromptGroupModal(keyword = '') {
-      if (!promptGroupListEl || !promptGroupEmptyEl) return
+    function selectGroupValue(value, closeAfterSelection = true) {
       const selectEl = document.getElementById('promptGroup')
-      const trimmedKeyword = (keyword || '').trim()
-      const isSearching = trimmedKeyword.length > 0
-      syncExpandedModalGroups()
-      promptGroupListEl.innerHTML = ''
-
-      if (!isSearching && Array.isArray(groupTreeState) && groupTreeState.length) {
-        const currentValue = selectEl?.value || 'default'
-        ensureModalAncestorsExpanded(currentValue)
-        promptGroupEmptyEl.classList.add('hidden')
-        const treeContainer = document.createElement('div')
-        treeContainer.className = 'group-modal-tree'
-        renderModalGroupTree(groupTreeState, treeContainer, 0)
-        promptGroupListEl.appendChild(treeContainer)
-        return
+      if (!selectEl) return
+      const exists = Array.from(selectEl.options || []).some(option => option.value === value)
+      if (!exists) {
+        const optionEl = document.createElement('option')
+        optionEl.value = value
+        optionEl.textContent = value
+        selectEl.appendChild(optionEl)
       }
-
-      const options = getFilteredGroupOptions(trimmedKeyword)
-      if (!options.length) {
-        promptGroupEmptyEl.classList.remove('hidden')
-        return
-      }
-
-      promptGroupEmptyEl.classList.add('hidden')
-      const currentValue = selectEl?.value || 'default'
-      const fragment = document.createDocumentFragment()
-      options.forEach(option => {
-        const button = document.createElement('button')
-        button.type = 'button'
-        button.className = `group-modal-option${option.value === currentValue ? ' active' : ''}`
-        button.dataset.value = option.value
-        const safeName = escapeHtml(option.name)
-        const safePath = escapeHtml(option.path)
-        button.innerHTML = `
-          <span class="group-modal-name">${safeName}</span>
-          <span class="group-modal-path">${safePath}</span>
-        `
-        if (Number.isFinite(option.depth) && option.depth > 0) {
-          button.style.paddingLeft = `${12 + option.depth * 16}px`
+      selectEl.value = value
+      updatePromptGroupDisplay()
+      setCascaderActivePathsByValue(value)
+      if (isGroupDropdownOpen) {
+        if (!closeAfterSelection) {
+          renderGroupDropdownContent(promptGroupSearchInput?.value || '')
         } else {
-          button.style.paddingLeft = ''
+          closeGroupDropdown(true)
         }
-        button.addEventListener('click', () => {
-          if (selectEl) {
-            selectEl.value = option.value
-            updatePromptGroupDisplay()
-          }
-          closePromptGroupModal()
-        })
-        fragment.appendChild(button)
-      })
-      promptGroupListEl.appendChild(fragment)
+      }
     }
 
-    function openPromptGroupModal() {
-      if (!promptGroupModalEl) return
-      promptGroupModalEl.classList.remove('hidden')
-      promptGroupModalEl.setAttribute('aria-hidden', 'false')
+    function openGroupDropdown() {
+      if (!promptGroupDropdownEl || isGroupDropdownOpen) return
+      isGroupDropdownOpen = true
+      promptGroupDropdownEl.classList.add('show')
       promptGroupBtnEl?.setAttribute('aria-expanded', 'true')
       const selectEl = document.getElementById('promptGroup')
-      const currentValue = selectEl?.value || 'default'
-      if (!expandedModalGroups.size && Array.isArray(groupTreeState)) {
-        groupTreeState.forEach(node => {
-          if (node && node.path) {
-            expandedModalGroups.add(node.path)
-          }
-        })
+      setCascaderActivePathsByValue(selectEl?.value || 'default')
+      renderGroupDropdownContent('')
+      if (promptGroupSearchInput) {
+        promptGroupSearchInput.value = ''
+        requestAnimationFrame(() => promptGroupSearchInput.focus())
       }
-      ensureModalAncestorsExpanded(currentValue)
-      populatePromptGroupModal(promptGroupSearchInput?.value || '')
-      refreshModalOpenState()
-      requestAnimationFrame(() => {
-        if (promptGroupSearchInput) {
-          promptGroupSearchInput.focus()
-          promptGroupSearchInput.select()
-        }
-      })
     }
 
-    function closePromptGroupModal() {
-      if (!promptGroupModalEl) return
-      promptGroupModalEl.classList.add('hidden')
-      promptGroupModalEl.setAttribute('aria-hidden', 'true')
+    function closeGroupDropdown(focusButton = false) {
+      if (!promptGroupDropdownEl || !isGroupDropdownOpen) return
+      isGroupDropdownOpen = false
+      promptGroupDropdownEl.classList.remove('show')
       promptGroupBtnEl?.setAttribute('aria-expanded', 'false')
       if (promptGroupSearchInput) {
         promptGroupSearchInput.value = ''
       }
-      refreshModalOpenState()
-      if (promptGroupBtnEl) {
+      if (promptGroupCascaderEl) {
+        promptGroupCascaderEl.style.display = 'flex'
+      }
+      if (promptGroupSearchResultsEl) {
+        promptGroupSearchResultsEl.classList.remove('show')
+        promptGroupSearchResultsEl.innerHTML = ''
+      }
+      if (promptGroupEmptyEl) {
+        promptGroupEmptyEl.classList.add('hidden')
+      }
+      if (focusButton && promptGroupBtnEl) {
         promptGroupBtnEl.focus()
+      }
+    }
+
+    function toggleGroupDropdown(force) {
+      const shouldOpen = typeof force === 'boolean' ? force : !isGroupDropdownOpen
+      if (shouldOpen) {
+        openGroupDropdown()
+      } else {
+        closeGroupDropdown()
       }
     }
 
@@ -3583,6 +3659,17 @@
 
       const sortedPrompts = [...prompts].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN'))
 
+      if (!sortedPrompts.length) {
+        const emptyEl = document.createElement('div')
+        emptyEl.className = 'prompt-list-empty'
+        emptyEl.innerHTML = `
+          <span>该目录暂无 Prompt</span>
+          请点击左上角“新建 Prompt”按钮创建。
+        `
+        container.appendChild(emptyEl)
+        return
+      }
+
       sortedPrompts.forEach(prompt => {
         const item = document.createElement('div')
         const isActive = currentPrompt?.relativePath
@@ -3657,9 +3744,8 @@
         const searchInput = document.getElementById('searchInput')
         const searchValue = searchInput ? searchInput.value : ''
         await loadPrompts(searchValue)
-        const descriptor = relativePath ? `${promptName} (${relativePath})` : promptName
         const statusText = result?.enabled ? '已启用' : '已停用'
-        showMessage(`“${descriptor}” ${statusText}`, result?.enabled ? 'success' : 'info')
+        showMessage(`“${promptName}” ${statusText}`, result?.enabled ? 'success' : 'info')
         if (currentPrompt?.relativePath === relativePath) {
           currentPrompt.enabled = result?.enabled
           currentPromptObject = currentPromptObject ? { ...currentPromptObject, enabled: result?.enabled } : currentPromptObject
@@ -3682,8 +3768,7 @@
         const searchInput = document.getElementById('searchInput')
         const searchValue = searchInput ? searchInput.value : ''
         await loadPrompts(searchValue)
-        const descriptor = relativePath ? `${promptName} (${relativePath})` : promptName
-        showMessage(`已删除 “${descriptor}”`)
+        showMessage(`已删除 “${promptName}”`)
       } catch (error) {
         console.error('删除prompt失败:', error)
         showMessage('删除失败: ' + error.message, 'error')
@@ -3715,8 +3800,32 @@
 
         const nameInput = document.getElementById('promptName')
         if (nameInput) nameInput.value = currentPromptObject.name || promptData.name || ''
-        document.getElementById('promptGroup').value = promptData.group || 'default'
-        updatePromptGroupDisplay()
+        const promptGroupSelect = document.getElementById('promptGroup')
+        if (promptGroupSelect) {
+          const resolvedGroup =
+            promptData.groupPath ||
+            promptData.group ||
+            prompt.groupPath ||
+            prompt.group ||
+            'default'
+
+          const optionExists = Array.from(promptGroupSelect.options || []).some(
+            option => option.value === resolvedGroup
+          )
+          if (!optionExists) {
+            const optionEl = document.createElement('option')
+            optionEl.value = resolvedGroup
+            optionEl.textContent = resolvedGroup
+            promptGroupSelect.appendChild(optionEl)
+          }
+
+          promptGroupSelect.value = resolvedGroup
+          updatePromptGroupDisplay()
+          setCascaderActivePathsByValue(resolvedGroup)
+          if (isGroupDropdownOpen) {
+            renderGroupDropdownContent(promptGroupSearchInput?.value || '')
+          }
+        }
 
         if (descriptionInputEl) {
           descriptionInputEl.value = currentPromptObject.description || ''
@@ -3938,8 +4047,15 @@
     // 重置编辑器
     function resetEditor() {
       document.getElementById('promptName').value = ''
-      document.getElementById('promptGroup').value = 'default'
-      updatePromptGroupDisplay()
+      const groupSelect = document.getElementById('promptGroup')
+      if (groupSelect) {
+        groupSelect.value = 'default'
+        updatePromptGroupDisplay()
+        setCascaderActivePathsByValue('default')
+        if (isGroupDropdownOpen) {
+          renderGroupDropdownContent(promptGroupSearchInput?.value || '')
+        }
+      }
       if (editor) editor.setValue('')
       if (descriptionInputEl) {
         descriptionInputEl.value = ''
@@ -3959,8 +4075,15 @@
 
       const nameInput = document.getElementById('promptName')
       if (nameInput) nameInput.value = currentPromptObject.name
-      document.getElementById('promptGroup').value = 'default'
-      updatePromptGroupDisplay()
+      const groupSelect = document.getElementById('promptGroup')
+      if (groupSelect) {
+        groupSelect.value = 'default'
+        updatePromptGroupDisplay()
+        setCascaderActivePathsByValue('default')
+        if (isGroupDropdownOpen) {
+          renderGroupDropdownContent(promptGroupSearchInput?.value || '')
+        }
+      }
 
       const defaultMessage = getFirstUserMessage(currentPromptObject)
       if (editor) {
@@ -4093,11 +4216,11 @@
         deletePromptCloseBtn = document.getElementById('deletePromptCloseBtn')
         promptGroupBtnEl = document.getElementById('promptGroupBtn')
         promptGroupLabelEl = document.getElementById('promptGroupLabel')
-        promptGroupModalEl = document.getElementById('promptGroupModal')
+        promptGroupDropdownEl = document.getElementById('promptGroupDropdown')
         promptGroupSearchInput = document.getElementById('promptGroupSearch')
-        promptGroupListEl = document.getElementById('promptGroupList')
+        promptGroupCascaderEl = document.getElementById('promptGroupCascader')
+        promptGroupSearchResultsEl = document.getElementById('promptGroupSearchResults')
         promptGroupEmptyEl = document.getElementById('promptGroupEmpty')
-        promptGroupModalCloseBtn = document.getElementById('promptGroupModalClose')
         updatePromptGroupDisplay()
 
         if (argumentTypeInput && !argumentTypeInput.value) {
@@ -4137,23 +4260,26 @@
         }
 
         if (promptGroupBtnEl) {
-          promptGroupBtnEl.addEventListener('click', openPromptGroupModal)
+          promptGroupBtnEl.addEventListener('click', () => toggleGroupDropdown())
         }
-        if (promptGroupModalCloseBtn) {
-          promptGroupModalCloseBtn.addEventListener('click', closePromptGroupModal)
-        }
-        if (promptGroupModalEl) {
-          promptGroupModalEl.addEventListener('click', (event) => {
-            if (event.target === promptGroupModalEl) {
-              closePromptGroupModal()
-            }
+        if (promptGroupDropdownEl) {
+          promptGroupDropdownEl.addEventListener('mousedown', (event) => {
+            event.stopPropagation()
           })
         }
         if (promptGroupSearchInput) {
           promptGroupSearchInput.addEventListener('input', (event) => {
-            populatePromptGroupModal(event.target.value || '')
+            renderGroupDropdownContent(event.target.value || '')
           })
         }
+
+        document.addEventListener('mousedown', (event) => {
+          if (!isGroupDropdownOpen) return
+          if (promptGroupDropdownEl?.contains(event.target) || promptGroupBtnEl?.contains(event.target)) {
+            return
+          }
+          closeGroupDropdown()
+        })
 
         if (deletePromptConfirmBtn) {
           deletePromptConfirmBtn.addEventListener('click', confirmDeletePrompt)
@@ -4174,8 +4300,8 @@
 
         document.addEventListener('keydown', (event) => {
           if (event.key === 'Escape') {
-            if (promptGroupModalEl && !promptGroupModalEl.classList.contains('hidden')) {
-              closePromptGroupModal()
+            if (isGroupDropdownOpen) {
+              closeGroupDropdown(true)
               return
             }
             if (argumentModalEl && !argumentModalEl.classList.contains('hidden')) {
