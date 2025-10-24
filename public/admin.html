@@ -637,6 +637,34 @@
       cursor: pointer;
       border-bottom: 1px solid var(--border);
     }
+
+    .group-section.disabled {
+      position: relative;
+    }
+    
+    .group-section.disabled .group-header {
+      position: relative;
+      color: #858a91;
+      background: rgba(0,0,0,0.02);
+      box-shadow: inset 0 -1px 0 rgba(0,0,0,0.06);
+    }
+
+    .group-section.disabled .group-header::before {
+      content: '';
+      position: absolute;
+      top: 8px;
+      left: 9px;
+      width: 40px;
+      height: 40px;
+      background: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc1NicgaGVpZ2h0PSc1Nic+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSdnJyB4MT0nMCcgeTE9JzAnIHgyPScxJyB5Mj0nMSc+PHN0b3Agb2Zmc2V0PScwJyBzdG9wLWNvbG9yPScjZDVkOWRlJy8+PHN0b3Agb2Zmc2V0PScxJyBzdG9wLWNvbG9yPScjYWViNGJjJy8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHBvbHlnb24gcG9pbnRzPScwLDAgMCw1NiA1NiwwJyBmaWxsPSd1cmwoI2cpJy8+PHRleHQgeD0nNicgeT0nMjQnIGZvbnQtZmFtaWx5PSdJbnRlcixzeXN0ZW0tdWksU2Vnb2UgVUksSGVsdmV0aWNhLEFyaWFsLHNhbnMtc2VyaWYnIGZvbnQtc2l6ZT0nMTInIGZpbGw9JyM3ZTdmODInIHRyYW5zZm9ybT0ncm90YXRlKC00NSAxOCAyMCknIGZvbnQtd2VpZ2h0PSc2MDAnPuWGu+e7kzwvdGV4dD48L3N2Zz4=") no-repeat;
+      background-size: contain;
+      pointer-events: none;
+      transform: translate(-8px, -8px);
+    }
+
+    .group-section.disabled .group-header:hover {
+      background: rgba(0,0,0,0.04);
+    }
     
     .group-header:hover {
       background: #f0f0f0;
@@ -673,6 +701,11 @@
       padding: 2px 6px;
       border-radius: 10px;
     }
+
+    .group-section.disabled .group-count {
+      background: rgba(0,0,0,0.35);
+    }
+
     
     .prompt-list {
       padding: 0 15px 15px;
@@ -928,6 +961,235 @@
       font-weight: 550;
       margin-bottom: 4px;
     }
+    
+    .group-modal-content {
+      min-width: 460px;
+    }
+    
+    .group-modal-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 4px;
+      background: rgba(0,0,0,0.03);
+      border-radius: 10px;
+      margin-bottom: 16px;
+    }
+    
+    .group-modal-tab {
+      flex: 1;
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .group-modal-tab:hover {
+      color: var(--primary);
+    }
+    
+    .group-modal-tab.active {
+      background: white;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+      color: var(--primary);
+      font-weight: 580;
+    }
+    
+    .group-modal-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .group-modal-panel.hidden {
+      display: none;
+    }
+    
+    .group-modal-hint {
+      font-size: 12px;
+      color: var(--gray);
+      margin-top: 6px;
+    }
+    
+    .group-modal-footer {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+      justify-content: flex-end;
+    }
+    
+    .group-modal-footer.hidden {
+      display: none;
+    }
+    
+    .group-manage-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .group-manage-toolbar input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+    
+    .group-manage-toolbar input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(57,57,57,0.08);
+    }
+    
+    .group-manage-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 300px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    
+    .group-manage-empty {
+      padding: 18px 12px;
+      text-align: center;
+      color: var(--gray);
+      font-size: 13px;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.04);
+    }
+    
+    .group-manage-empty.hidden {
+      display: none;
+    }
+    
+    .group-manage-item {
+      --depth: 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 12px;
+      background: white;
+      transition: all 0.2s ease;
+    }
+    
+    .group-manage-item:hover {
+      border-color: rgba(0,0,0,0.15);
+      box-shadow: 0 12px 30px rgba(15,23,42,0.12);
+    }
+    
+    .group-manage-item.is-disabled {
+      opacity: 0.85;
+    }
+    
+    .group-manage-info {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .group-manage-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 560;
+      color: var(--dark);
+      padding-left: calc(var(--depth) * 16px);
+    }
+    
+    .group-manage-edit {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-left: calc(var(--depth) * 16px);
+    }
+    
+    .group-manage-path {
+      font-size: 12px;
+      color: var(--gray);
+      margin-top: 4px;
+      word-break: break-all;
+    }
+    
+    .group-status-badge {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.06);
+      color: var(--gray);
+      font-weight: 500;
+      margin-left: 6px;
+    }
+    
+    .group-status-badge.enabled {
+      background: rgba(40,167,69,0.12);
+      color: var(--success);
+    }
+    
+    .group-status-badge.disabled {
+      background: rgba(220,53,69,0.15);
+      color: var(--danger);
+    }
+    
+    .group-status-badge.default {
+      background: rgba(0,0,0,0.08);
+      color: var(--dark);
+    }
+    
+    .group-manage-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .group-manage-action-btn {
+      border: none;
+      background: transparent;
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--primary);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .group-manage-action-btn:hover {
+      background: rgba(0,0,0,0.05);
+    }
+    
+    .group-manage-action-btn.danger {
+      color: var(--danger);
+    }
+    
+    .group-manage-action-btn[disabled] {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    
+    .group-manage-rename-input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+    
+    .group-manage-rename-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(57,57,57,0.08);
+    }
+    
     
     .editor-container {
       flex: 1;
@@ -2143,12 +2405,12 @@
   </div>
 
   <!-- 主界面 -->
-  <!-- 新建目录弹窗 -->
+  <!-- 类目管理弹窗 -->
   <div id="newFolderModal" class="modal hidden">
     <div class="modal-dialog">
-      <div class="modal-content">
+      <div class="modal-content group-modal-content">
         <div class="modal-header">
-          <h3>新建目录</h3>
+          <h3>类目管理</h3>
           <button type="button" class="modal-close" onclick="toggleNewFolderModal()">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
               <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" stroke-width="1.67" stroke-linecap="round" stroke-linejoin="round"/>
@@ -2156,14 +2418,34 @@
           </button>
         </div>
         <div class="modal-body">
-          <div class="form-group">
-            <label>目录名称</label>
-            <input type="text" id="newFolderName" placeholder="请输入目录名称" onkeydown="handleNewFolderKeydown(event)">
+          <div class="group-modal-tabs">
+            <button type="button" class="group-modal-tab active" data-tab="create">新增类目</button>
+            <button type="button" class="group-modal-tab" data-tab="manage">管理类目</button>
+          </div>
+          <div class="group-modal-panel" data-panel="create">
+            <div class="form-group">
+              <label>目录名称</label>
+              <input type="text" id="newFolderName" placeholder="请输入目录名称" onkeydown="handleNewFolderKeydown(event)">
+              <div class="group-modal-hint">名称仅支持字母、数字、下划线、短横线和中文，长度不超过64个字符。</div>
+            </div>
+          </div>
+          <div class="group-modal-panel hidden" data-panel="manage">
+            <div class="group-manage-toolbar">
+              <input type="text" id="groupManageSearch" placeholder="搜索类目..." />
+              <button type="button" class="btn btn-light btn-sm" id="groupManageRefreshBtn">刷新</button>
+            </div>
+            <div class="group-manage-list" id="groupManageList"></div>
+            <div class="group-manage-empty hidden" id="groupManageEmpty">暂无类目信息</div>
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-light" onclick="toggleNewFolderModal()">取消</button>
-          <button type="button" class="btn btn-dark" onclick="createNewFolder()">创建</button>
+          <div class="group-modal-footer group-modal-footer-create" id="groupModalCreateFooter">
+            <button type="button" class="btn btn-light" onclick="toggleNewFolderModal()">取消</button>
+            <button type="button" class="btn btn-dark" onclick="createNewFolder()">创建</button>
+          </div>
+          <div class="group-modal-footer group-modal-footer-manage hidden" id="groupModalManageFooter">
+            <button type="button" class="btn btn-light" onclick="toggleNewFolderModal(false)">关闭</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2416,6 +2698,13 @@
     let groupTreeState = []
     let cascaderActivePaths = []
     let isGroupDropdownOpen = false
+    let groupModalActiveTab = 'create'
+    let groupManageListEl = null
+    let groupManageEmptyEl = null
+    let groupManageSearchInputEl = null
+    let groupManageSearchValue = ''
+    let groupManageEditingPath = null
+    const groupManageActionLoading = new Set()
 
     function refreshModalOpenState() {
       const hasOpenModal =
@@ -3165,7 +3454,8 @@
           value,
           name,
           depth,
-          path: value
+          path: value,
+          enabled: node?.enabled !== false
         })
         if (Array.isArray(node?.children) && node.children.length) {
           flattenGroupTree(node.children, depth + 1, accumulator)
@@ -3509,6 +3799,258 @@
         closeGroupDropdown()
       }
     }
+    
+    function setGroupModalTab(tab = 'create') {
+      const nextTab = tab === 'manage' ? 'manage' : 'create'
+      groupModalActiveTab = nextTab
+      const tabButtons = document.querySelectorAll('.group-modal-tab')
+      tabButtons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === nextTab)
+      })
+      const panels = document.querySelectorAll('.group-modal-panel')
+      panels.forEach(panel => {
+        panel.classList.toggle('hidden', panel.dataset.panel !== nextTab)
+      })
+      const createFooter = document.getElementById('groupModalCreateFooter')
+      const manageFooter = document.getElementById('groupModalManageFooter')
+      if (createFooter) createFooter.classList.toggle('hidden', nextTab !== 'create')
+      if (manageFooter) manageFooter.classList.toggle('hidden', nextTab !== 'manage')
+      if (nextTab === 'create') {
+        const input = document.getElementById('newFolderName')
+        setTimeout(() => input?.focus(), 120)
+      } else {
+        setTimeout(() => groupManageSearchInputEl?.focus(), 120)
+        renderGroupManageList()
+      }
+    }
+
+    function renderGroupManageList() {
+      if (!groupManageListEl) return
+      const flattened = flattenGroupTree(groupTreeState || [])
+      const keyword = (groupManageSearchValue || '').trim().toLowerCase()
+      const filtered = flattened.filter(item => {
+        if (!item) return false
+        if (!keyword) return true
+        const nameLower = (item.name || '').toLowerCase()
+        const pathLower = (item.path || '').toLowerCase()
+        return nameLower.includes(keyword) || pathLower.includes(keyword)
+      })
+
+      groupManageListEl.innerHTML = ''
+      if (groupManageEmptyEl) {
+        if (!filtered.length) {
+          groupManageEmptyEl.textContent = keyword ? '未找到匹配的类目' : '暂无类目信息'
+          groupManageEmptyEl.classList.remove('hidden')
+        } else {
+          groupManageEmptyEl.classList.add('hidden')
+        }
+      }
+      if (!filtered.length) {
+        return
+      }
+
+      filtered.forEach(item => {
+        const enabled = item.enabled !== false
+        const isDefault = item.path === 'default'
+        const isEditing = groupManageEditingPath === item.path
+        const isBusy = groupManageActionLoading.has(item.path)
+        const safeName = escapeHtml(item.name)
+        const safePath = escapeHtml(item.path)
+        const row = document.createElement('div')
+        row.className = `group-manage-item${enabled ? '' : ' is-disabled'}`
+        row.dataset.path = item.path
+        row.style.setProperty('--depth', item.depth || 0)
+
+        if (isEditing) {
+          row.innerHTML = `
+            <div class="group-manage-info">
+              <div class="group-manage-edit">
+                <input type="text" class="group-manage-rename-input" value="${safeName}" maxlength="64">
+              </div>
+              <div class="group-manage-path">${safePath}</div>
+            </div>
+            <div class="group-manage-actions">
+              <button type="button" class="group-manage-action-btn" data-action="rename-confirm"${isBusy ? ' disabled' : ''}>保存</button>
+              <button type="button" class="group-manage-action-btn" data-action="rename-cancel"${isBusy ? ' disabled' : ''}>取消</button>
+            </div>
+          `
+        } else {
+          const statusBadge = `<span class="group-status-badge ${enabled ? 'enabled' : 'disabled'}">${enabled ? '启用中' : '已冻结'}</span>`
+          const defaultBadge = isDefault ? '<span class="group-status-badge default">默认</span>' : ''
+          const toggleDisabled = isBusy || isDefault
+          const renameDisabled = isBusy || isDefault
+          const deleteDisabled = isBusy || isDefault
+          const toggleText = enabled ? '冻结' : '启用'
+          row.innerHTML = `
+            <div class="group-manage-info">
+              <div class="group-manage-name">${safeName}${statusBadge}${defaultBadge}</div>
+              <div class="group-manage-path">${safePath}</div>
+            </div>
+            <div class="group-manage-actions">
+              <button type="button" class="group-manage-action-btn" data-action="toggle"${toggleDisabled ? ' disabled' : ''}>${toggleText}</button>
+              <button type="button" class="group-manage-action-btn" data-action="rename"${renameDisabled ? ' disabled' : ''}>重命名</button>
+              <button type="button" class="group-manage-action-btn danger" data-action="delete"${deleteDisabled ? ' disabled' : ''}>删除</button>
+            </div>
+          `
+        }
+
+        groupManageListEl.appendChild(row)
+      })
+    }
+
+    async function refreshGroupData() {
+      try {
+        const searchInput = document.getElementById('searchInput')
+        const searchValue = searchInput ? searchInput.value : ''
+        await loadPrompts(searchValue)
+        if (groupModalActiveTab === 'manage') {
+          renderGroupManageList()
+        }
+      } catch (error) {
+        console.error('刷新类目数据失败:', error)
+      }
+    }
+
+    function handleGroupManageSearchInput(event) {
+      groupManageSearchValue = event.target.value || ''
+      renderGroupManageList()
+    }
+
+    function resetGroupManageState() {
+      groupManageSearchValue = ''
+      groupManageEditingPath = null
+      groupManageActionLoading.clear()
+      if (groupManageSearchInputEl) {
+        groupManageSearchInputEl.value = ''
+      }
+      renderGroupManageList()
+    }
+
+    async function handleGroupRename(pathValue, newName) {
+      if (!newName || !newName.trim()) {
+        showMessage('请输入新的类目名称', 'error')
+        return
+      }
+      const trimmedName = newName.trim()
+      if (!/^[a-zA-Z0-9-_\u4e00-\u9fa5]{1,64}$/.test(trimmedName)) {
+        showMessage('名称格式无效，只能包含字母、数字、中划线、下划线和中文', 'error')
+        return
+      }
+      const currentSegments = pathValue.split('/')
+      const currentName = currentSegments[currentSegments.length - 1] || pathValue
+      if (trimmedName === currentName) {
+        groupManageEditingPath = null
+        renderGroupManageList()
+        showMessage('类目名称未变更', 'info')
+        return
+      }
+      groupManageActionLoading.add(pathValue)
+      renderGroupManageList()
+      try {
+        await apiCall('/groups/rename', {
+          method: 'PATCH',
+          body: JSON.stringify({ path: pathValue, newName: trimmedName })
+        })
+        showMessage('类目重命名成功')
+        groupManageEditingPath = null
+        await refreshGroupData()
+      } catch (error) {
+        console.error('重命名类目失败:', error)
+        showMessage(error?.message || '类目重命名失败', 'error')
+      } finally {
+        groupManageActionLoading.delete(pathValue)
+        renderGroupManageList()
+      }
+    }
+
+    async function handleGroupDelete(pathValue, displayName) {
+      const confirmed = window.confirm(`确认删除「${displayName}」吗？该操作不可撤销。`)
+      if (!confirmed) return
+      groupManageActionLoading.add(pathValue)
+      renderGroupManageList()
+      try {
+        await apiCall(`/groups?path=${encodeURIComponent(pathValue)}`, {
+          method: 'DELETE'
+        })
+        showMessage(`已删除 “${displayName}”`)
+        await refreshGroupData()
+      } catch (error) {
+        console.error('删除类目失败:', error)
+        showMessage(error?.message || '删除类目失败', 'error')
+      } finally {
+        groupManageActionLoading.delete(pathValue)
+        renderGroupManageList()
+      }
+    }
+
+    async function handleGroupStatusToggle(pathValue, displayName, nextEnabled) {
+      groupManageActionLoading.add(pathValue)
+      renderGroupManageList()
+      try {
+        const result = await apiCall('/groups/status', {
+          method: 'PATCH',
+          body: JSON.stringify({ path: pathValue, enabled: nextEnabled })
+        })
+        const finalEnabled = result?.enabled !== false
+        showMessage(`“${displayName}” 已${finalEnabled ? '启用' : '冻结'}`)
+        await refreshGroupData()
+      } catch (error) {
+        console.error('更新类目状态失败:', error)
+        showMessage(error?.message || '更新类目状态失败', 'error')
+      } finally {
+        groupManageActionLoading.delete(pathValue)
+        renderGroupManageList()
+      }
+    }
+
+    function handleGroupManageListClick(event) {
+      const actionBtn = event.target.closest('[data-action]')
+      if (!actionBtn) return
+      const item = actionBtn.closest('.group-manage-item')
+      if (!item) return
+      const pathValue = item.dataset.path
+      if (!pathValue) return
+      if (groupManageActionLoading.has(pathValue) && actionBtn.dataset.action !== 'rename-cancel') {
+        return
+      }
+
+      if (actionBtn.dataset.action === 'rename') {
+        groupManageEditingPath = pathValue
+        renderGroupManageList()
+        const selectorPath = pathValue.replace(/"/g, '\\"')
+        const nextRow = groupManageListEl?.querySelector(`[data-path="${selectorPath}"]`)
+        const input = nextRow?.querySelector('.group-manage-rename-input')
+        setTimeout(() => input?.focus(), 60)
+        return
+      }
+
+      if (actionBtn.dataset.action === 'rename-cancel') {
+        groupManageEditingPath = null
+        renderGroupManageList()
+        return
+      }
+
+      if (actionBtn.dataset.action === 'rename-confirm') {
+        const input = item.querySelector('.group-manage-rename-input')
+        const nextName = input ? input.value : ''
+        handleGroupRename(pathValue, nextName)
+        return
+      }
+
+      const safeName = item.querySelector('.group-manage-name')?.firstChild?.textContent?.trim() || pathValue
+
+      if (actionBtn.dataset.action === 'toggle') {
+        const currentNode = findNodeByPath(groupTreeState, pathValue)
+        const isCurrentlyEnabled = currentNode ? currentNode.enabled !== false : true
+        const nextEnabled = !isCurrentlyEnabled
+        handleGroupStatusToggle(pathValue, safeName, nextEnabled)
+        return
+      }
+
+      if (actionBtn.dataset.action === 'delete') {
+        handleGroupDelete(pathValue, safeName)
+      }
+    }
 
     async function renderGroupList(prompts) {
       try {
@@ -3533,7 +4075,7 @@
         const ensureDefaultNode = nodes => {
           const hasDefault = nodes.some(node => node.path === 'default')
           if (!hasDefault) {
-            nodes.unshift({ name: 'default', path: 'default', children: [] })
+            nodes.unshift({ name: 'default', path: 'default', children: [], enabled: true })
           }
         }
 
@@ -3566,10 +4108,17 @@
           const header = document.createElement('div')
           header.className = 'group-header'
           header.dataset.group = pathValue
-          header.style.paddingLeft = `${16 + depth * 18}px`
+          let headerPadding = 16 + depth * 18
+          if (node.enabled === false) {
+            headerPadding += 32
+          }
+          header.style.paddingLeft = `${headerPadding}px`
 
           const titleSpan = document.createElement('span')
           titleSpan.textContent = node.name
+          if (node.enabled === false) {
+            section.classList.add('disabled')
+          }
           header.appendChild(titleSpan)
 
           const headerActions = document.createElement('div')
@@ -3649,6 +4198,9 @@
         const fragment = document.createDocumentFragment()
         groupTree.forEach(node => renderNode(node, fragment, 0))
         container.appendChild(fragment)
+        if (groupModalActiveTab === 'manage') {
+          renderGroupManageList()
+        }
       } catch (error) {
         console.error('渲染分组列表失败:', error)
       }
@@ -4108,19 +4660,19 @@
     function toggleNewFolderModal(show) {
       const modal = document.getElementById('newFolderModal')
       const input = document.getElementById('newFolderName')
-      
-      if (typeof show === 'boolean') {
-        modal.classList.toggle('hidden', !show)
-      } else {
-        modal.classList.toggle('hidden')
-      }
+      const shouldShow = typeof show === 'boolean' ? show : modal.classList.contains('hidden')
+      modal.classList.toggle('hidden', !shouldShow)
 
-      if (!modal.classList.contains('hidden')) {
-        setTimeout(() => input?.focus(), 100)
+      if (shouldShow) {
         document.body.style.overflow = 'hidden'
+        if (input) input.value = ''
+        resetGroupManageState()
+        setGroupModalTab('create')
       } else {
         document.body.style.overflow = ''
         if (input) input.value = ''
+        groupManageEditingPath = null
+        groupManageActionLoading.clear()
       }
     }
 
@@ -4152,12 +4704,14 @@
           body: JSON.stringify({ name: folderName })
         })
         
-        showMessage('目录创建成功')
+        showMessage('类目创建成功')
         toggleNewFolderModal(false)
-        loadPrompts()
+        const searchInput = document.getElementById('searchInput')
+        const searchValue = searchInput ? searchInput.value : ''
+        await loadPrompts(searchValue)
       } catch (error) {
         console.error('创建目录失败:', error)
-        showMessage(error.message || '创建目录失败', 'error')
+        showMessage(error.message || '创建类目失败', 'error')
       }
     }
 
@@ -4221,6 +4775,26 @@
         promptGroupCascaderEl = document.getElementById('promptGroupCascader')
         promptGroupSearchResultsEl = document.getElementById('promptGroupSearchResults')
         promptGroupEmptyEl = document.getElementById('promptGroupEmpty')
+        groupManageListEl = document.getElementById('groupManageList')
+        groupManageEmptyEl = document.getElementById('groupManageEmpty')
+        groupManageSearchInputEl = document.getElementById('groupManageSearch')
+        const groupModalTabs = document.querySelectorAll('.group-modal-tab')
+        groupModalTabs.forEach(tabBtn => {
+          tabBtn.addEventListener('click', () => setGroupModalTab(tabBtn.dataset.tab))
+        })
+        const groupManageRefreshBtn = document.getElementById('groupManageRefreshBtn')
+        if (groupManageSearchInputEl) {
+          groupManageSearchInputEl.addEventListener('input', handleGroupManageSearchInput)
+        }
+        if (groupManageRefreshBtn) {
+          groupManageRefreshBtn.addEventListener('click', () => {
+            groupManageEditingPath = null
+            refreshGroupData()
+          })
+        }
+        if (groupManageListEl) {
+          groupManageListEl.addEventListener('click', handleGroupManageListClick)
+        }
         updatePromptGroupDisplay()
 
         if (argumentTypeInput && !argumentTypeInput.value) {

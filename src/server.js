@@ -24,6 +24,8 @@ app.get(config.adminPath, (req, res) => {
 
 // 获取prompts目录路径
 const promptsDir = config.getPromptsDir();
+const GROUP_META_FILENAME = '.groupmeta.json';
+const GROUP_NAME_REGEX = /^[a-zA-Z0-9-_\u4e00-\u9fa5]{1,64}$/;
 
 function generateUniqueId(relativePath) {
   const hash = crypto.createHash('sha256');
@@ -215,6 +217,66 @@ app.post('/api/login', (req, res) => {
   res.json({ token: admin.token });
 });
 
+function isValidGroupName(name) {
+  return GROUP_NAME_REGEX.test(name);
+}
+
+function validateGroupPath(relativePath) {
+  if (!relativePath || typeof relativePath !== 'string') {
+    return null;
+  }
+  const segments = relativePath.split('/').filter(Boolean);
+  if (!segments.length) {
+    return null;
+  }
+  for (const segment of segments) {
+    if (!isValidGroupName(segment)) {
+      return null;
+    }
+  }
+  return segments;
+}
+
+function resolveGroupDir(relativePath) {
+  const segments = validateGroupPath(relativePath);
+  if (!segments) return null;
+  const targetPath = path.resolve(promptsDir, ...segments);
+  const normalizedPromptsDir = path.resolve(promptsDir);
+  if (!targetPath.startsWith(normalizedPromptsDir)) {
+    return null;
+  }
+  return { dir: targetPath, segments };
+}
+
+function getGroupMetaPath(dir) {
+  return path.join(dir, GROUP_META_FILENAME);
+}
+
+function readGroupMeta(dir) {
+  try {
+    const metaPath = getGroupMetaPath(dir);
+    if (!fs.existsSync(metaPath)) {
+      return { enabled: true };
+    }
+    const raw = fs.readFileSync(metaPath, 'utf8');
+    const data = JSON.parse(raw);
+    return {
+      enabled: data.enabled !== false
+    };
+  } catch (error) {
+    logger.warn('读取类目元数据失败:', error);
+    return { enabled: true };
+  }
+}
+
+function writeGroupMeta(dir, meta = {}) {
+  const metaPath = getGroupMetaPath(dir);
+  const data = {
+    enabled: meta.enabled !== false
+  };
+  fs.writeFileSync(metaPath, JSON.stringify(data, null, 2), 'utf8');
+}
+
 // 获取所有分组（直接从目录读取）
 function buildGroupTree(baseDir, relativePath = '') {
   const nodes = [];
@@ -226,10 +288,12 @@ function buildGroupTree(baseDir, relativePath = '') {
       const childRelativePath = relativePath ? `${relativePath}/${entry.name}` : entry.name;
       const childDir = path.join(baseDir, entry.name);
       const children = buildGroupTree(childDir, childRelativePath);
+      const meta = readGroupMeta(childDir);
       nodes.push({
         name: entry.name,
         path: childRelativePath,
-        children
+        children,
+        enabled: meta.enabled !== false
       });
     }
   } catch (error) {
@@ -244,7 +308,7 @@ app.get('/api/groups', adminAuthMiddleware, (req, res) => {
     const tree = buildGroupTree(promptsDir);
     const hasDefault = tree.some(node => node.path === 'default');
     if (!hasDefault) {
-      tree.unshift({ name: 'default', path: 'default', children: [] });
+      tree.unshift({ name: 'default', path: 'default', children: [], enabled: true });
     }
     res.json(tree);
   } catch (error) {
@@ -407,7 +471,7 @@ app.post('/api/groups', adminAuthMiddleware, (req, res) => {
     }
     
     // 验证名称格式
-    if (!/^[a-zA-Z0-9-_\u4e00-\u9fa5]{1,64}$/.test(name)) {
+    if (!isValidGroupName(name)) {
       return res.status(400).json({ error: '名称格式无效，只能包含字母、数字、中划线、下划线和中文' });
     }
     
@@ -423,6 +487,110 @@ app.post('/api/groups', adminAuthMiddleware, (req, res) => {
     
     res.json({ message: '分组创建成功' });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.patch('/api/groups/rename', adminAuthMiddleware, (req, res) => {
+  try {
+    const { path: groupPath, newName } = req.body || {};
+    if (!groupPath || !newName) {
+      return res.status(400).json({ error: '分组路径和新名称是必需的' });
+    }
+    if (!isValidGroupName(newName)) {
+      return res.status(400).json({ error: '名称格式无效，只能包含字母、数字、中划线、下划线和中文' });
+    }
+    if (groupPath === 'default') {
+      return res.status(400).json({ error: '默认分组不允许重命名' });
+    }
+
+    const resolved = resolveGroupDir(groupPath);
+    if (!resolved) {
+      return res.status(400).json({ error: '无效的分组路径' });
+    }
+    const { dir: oldDir, segments } = resolved;
+    if (!fs.existsSync(oldDir) || !fs.lstatSync(oldDir).isDirectory()) {
+      return res.status(404).json({ error: '分组不存在' });
+    }
+
+    const parentSegments = segments.slice(0, -1);
+    const oldName = segments[segments.length - 1];
+    if (newName === oldName) {
+      return res.json({ message: '分组名称未变更', path: groupPath });
+    }
+    const newSegments = [...parentSegments, newName];
+    const newDir = path.resolve(promptsDir, ...newSegments);
+    if (fs.existsSync(newDir)) {
+      return res.status(400).json({ error: '目标名称已存在，请选择其他名称' });
+    }
+
+    fse.moveSync(oldDir, newDir);
+
+    res.json({ message: '分组重命名成功', path: newSegments.join('/') });
+  } catch (error) {
+    logger.error('分组重命名失败:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.patch('/api/groups/status', adminAuthMiddleware, (req, res) => {
+  try {
+    const { path: groupPath, enabled } = req.body || {};
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ error: '状态值无效' });
+    }
+    if (!groupPath) {
+      return res.status(400).json({ error: '分组路径是必需的' });
+    }
+
+    const resolved = resolveGroupDir(groupPath);
+    if (!resolved) {
+      return res.status(400).json({ error: '无效的分组路径' });
+    }
+    const { dir } = resolved;
+    if (!fs.existsSync(dir) || !fs.lstatSync(dir).isDirectory()) {
+      return res.status(404).json({ error: '分组不存在' });
+    }
+
+    writeGroupMeta(dir, { enabled });
+
+    res.json({ message: '分组状态已更新', enabled });
+  } catch (error) {
+    logger.error('更新分组状态失败:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/groups', adminAuthMiddleware, (req, res) => {
+  try {
+    const groupPath = req.query.path;
+    if (!groupPath) {
+      return res.status(400).json({ error: '分组路径是必需的' });
+    }
+    if (groupPath === 'default') {
+      return res.status(400).json({ error: '默认分组不允许删除' });
+    }
+
+    const resolved = resolveGroupDir(groupPath);
+    if (!resolved) {
+      return res.status(400).json({ error: '无效的分组路径' });
+    }
+    const { dir } = resolved;
+    if (!fs.existsSync(dir) || !fs.lstatSync(dir).isDirectory()) {
+      return res.status(404).json({ error: '分组不存在' });
+    }
+
+    const entries = fs.readdirSync(dir, { withFileTypes: true })
+      .filter(entry => entry.name !== GROUP_META_FILENAME && !entry.name.startsWith('.'));
+
+    if (entries.length > 0) {
+      return res.status(400).json({ error: '目录非空，请先移除其下的Prompt或子目录' });
+    }
+
+    fse.removeSync(dir);
+    res.json({ message: '分组删除成功' });
+  } catch (error) {
+    logger.error('删除分组失败:', error);
     res.status(500).json({ error: error.message });
   }
 });
