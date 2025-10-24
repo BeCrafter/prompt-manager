@@ -253,6 +253,34 @@
     .btn-outline:hover {
       background: var(--light);
     }
+
+    .btn-light {
+      background: white;
+      border: 1px solid var(--border);
+      color: var(--dark);
+    }
+
+    .btn-light:hover {
+      background: var(--light);
+    }
+
+    .btn-dark {
+      background: var(--dark);
+      color: white;
+    }
+
+    .btn-dark:hover {
+      background: #000;
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #b71f31;
+    }
     
     .btn-sm {
       padding: 6px 12px;
@@ -1976,6 +2004,31 @@
   <!-- 消息提示 -->
   <div id="toastContainer" class="toast-container"></div>
 
+  <!-- 删除 Prompt 弹窗 -->
+  <div id="deletePromptModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="deletePromptTitle">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="deletePromptTitle">删除 Prompt</h3>
+          <button type="button" class="modal-close" id="deletePromptCloseBtn" aria-label="关闭">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" stroke-width="1.67" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size: 14px; color: var(--gray); line-height: 1.6;">
+            确认删除 <span id="deletePromptName" style="color: var(--dark); font-weight: 600;"></span> 吗？该操作不可撤销。
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" id="deletePromptCancelBtn">取消</button>
+          <button type="button" class="btn btn-danger" id="deletePromptConfirmBtn">删除</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 参数编辑弹窗 -->
   <div id="argumentModal" class="argument-modal hidden" role="dialog" aria-modal="true" aria-labelledby="argumentModalTitle">
     <div class="argument-modal-dialog">
@@ -2044,6 +2097,23 @@
     let argumentRequiredInput = null
     let argumentDefaultInput = null
     let argumentDescriptionInput = null
+    let deletePromptModalEl = null
+    let deletePromptNameEl = null
+    let deletePromptConfirmBtn = null
+    let deletePromptCancelBtn = null
+    let deletePromptCloseBtn = null
+    let pendingDeletePromptName = null
+
+    function refreshModalOpenState() {
+      const hasOpenModal =
+        (argumentModalEl && !argumentModalEl.classList.contains('hidden')) ||
+        (deletePromptModalEl && !deletePromptModalEl.classList.contains('hidden'))
+      if (hasOpenModal) {
+        document.body.classList.add('modal-open')
+      } else {
+        document.body.classList.remove('modal-open')
+      }
+    }
 
     // API 基础配置
     const API_BASE = '/api'
@@ -2562,6 +2632,38 @@
       renderArgumentsEditor()
     }
 
+    function openDeletePromptModal(promptName) {
+      if (!deletePromptModalEl) return
+      pendingDeletePromptName = promptName
+      if (deletePromptNameEl) {
+        deletePromptNameEl.textContent = `“${promptName}”`
+      }
+      deletePromptModalEl.classList.remove('hidden')
+      deletePromptModalEl.setAttribute('aria-hidden', 'false')
+      refreshModalOpenState()
+      if (deletePromptConfirmBtn) {
+        requestAnimationFrame(() => deletePromptConfirmBtn.focus())
+      }
+    }
+
+    function closeDeletePromptModal() {
+      if (!deletePromptModalEl) return
+      deletePromptModalEl.classList.add('hidden')
+      deletePromptModalEl.setAttribute('aria-hidden', 'true')
+      refreshModalOpenState()
+      pendingDeletePromptName = null
+    }
+
+    async function confirmDeletePrompt() {
+      if (!pendingDeletePromptName) {
+        closeDeletePromptModal()
+        return
+      }
+      const promptToDelete = pendingDeletePromptName
+      closeDeletePromptModal()
+      await deletePromptByName(promptToDelete)
+    }
+
     function openArgumentModal(index = null) {
       if (!argumentModalEl) return
       editingArgumentIndex = Number.isInteger(index) && index >= 0 ? index : null
@@ -2590,7 +2692,7 @@
 
       argumentModalEl.classList.remove('hidden')
       argumentModalEl.setAttribute('aria-hidden', 'false')
-      document.body.classList.add('modal-open')
+      refreshModalOpenState()
 
       requestAnimationFrame(() => {
         if (argumentNameInput) {
@@ -2604,7 +2706,7 @@
       if (!argumentModalEl) return
       argumentModalEl.classList.add('hidden')
       argumentModalEl.setAttribute('aria-hidden', 'true')
-      document.body.classList.remove('modal-open')
+      refreshModalOpenState()
       editingArgumentIndex = null
 
       if (argumentFormEl) {
@@ -2869,13 +2971,7 @@
             deleteBtn.addEventListener('click', (e) => {
               e.stopPropagation();
               e.preventDefault();
-              if (confirm(`确定要删除 "${prompt.name}" 吗？`)) {
-                deletePromptByName(prompt.name);
-                // 重新加载列表，传递搜索参数
-                const searchInput = document.getElementById('searchInput');
-                const searchValue = searchInput ? searchInput.value : '';
-                loadPrompts(searchValue);
-              }
+              openDeletePromptModal(prompt.name);
             });
           }
         }
@@ -3297,6 +3393,11 @@
         argumentRequiredInput = document.getElementById('argumentRequiredInput')
         argumentDefaultInput = document.getElementById('argumentDefaultInput')
         argumentDescriptionInput = document.getElementById('argumentDescriptionInput')
+        deletePromptModalEl = document.getElementById('deletePromptModal')
+        deletePromptNameEl = document.getElementById('deletePromptName')
+        deletePromptConfirmBtn = document.getElementById('deletePromptConfirmBtn')
+        deletePromptCancelBtn = document.getElementById('deletePromptCancelBtn')
+        deletePromptCloseBtn = document.getElementById('deletePromptCloseBtn')
 
         if (argumentTypeInput && !argumentTypeInput.value) {
           argumentTypeInput.value = 'string'
@@ -3334,9 +3435,32 @@
           })
         }
 
+        if (deletePromptConfirmBtn) {
+          deletePromptConfirmBtn.addEventListener('click', confirmDeletePrompt)
+        }
+        const closeDeleteHandlers = [deletePromptCancelBtn, deletePromptCloseBtn]
+        closeDeleteHandlers.forEach(btn => {
+          if (btn) {
+            btn.addEventListener('click', closeDeletePromptModal)
+          }
+        })
+        if (deletePromptModalEl) {
+          deletePromptModalEl.addEventListener('click', (event) => {
+            if (event.target === deletePromptModalEl) {
+              closeDeletePromptModal()
+            }
+          })
+        }
+
         document.addEventListener('keydown', (event) => {
-          if (event.key === 'Escape' && argumentModalEl && !argumentModalEl.classList.contains('hidden')) {
-            closeArgumentModal()
+          if (event.key === 'Escape') {
+            if (argumentModalEl && !argumentModalEl.classList.contains('hidden')) {
+              closeArgumentModal()
+              return
+            }
+            if (deletePromptModalEl && !deletePromptModalEl.classList.contains('hidden')) {
+              closeDeletePromptModal()
+            }
           }
         })
 
