@@ -623,23 +623,59 @@
     }
     
     .group-section {
-      margin-bottom: 8px;
+      margin: 10px 12px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 0, 0, 0.04);
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 249, 250, 0.85));
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.05);
+      position: relative;
+      backdrop-filter: blur(4px);
     }
     
     .group-header {
-      padding: 12px 15px;
+      padding: 14px 18px;
       font-size: 14px;
-      font-weight: 500;
+      font-weight: 520;
       color: var(--dark);
       display: flex;
       align-items: center;
       justify-content: space-between;
       cursor: pointer;
-      border-bottom: 1px solid var(--border);
+      position: relative;
+      transition: transform 0.24s ease, box-shadow 0.24s ease, filter 0.24s ease;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    }
+    
+    .group-section[data-depth="0"] .group-header {
+      background: linear-gradient(120deg, rgba(57, 57, 57, 0.16), rgba(57, 57, 57, 0.05));
+      color: #1f1f1f;
+    }
+    
+    .group-section[data-depth="1"] .group-header {
+      background: linear-gradient(120deg, rgba(0, 102, 255, 0.2), rgba(0, 102, 255, 0.06));
+    }
+    
+    .group-section[data-depth="2"] .group-header {
+      background: linear-gradient(120deg, rgba(0, 167, 173, 0.18), rgba(0, 167, 173, 0.05));
+    }
+    
+    .group-section[data-depth="3"] .group-header {
+      background: linear-gradient(120deg, rgba(110, 95, 255, 0.18), rgba(110, 95, 255, 0.05));
+      background: rgba(0, 102, 255, 0.12);
+    }
+    
+    
+    .group-section[data-depth="4"] .group-header,
+    .group-section[data-depth="5"] .group-header,
+    .group-section[data-depth="6"] .group-header {
+      background: linear-gradient(120deg, rgba(156, 119, 255, 0.16), rgba(156, 119, 255, 0.05));
     }
     
     .group-header:hover {
-      background: #f0f0f0;
+      transform: translateX(2px);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+      filter: brightness(1.05);
     }
     
     
@@ -647,6 +683,7 @@
     .group-content {
       overflow: hidden;
       transition: max-height 0.3s ease-out;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(248, 249, 250, 0.85));
     }
     
     .group-content.collapsed {
@@ -664,14 +701,17 @@
       display: flex;
       flex-direction: column;
       margin-top: 4px;
+      padding: 4px 0 10px;
+      background: linear-gradient(180deg, rgba(248, 249, 250, 0.75), rgba(255, 255, 255, 0.75));
     }
     
     .group-count {
-      background: #9ea2a6;
+      background: rgba(255, 255, 255, 0.25);
       color: white;
       font-size: 11px;
-      padding: 2px 6px;
+      padding: 2px 8px;
       border-radius: 10px;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
     }
     
     .prompt-list {
