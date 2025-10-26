@@ -37,13 +37,20 @@ function generateUniqueId(relativePath) {
 function getPromptsFromFiles() {
   const prompts = [];
 
-  function traverseDir(currentPath) {
+  function traverseDir(currentPath, relativeDir = '', inheritedEnabled = true) {
+    let currentEnabled = inheritedEnabled;
+    if (relativeDir) {
+      const meta = readGroupMeta(currentPath);
+      currentEnabled = currentEnabled && (meta.enabled !== false);
+    }
+
     try {
       const entries = fs.readdirSync(currentPath, { withFileTypes: true });
       for (const entry of entries) {
         const fullPath = path.join(currentPath, entry.name);
         if (entry.isDirectory()) {
-          traverseDir(fullPath);
+          const childRelativePath = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
+          traverseDir(fullPath, childRelativePath, currentEnabled);
         } else if (entry.isFile() && entry.name.endsWith('.yaml')) {
           try {
             const fileContent = fs.readFileSync(fullPath, 'utf8');
@@ -51,9 +58,9 @@ function getPromptsFromFiles() {
             if (prompt && prompt.name) {
               const relativePath = path.relative(promptsDir, fullPath);
               const normalizedRelativePath = relativePath.split(path.sep).join('/');
-              const relativeDir = path.dirname(normalizedRelativePath);
-              const topLevelGroup = relativeDir && relativeDir !== '.' ? relativeDir.split('/')[0] : (prompt.group || 'default');
-              const groupPath = relativeDir && relativeDir !== '.' ? relativeDir : topLevelGroup;
+              const relativeDirForFile = path.dirname(normalizedRelativePath);
+              const topLevelGroup = relativeDirForFile && relativeDirForFile !== '.' ? relativeDirForFile.split('/')[0] : (prompt.group || 'default');
+              const groupPath = relativeDirForFile && relativeDirForFile !== '.' ? relativeDirForFile : topLevelGroup;
               prompts.push({
                 ...prompt,
                 uniqueId: generateUniqueId(prompt.name + '.yaml'),
@@ -61,6 +68,7 @@ function getPromptsFromFiles() {
                 relativePath: normalizedRelativePath,
                 group: topLevelGroup,
                 groupPath,
+                groupEnabled: currentEnabled
               });
             }
           } catch (error) {
@@ -139,7 +147,12 @@ app.get('/version', (req, res) => {
 app.get('/prompts', (req, res) => {
   try {
     const prompts = getPromptsFromFiles();
-    res.json(prompts);
+    const filtered = prompts.filter(prompt => {
+      const groupActive = prompt.groupEnabled !== false;
+      const promptActive = prompt.enabled === true;
+      return groupActive && promptActive;
+    });
+    res.json(filtered);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
