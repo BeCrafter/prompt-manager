@@ -141,17 +141,65 @@ function ensureTray() {
     return tray;
   }
 
-  const iconPath = path.join(__dirname, 'assets', 'icon.png');
-  let icon = nativeImage.createFromPath(iconPath);
-  if (process.platform === 'darwin') {
-    icon = icon.resize({ width: 18, height: 18 });
-    icon.setTemplateImage(true);
-  }
+  // 尝试多种可能的图标路径
+  const possiblePaths = [
+    path.join(__dirname, 'assets', 'icon.png'),
+    path.join(process.resourcesPath, 'assets', 'icon.png'),
+    path.join(__dirname, '..', 'assets', 'icon.png')
+  ];
 
-  tray = new Tray(icon);
-  tray.setToolTip('Prompt Server');
-  refreshTrayMenu();
-  return tray;
+  let iconPath = null;
+  let icon = null;
+  
+  console.log('App is packaged:', app.isPackaged);
+  console.log('__dirname:', __dirname);
+  console.log('process.resourcesPath:', process.resourcesPath);
+  
+  for (const possiblePath of possiblePaths) {
+    console.log('Checking icon path:', possiblePath);
+    console.log('File exists:', fs.existsSync(possiblePath));
+    if (fs.existsSync(possiblePath)) {
+      iconPath = possiblePath;
+      break;
+    }
+  }
+  
+  if (!iconPath) {
+    console.error('Icon file not found in any of the expected locations');
+    // 创建一个简单的文本托盘作为后备
+    tray = new Tray(nativeImage.createEmpty());
+    tray.setToolTip('Prompt Server - Icon Missing');
+    refreshTrayMenu();
+    return tray;
+  }
+  
+  console.log('Attempting to load icon from:', iconPath);
+  
+  try {
+    icon = nativeImage.createFromPath(iconPath);
+    console.log('Icon loaded successfully');
+    console.log('Icon is empty:', icon.isEmpty());
+    console.log('Icon size:', icon.getSize());
+    
+    if (process.platform === 'darwin') {
+      icon = icon.resize({ width: 18, height: 18 });
+      icon.setTemplateImage(true);
+      console.log('Icon resized and set as template image');
+    }
+
+    tray = new Tray(icon);
+    tray.setToolTip('Prompt Server');
+    console.log('Tray created successfully');
+    refreshTrayMenu();
+    return tray;
+  } catch (error) {
+    console.error('Failed to create tray:', error);
+    // 创建一个简单的文本托盘作为后备
+    tray = new Tray(nativeImage.createEmpty());
+    tray.setToolTip('Prompt Server - Error');
+    refreshTrayMenu();
+    return tray;
+  }
 }
 
 function refreshTrayMenu() {
@@ -412,6 +460,11 @@ async function showAboutDialog() {
 }
 
 app.whenReady().then(async () => {
+  console.log('App is packaged:', app.isPackaged);
+  console.log('App data path:', app.getPath('userData'));
+  console.log('Resources path:', process.resourcesPath);
+  console.log('__dirname:', __dirname);
+  
   Menu.setApplicationMenu(null);
   if (process.platform === 'darwin') {
     app.dock.hide();
