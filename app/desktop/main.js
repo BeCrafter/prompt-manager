@@ -220,7 +220,7 @@ function refreshTrayMenu() {
     {
       label: '复制服务地址',
       enabled: serviceState === 'running',
-      click: () => clipboard.writeText(address)
+      click: () => clipboard.writeText(`${address}/mcp`)
     },
     {
       label: '打开管理后台',

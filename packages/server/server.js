@@ -7,6 +7,11 @@ import yaml from 'js-yaml';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { config } from './config.js';
 import { logger } from './logger.js';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { searchPrompts, getPrompt } from './mcp.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -781,6 +786,9 @@ app.post('/process', async (req, res) => {
 
 let serverInstance = null;
 let serverStartingPromise = null;
+let mcpServerInstance = null;
+let mcpHttpTransport = null;
+const mcpTransports = new Map();
 
 export function getServerAddress() {
   return `http://127.0.0.1:${config.getPort()}`;
@@ -834,6 +842,10 @@ export async function startServer(options = {}) {
 
   try {
     serverInstance = await serverStartingPromise;
+    
+    // 启动MCP服务器
+    startMCPServer();
+    
     return serverInstance;
   } finally {
     serverStartingPromise = null;
@@ -866,6 +878,24 @@ export async function stopServer() {
   });
 
   serverInstance = null;
+  
+  // 停止MCP服务器
+  if (mcpServerInstance) {
+    mcpServerInstance.close();
+    mcpServerInstance = null;
+  }
+  
+  // 关闭所有MCP传输
+  for (const transport of mcpTransports.values()) {
+    transport.close();
+  }
+  mcpTransports.clear();
+  
+  // 关闭MCP HTTP传输
+  if (mcpHttpTransport) {
+    mcpHttpTransport.close();
+    mcpHttpTransport = null;
+  }
 }
 
 export function getServerState() {
@@ -875,6 +905,120 @@ export function getServerState() {
     address: getServerAddress(),
     adminPath: config.adminPath
   };
+}
+
+// 启动MCP服务器
+async function startMCPServer() {
+  try {
+    // 创建MCP服务器
+    mcpServerInstance = new Server({
+      name: 'Prompt Server MCP',
+      version: '1.0.0'
+    }, {
+      capabilities: {
+        tools: {}
+      }
+    });
+
+    // 注册search_prompts工具
+    mcpServerInstance.setRequestHandler(ListToolsRequestSchema, async () => {
+      return {
+        tools: [
+          {
+            name: 'search_prompts',
+            description: 'Search for enabled prompts in the specified directory',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                name: {
+                  type: 'string',
+                  description: 'Optional name filter for prompts'
+                }
+              }
+            }
+          },
+          {
+            name: 'get_prompt',
+            description: 'Get the specific content of a prompt by its identifier',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                name: {
+                  type: 'string',
+                  description: 'Required prompt identifier'
+                }
+              },
+              required: ['name']
+            }
+          }
+        ]
+      };
+    });
+
+    // 注册工具处理器
+    mcpServerInstance.setRequestHandler(CallToolRequestSchema, async (request) => {
+      const { name, arguments: args } = request.params;
+      
+      if (name === 'search_prompts') {
+        const result = await searchPrompts(args);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result) }],
+          structuredContent: result
+        };
+      } else if (name === 'get_prompt') {
+        const result = await getPrompt(args);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result) }],
+          structuredContent: result
+        };
+      } else {
+        throw new Error(`Unknown tool: ${name}`);
+      }
+    });
+
+    // 启动Stdio传输
+    const stdioTransport = new StdioServerTransport();
+    await mcpServerInstance.connect(stdioTransport);
+    
+    // 添加MCP HTTP端点
+    app.post('/mcp', express.json(), async (req, res) => {
+      try {
+        // 创建新的HTTP传输实例
+        mcpHttpTransport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: undefined,
+          enableJsonResponse: true
+        });
+        
+        // 清理传输实例
+        res.on('close', () => {
+          mcpHttpTransport.close();
+          mcpServerInstance.close();
+        });
+        
+        // 连接服务器到HTTP传输
+        await mcpServerInstance.connect(mcpHttpTransport);
+        
+        // 处理请求
+        await mcpHttpTransport.handleRequest(req, res, req.body);
+      } catch (error) {
+        logger.error('MCP HTTP请求处理失败:', error.message);
+        if (!res.headersSent) {
+          res.status(500).json({ 
+            jsonrpc: '2.0', 
+            error: { 
+              code: -32603, 
+              message: 'Internal error' 
+            } 
+          });
+        }
+      }
+    });
+    
+    logger.info(`MCP服务器已启动  http://localhost:${config.getPort()}/mcp   端点`);
+  } catch (error) {
+    logger.error('启动MCP服务器失败:', error.message);
+    mcpServerInstance = null;
+  }
 }
 
 const isDirectRun = (() => {
