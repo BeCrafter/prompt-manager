@@ -119,6 +119,76 @@ function getPromptsFromFiles() {
   return prompts;
 }
 
+/**
+ * 计算搜索关键词与prompt的相似度得分
+ * @param {string} searchTerm - 搜索关键词
+ * @param {Object} prompt - prompt对象
+ * @returns {number} 相似度得分 (0-100)
+ */
+function calculateSimilarityScore(searchTerm, prompt) {
+  const searchLower = searchTerm.toLowerCase();
+  let totalScore = 0;
+  
+  // 搜索字段权重配置（专注于内容搜索，不包含ID检索）
+  const fieldWeights = {
+    name: 60,         // 名称权重高，是主要匹配字段
+    description: 40   // 描述权重适中，是辅助匹配字段
+  };
+  
+  // 计算name匹配得分
+  if (prompt.name) {
+    const nameScore = getStringMatchScore(searchLower, prompt.name.toLowerCase());
+    totalScore += nameScore * fieldWeights.name;
+  }
+  
+  // 计算description匹配得分
+  if (prompt.description) {
+    const descScore = getStringMatchScore(searchLower, prompt.description.toLowerCase());
+    totalScore += descScore * fieldWeights.description;
+  }
+  
+  // 标准化得分到0-100范围
+  const maxPossibleScore = Object.values(fieldWeights).reduce((sum, weight) => sum + weight, 0);
+  return Math.round((totalScore / maxPossibleScore) * 100);
+}
+
+/**
+ * 计算两个字符串的匹配得分
+ * @param {string} search - 搜索词 (已转小写)
+ * @param {string} target - 目标字符串 (已转小写)
+ * @returns {number} 匹配得分 (0-1)
+ */
+function getStringMatchScore(search, target) {
+  if (!search || !target) return 0;
+  
+  // 完全匹配得分最高
+  if (target === search) return 1.0;
+  
+  // 完全包含得分较高
+  if (target.includes(search)) return 0.8;
+  
+  // 部分词匹配
+  const searchWords = search.split(/\s+/).filter(word => word.length > 0);
+  const targetWords = target.split(/\s+/).filter(word => word.length > 0);
+  
+  let matchedWords = 0;
+  for (const searchWord of searchWords) {
+    for (const targetWord of targetWords) {
+      if (targetWord.includes(searchWord) || searchWord.includes(targetWord)) {
+        matchedWords++;
+        break;
+      }
+    }
+  }
+  
+  if (searchWords.length > 0) {
+    const wordMatchRatio = matchedWords / searchWords.length;
+    return wordMatchRatio * 0.6; // 部分词匹配得分
+  }
+  
+  return 0;
+}
+
 // 获取服务器信息
 app.get('/', (req, res) => {
   res.json({
@@ -181,12 +251,53 @@ app.get('/version', (req, res) => {
 app.get('/prompts', (req, res) => {
   try {
     const prompts = getPromptsFromFiles();
+
+    // 过滤出启用的提示词
     const filtered = prompts.filter(prompt => {
       const groupActive = prompt.groupEnabled !== false;
       const promptActive = prompt.enabled === true;
       return groupActive && promptActive;
     });
-    res.json(filtered);
+
+    // 判断是否有搜索参数，且搜索参数名为search
+    if (req.query.search) {
+      const search = req.query.search;
+
+      // 实现相似度匹配算法
+      const searchResults = filtered.map(prompt => {
+        const score = calculateSimilarityScore(search, prompt);
+        return {
+          prompt: {
+            id: prompt.uniqueId,
+            name: prompt.name,
+            description: prompt.description || `Prompt: ${prompt.name}`,
+            metadata: {
+              // fileName: prompt.fileName,
+              fullPath: prompt.relativePath
+            }
+          },
+          score: score
+        };
+      })
+      .filter(result => result.score > 0) // 只返回有匹配的结果
+      .sort((a, b) => b.score - a.score); // 按相似度得分降序排列
+
+      // 只返回prompt字段
+      res.json(searchResults.map(result => result.prompt));
+    } else {
+      // 无搜索参数时，返回精简信息
+      const simplifiedPrompts = filtered.map(prompt => ({
+        id: prompt.uniqueId,
+        name: prompt.name,
+        description: prompt.description || `Prompt: ${prompt.name}`,
+        metadata: {
+          // fileName: prompt.fileName,
+          fullPath: prompt.relativePath
+        }
+      }));
+
+      res.json(simplifiedPrompts);
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
