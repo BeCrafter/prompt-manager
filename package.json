@@ -6,7 +6,7 @@
     "access": "public"
   },
   "type": "module",
-  "main": "src/server.js",
+  "main": "packages/server/server.js",
   "bin": {
     "prompt-server": "bin/prompt-server"
   },
@@ -19,12 +19,15 @@
     "url": "https://github.com/BeCrafter/prompt-server/issues"
   },
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
-    "test": "node src/server.js",
-    "help": "node src/server.js --help",
-    "version": "node src/server.js --version",
-    "admin": "ADMIN_ENABLE=true ADMIN_USERNAME=admin ADMIN_PASSWORD=admin123 node src/server.js -p ./prompts"
+    "start": "node packages/server/server.js",
+    "dev": "node --watch packages/server/server.js",
+    "test": "node packages/server/server.js",
+    "help": "node packages/server/server.js --help",
+    "version": "node packages/server/server.js --version",
+    "admin": "ADMIN_ENABLE=true ADMIN_USERNAME=admin ADMIN_PASSWORD=admin123 node packages/server/server.js -p ./examples/prompts",
+    "desktop:dev": "npm run dev --prefix app/desktop",
+    "desktop:build": "npm run build --prefix app/desktop",
+    "postinstall": "node ./scripts/postinstall.js"
   },
   "keywords": [
     "prompt",

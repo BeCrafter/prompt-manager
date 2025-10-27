@@ -1,31 +1,32 @@
 name: code-review
-description: "帮助进行代码审查的AI助手"
+description: 帮助进行代码审查的AI助手
 messages:
-  - role: "user"
+  - role: user
     content:
       text: |
         你是一个专业的代码审查助手。请审查以下代码：
-        
+
         代码语言: {{language}}
         代码内容:
         ```
         {{code}}
         ```
-        
+
         请从以下几个方面进行审查：
         1. 代码质量和可读性
         2. 潜在的安全问题
         3. 性能优化建议
         4. 最佳实践建议
         5. 潜在的bug
-        
+
         请提供具体的改进建议和示例代码。
 arguments:
-  - name: "language"
-    description: "编程语言"
-    type: "string"
+  - name: language
+    description: 编程语言
+    type: string
     required: true
-  - name: "code"
-    description: "要审查的代码"
-    type: "string"
+  - name: code
+    description: 要审查的代码
+    type: string
     required: true
+enabled: false

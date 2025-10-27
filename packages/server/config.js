@@ -1,10 +1,13 @@
 import fs from 'fs-extra';
 import path from 'path';
+import os from 'os';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const DEFAULT_HOME_DIR = path.join(os.homedir(), '.prompt-manager');
+const DEFAULT_PROMPTS_DIR = path.join(DEFAULT_HOME_DIR, 'prompts');
 
 /**
  * 解析命令行参数
@@ -44,17 +47,17 @@ function showHelp() {
 MCP Prompt Server - 智能 Prompt 管理服务器
 
 用法:
-  node src/server.js [选项]
+  node packages/server/server.js [选项]
 
 选项:
   -p, --prompts-dir <目录>    指定 prompts 文件所在目录
-  -P, --port <端口>           指定服务器端口 (默认: 3000)
+  -P, --port <端口>           指定服务器端口 (默认: 5621)
   -h, --help                 显示此帮助信息
   -v, --version              显示版本信息
 
 环境变量:
   MCP_SERVER_NAME            服务器名称 (默认: prompt-server)
-  SERVER_PORT                服务器端口 (默认: 3000)
+  SERVER_PORT                服务器端口 (默认: 5621)
   PROMPTS_DIR                Prompts目录路径
   MCP_SERVER_VERSION         服务器版本 (默认: 0.1.0)
   LOG_LEVEL                  日志级别 (默认: info)
@@ -62,9 +65,9 @@ MCP Prompt Server - 智能 Prompt 管理服务器
   RECURSIVE_SCAN             是否启用递归扫描子目录 (默认: true)
 
 示例:
-  node src/server.js --prompts-dir /path/to/prompts
-  node src/server.js -p ./my-prompts -P 8080
-  LOG_LEVEL=debug node src/server.js -p /custom/prompts
+  node packages/server/server.js --prompts-dir /path/to/prompts
+  node packages/server/server.js -p ./examples/prompts -P 8080
+  LOG_LEVEL=debug node packages/server/server.js -p /custom/prompts
 `);
 }
 
@@ -84,10 +87,11 @@ export class Config {
     // 确定prompts目录
     this.promptsDir = cliArgs.promptsDir || 
                      process.env.PROMPTS_DIR || 
-                     path.join(__dirname, '..', 'prompts');
+                     DEFAULT_PROMPTS_DIR;
+    this.configHome = path.dirname(this.promptsDir);
     
     // 服务器端口
-    this.port = cliArgs.port || process.env.SERVER_PORT || 3000;
+    this.port = cliArgs.port || process.env.SERVER_PORT || 5621;
     
     // 其他配置
     this.serverName = process.env.MCP_SERVER_NAME || 'prompt-server';
@@ -122,6 +126,64 @@ export class Config {
     this.cliArgs = cliArgs;
   }
 
+  /**
+   * 允许在运行时覆盖部分配置（用于桌面应用等非CLI场景）
+   */
+  applyOverrides(overrides = {}) {
+    if (!overrides || typeof overrides !== 'object') {
+      return;
+    }
+
+    const {
+      promptsDir,
+      port,
+      serverName,
+      serverVersion,
+      logLevel,
+      maxPrompts,
+      recursiveScan,
+      adminEnable,
+      adminPath,
+      admins,
+      exportToken
+    } = overrides;
+
+    if (promptsDir) {
+      this.promptsDir = promptsDir;
+      this.configHome = path.dirname(this.promptsDir);
+    }
+    if (port) {
+      this.port = port;
+    }
+    if (serverName) {
+      this.serverName = serverName;
+    }
+    if (serverVersion) {
+      this.serverVersion = serverVersion;
+    }
+    if (logLevel) {
+      this.logLevel = logLevel;
+    }
+    if (typeof maxPrompts === 'number') {
+      this.maxPrompts = maxPrompts;
+    }
+    if (typeof recursiveScan === 'boolean') {
+      this.recursiveScan = recursiveScan;
+    }
+    if (typeof adminEnable === 'boolean') {
+      this.adminEnable = adminEnable;
+    }
+    if (adminPath) {
+      this.adminPath = adminPath;
+    }
+    if (Array.isArray(admins) && admins.length) {
+      this.admins = admins;
+    }
+    if (exportToken) {
+      this.exportToken = exportToken;
+    }
+  }
+
 
   /**
    * 确保prompts目录存在
@@ -141,6 +203,10 @@ export class Config {
    */
   getPromptsDir() {
     return this.promptsDir;
+  }
+
+  getConfigHome() {
+    return this.configHome || DEFAULT_HOME_DIR;
   }
 
   /**

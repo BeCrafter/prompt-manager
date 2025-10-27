@@ -4,7 +4,7 @@ import fs from 'fs';
 import fse from 'fs-extra';
 import path from 'path';
 import yaml from 'js-yaml';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { config } from './config.js';
 import { logger } from './logger.js';
 
@@ -14,16 +14,45 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.use(express.json());
 
+const adminUiRoot = path.join(__dirname, '..', 'admin-ui');
+const examplesPromptsRoot = path.join(__dirname, '..', '..', 'examples', 'prompts');
+
 // 为管理员界面提供静态文件服务 - 根路径
-app.use(config.adminPath, express.static(path.join(__dirname, '..', 'public')));
+app.use(config.adminPath, express.static(adminUiRoot));
 
 // 为管理员界面提供根路径访问（当用户访问 /admin 时显示 admin.html）
 app.get(config.adminPath, (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'public', 'admin.html'));
+  res.sendFile(path.join(adminUiRoot, 'admin.html'));
 });
 
-// 获取prompts目录路径
-const promptsDir = config.getPromptsDir();
+// 获取prompts目录路径（在启动时可能被覆盖）
+let promptsDir = config.getPromptsDir();
+
+async function seedPromptsIfEmpty() {
+  try {
+    const entries = await fse.readdir(promptsDir);
+    if (entries.length > 0) {
+      return;
+    }
+  } catch (error) {
+    logger.warn('读取Prompts目录失败，尝试同步示例数据:', error.message);
+  }
+
+  try {
+    const exists = await fse.pathExists(examplesPromptsRoot);
+    if (!exists) {
+      return;
+    }
+    await fse.copy(examplesPromptsRoot, promptsDir, {
+      overwrite: false,
+      errorOnExist: false,
+      recursive: true
+    });
+    logger.info(`已将示例Prompts同步到 ${promptsDir}`);
+  } catch (error) {
+    logger.warn('同步示例Prompts失败:', error.message);
+  }
+}
 const GROUP_META_FILENAME = '.groupmeta.json';
 const GROUP_NAME_REGEX = /^[a-zA-Z0-9-_\u4e00-\u9fa5]{1,64}$/;
 
@@ -126,7 +155,7 @@ app.get('/help', (req, res) => {
       }
     ],
     configuration: {
-      SERVER_PORT: '服务器端口 (默认: 3000)',
+      SERVER_PORT: '服务器端口 (默认: 5621)',
       PROMPTS_DIR: 'Prompts目录路径',
       MCP_SERVER_NAME: '服务器名称',
       MCP_SERVER_VERSION: '服务器版本',
@@ -750,29 +779,117 @@ app.post('/process', async (req, res) => {
   }
 });
 
-// 启动服务器
-async function startServer() {
+let serverInstance = null;
+let serverStartingPromise = null;
+
+export function getServerAddress() {
+  return `http://127.0.0.1:${config.getPort()}`;
+}
+
+export function isServerRunning() {
+  return Boolean(serverInstance);
+}
+
+export async function startServer(options = {}) {
+  if (serverInstance) {
+    return serverInstance;
+  }
+  if (serverStartingPromise) {
+    return serverStartingPromise;
+  }
+
+  const { configOverrides } = options;
+  if (configOverrides) {
+    config.applyOverrides(configOverrides);
+  }
+  promptsDir = config.getPromptsDir();
+
+  serverStartingPromise = (async () => {
+    try {
+      await config.ensurePromptsDir();
+      promptsDir = config.getPromptsDir();
+      await seedPromptsIfEmpty();
+      await config.validate();
+      config.showConfig();
+
+      return await new Promise((resolve, reject) => {
+        const server = app.listen(config.getPort(), () => {
+          logger.info(`服务器已启动，监听端口 ${config.getPort()}`);
+          if (config.adminEnable) {
+            logger.info(`管理员界面可通过 http://localhost:${config.getPort()}${config.adminPath} 访问`);
+          }
+          resolve(server);
+        });
+
+        server.on('error', (err) => {
+          logger.error('服务器启动失败:', err.message);
+          reject(err);
+        });
+      });
+    } catch (error) {
+      logger.error('服务器启动失败:', error.message);
+      throw error;
+    }
+  })();
+
   try {
-    // 验证配置
-    await config.validate();
-    
-    // 显示配置信息
-    config.showConfig();
-    
-    // 确保prompts目录存在
-    await config.ensurePromptsDir();
-    
-    // 启动服务器
-    app.listen(config.getPort(), () => {
-      logger.info(`服务器已启动，监听端口 ${config.getPort()}`);
-      if (config.adminEnable) {
-        logger.info(`管理员界面可通过 http://localhost:${config.getPort()}${config.adminPath} 访问`);
-      }
-    });
-  } catch (error) {
-    logger.error('服务器启动失败:', error.message);
-    process.exit(1);
+    serverInstance = await serverStartingPromise;
+    return serverInstance;
+  } finally {
+    serverStartingPromise = null;
   }
 }
 
-startServer();
+export async function stopServer() {
+  if (serverStartingPromise) {
+    try {
+      await serverStartingPromise;
+    } catch (error) {
+      // ignore failing start when stopping
+    }
+  }
+
+  if (!serverInstance) {
+    return;
+  }
+
+  await new Promise((resolve, reject) => {
+    serverInstance.close((err) => {
+      if (err) {
+        logger.error('停止服务器失败:', err.message);
+        reject(err);
+      } else {
+        logger.info('服务器已停止');
+        resolve();
+      }
+    });
+  });
+
+  serverInstance = null;
+}
+
+export function getServerState() {
+  return {
+    running: Boolean(serverInstance),
+    port: config.getPort(),
+    address: getServerAddress(),
+    adminPath: config.adminPath
+  };
+}
+
+const isDirectRun = (() => {
+  try {
+    const executed = process.argv[1];
+    if (!executed) return false;
+    return pathToFileURL(executed).href === import.meta.url;
+  } catch (error) {
+    return false;
+  }
+})();
+
+if (isDirectRun) {
+  startServer().catch((error) => {
+    logger.error('服务器启动失败:', error.message);
+    process.exit(1);
+  });
+}
