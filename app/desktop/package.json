@@ -1,6 +1,6 @@
 {
   "name": "@becrafter/prompt-desktop",
-  "version": "0.1.0",
+  "version": "0.0.7",
   "description": "Menu bar desktop wrapper for @becrafter/prompt-server",
   "private": true,
   "main": "main.js",

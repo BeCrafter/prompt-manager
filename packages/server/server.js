@@ -913,7 +913,7 @@ async function startMCPServer() {
     // 创建MCP服务器
     mcpServerInstance = new Server({
       name: 'Prompt Server MCP',
-      version: '1.0.0'
+      version: config.serverVersion,
     }, {
       capabilities: {
         tools: {}

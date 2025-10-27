@@ -59,7 +59,7 @@ MCP Prompt Server - 智能 Prompt 管理服务器
   MCP_SERVER_NAME            服务器名称 (默认: prompt-server)
   SERVER_PORT                服务器端口 (默认: 5621)
   PROMPTS_DIR                Prompts目录路径
-  MCP_SERVER_VERSION         服务器版本 (默认: 0.1.0)
+  MCP_SERVER_VERSION         服务器版本
   LOG_LEVEL                  日志级别 (默认: info)
   MAX_PROMPTS                最大prompt数量限制 (默认: 100)
   RECURSIVE_SCAN             是否启用递归扫描子目录 (默认: true)

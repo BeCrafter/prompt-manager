@@ -35,24 +35,26 @@ jobs:
         run: |
           # 更新 package.json 版本
           npm version ${{ steps.get_version.outputs.VERSION }} --no-git-tag-version
-          
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${{ steps.get_version.outputs.VERSION }}\"/2" app/desktop/package.json
+
           # 更新 package-lock.json 中 @becrafter/prompt-server 包的版本
           sed -i "s/\"name\": \"@becrafter\/prompt-server\",[[:space:]]*\"version\": \"[^\"]*\"/\"name\": \"@becrafter\/prompt-server\",\n      \"version\": \"${{ steps.get_version.outputs.VERSION }}\"/g" package-lock.json
-          
+          sed -i "s/\"name\": \"@becrafter\/prompt-desktop\",[[:space:]]*\"version\": \"[^\"]*\"/\"name\": \"@becrafter\/prompt-desktop\",\n      \"version\": \"${{ steps.get_version.outputs.VERSION }}\"/g" app/desktop/package-lock.json
+
           # 更新 env.example 中的版本
           sed -i "s/MCP_SERVER_VERSION=.*/MCP_SERVER_VERSION=${{ steps.get_version.outputs.VERSION }}/" env.example
-          
+
           # 更新 README.md 中的版本信息
           sed -i "s/| \`MCP_SERVER_VERSION\` | 服务器版本 | \`.*\` |/| \`MCP_SERVER_VERSION\` | 服务器版本 | \`${{ steps.get_version.outputs.VERSION }}\` |/" README.md
-          
+
           # 更新 config.js 中的默认版本（使用双引号避免单引号嵌套问题）
-          sed -i "s/this\.serverVersion = process\.env\.MCP_SERVER_VERSION || '[^']*';/this.serverVersion = process.env.MCP_SERVER_VERSION || '${{ steps.get_version.outputs.VERSION }}';/g" src/config.js
-      
+          sed -i "s/this\.serverVersion = process\.env\.MCP_SERVER_VERSION || '[^']*';/this.serverVersion = process.env.MCP_SERVER_VERSION || '${{ steps.get_version.outputs.VERSION }}';/g" packages/server/config.js
+
       - name: Commit version updates
         run: |
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-          git add package.json package-lock.json env.example README.md src/config.js
+          git add package.json package-lock.json env.example README.md packages/server/config.js
           git commit -m "chore: update version to ${{ steps.get_version.outputs.VERSION }}" || echo "No changes to commit"
           git push origin HEAD:main
       
