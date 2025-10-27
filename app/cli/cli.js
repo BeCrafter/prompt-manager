@@ -6,7 +6,7 @@
  */
 
 import { fileURLToPath } from 'url';
-import { runPromptServerCLI } from '../app/cli/index.js';
+import { runPromptServerCLI } from './index.js';
 
 const scriptPath = fileURLToPath(import.meta.url);
 const args = process.argv.slice(2);

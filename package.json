@@ -8,7 +8,7 @@
   "type": "module",
   "main": "packages/server/server.js",
   "bin": {
-    "prompt-server": "bin/prompt-server"
+    "prompt-server": "app/cli/cli.js"
   },
   "repository": {
     "type": "git",
