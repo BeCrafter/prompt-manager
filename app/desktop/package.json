@@ -18,12 +18,12 @@
   },
   "build": {
     "appId": "com.becrafter.promptserver",
-    "productName": "Prompt Server",
+    "productName": "PromptManager",
     "files": [
       "**/*"
     ],
     "directories": {
-      "output": "dist",
+      "output": "../../dist",
       "buildResources": "assets"
     },
     "extraResources": [
