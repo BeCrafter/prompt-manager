@@ -20,7 +20,8 @@
     "appId": "com.becrafter.promptserver",
     "productName": "PromptManager",
     "files": [
-      "**/*"
+      "**/*",
+      "assets/icon.png"
     ],
     "directories": {
       "output": "../../dist",
@@ -38,10 +39,6 @@
           "node_modules/**/*"
         ]
       }
-    ],
-    "files": [
-      "**/*",
-      "assets/icon.png"
     ],
     "mac": {
       "category": "public.app-category.productivity"
