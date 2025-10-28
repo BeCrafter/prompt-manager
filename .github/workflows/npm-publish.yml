@@ -43,7 +43,6 @@ jobs:
           sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${{ steps.get_version.outputs.VERSION }}\"/" app/desktop/package.json
           sed -i "s/\"name\": \"@becrafter\/prompt-desktop\",[[:space:]]*\"version\": \"[^\"]*\"/\"name\": \"@becrafter\/prompt-desktop\",\n      \"version\": \"${{ steps.get_version.outputs.VERSION }}\"/g" app/desktop/package-lock.json
 
-          cat app/desktop/package-lock.json
 
           # 更新 env.example 中的版本
           sed -i "s/MCP_SERVER_VERSION=.*/MCP_SERVER_VERSION=${{ steps.get_version.outputs.VERSION }}/" env.example
@@ -53,6 +52,10 @@ jobs:
 
           # 更新 config.js 中的默认版本（使用双引号避免单引号嵌套问题）
           sed -i "s/this\.serverVersion = process\.env\.MCP_SERVER_VERSION || '[^']*';/this.serverVersion = process.env.MCP_SERVER_VERSION || '${{ steps.get_version.outputs.VERSION }}';/g" packages/server/config.js
+
+      - name: Debug Update version in files
+        run: |
+          sed -i "s/\"name\": \"@becrafter\/prompt-desktop\",[[:space:]]*\"version\": \"[^\"]*\"/\"name\": \"@becrafter\/prompt-desktop\",\n      \"version\": \"${{ steps.get_version.outputs.VERSION }}\"/g" app/desktop/package-lock.json
 
       - name: Commit version updates
         run: |
