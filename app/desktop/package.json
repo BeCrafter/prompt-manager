@@ -1,7 +1,7 @@
 {
   "name": "@becrafter/prompt-desktop",
   "version": "0.0.7",
-  "description": "Menu bar desktop wrapper for @becrafter/prompt-server",
+  "description": "Menu bar desktop wrapper for @becrafter/prompt-manager",
   "private": true,
   "main": "main.js",
   "scripts": {
@@ -18,7 +18,7 @@
   },
   "build": {
     "appId": "com.becrafter.promptserver",
-    "productName": "PromptManager",
+    "productName": "Prompt Manager",
     "files": [
       "**/*",
       "assets/icon.png"
@@ -30,7 +30,7 @@
     "extraResources": [
       {
         "from": "../../",
-        "to": "prompt-server",
+        "to": "prompt-manager",
         "filter": [
           "package.json",
           "package-lock.json",

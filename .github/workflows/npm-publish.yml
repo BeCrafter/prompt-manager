@@ -37,8 +37,8 @@ jobs:
           npm version ${{ steps.get_version.outputs.VERSION }} --no-git-tag-version
           sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${{ steps.get_version.outputs.VERSION }}\"/2" app/desktop/package.json
 
-          # 更新 package-lock.json 中 @becrafter/prompt-server 包的版本
-          sed -i "s/\"name\": \"@becrafter\/prompt-server\",[[:space:]]*\"version\": \"[^\"]*\"/\"name\": \"@becrafter\/prompt-server\",\n      \"version\": \"${{ steps.get_version.outputs.VERSION }}\"/g" package-lock.json
+          # 更新 package-lock.json 中 @becrafter/prompt-manager 包的版本
+          sed -i "s/\"name\": \"@becrafter\/prompt-manager\",[[:space:]]*\"version\": \"[^\"]*\"/\"name\": \"@becrafter\/prompt-manager\",\n      \"version\": \"${{ steps.get_version.outputs.VERSION }}\"/g" package-lock.json
           sed -i "s/\"name\": \"@becrafter\/prompt-desktop\",[[:space:]]*\"version\": \"[^\"]*\"/\"name\": \"@becrafter\/prompt-desktop\",\n      \"version\": \"${{ steps.get_version.outputs.VERSION }}\"/g" app/desktop/package-lock.json
 
           # 更新 env.example 中的版本

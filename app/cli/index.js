@@ -6,7 +6,7 @@ const COMMANDS = {
 };
 
 function printUsage() {
-  console.log(`Prompt Server CLI\n\n用法:\n  prompt-server [command] [options]\n\n可用命令:\n  start  启动服务 (默认)\n  run    启动服务 (同 start)\n\n示例:\n  prompt-server --port 6000\n  prompt-server start --prompts-dir ./examples/prompts`);
+  console.log(`Prompt Server CLI\n\n用法:\n  prompt-manager [command] [options]\n\n可用命令:\n  start  启动服务 (默认)\n  run    启动服务 (同 start)\n\n示例:\n  prompt-manager --port 6000\n  prompt-manager start --prompts-dir ./examples/prompts`);
 }
 
 function isOptionToken(token) {

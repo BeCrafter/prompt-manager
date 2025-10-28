@@ -35,8 +35,8 @@ async function ensureRuntimeServerRoot() {
     return runtimeServerRoot;
   }
 
-  const packagedRoot = path.join(process.resourcesPath, 'prompt-server');
-  const runtimeRoot = path.join(app.getPath('userData'), 'prompt-server');
+  const packagedRoot = path.join(process.resourcesPath, 'prompt-manager');
+  const runtimeRoot = path.join(app.getPath('userData'), 'prompt-manager');
 
   try {
     await fs.promises.access(runtimeRoot, fs.constants.F_OK);
@@ -297,7 +297,7 @@ async function checkForUpdates() {
   try {
     const currentVersion = await getCurrentServiceVersion();
 
-    const response = await fetch('https://registry.npmjs.org/@becrafter/prompt-server');
+    const response = await fetch('https://registry.npmjs.org/@becrafter/prompt-manager');
     if (!response.ok) {
       throw new Error('无法获取最新版本信息');
     }
@@ -328,7 +328,7 @@ async function checkForUpdates() {
     });
 
     if (action === 1) {
-      shell.openExternal('https://github.com/BeCrafter/prompt-server/releases/latest');
+      shell.openExternal('https://github.com/BeCrafter/prompt-manager/releases/latest');
       return;
     }
 
@@ -358,8 +358,8 @@ async function checkForUpdates() {
 }
 
 async function performInPlaceUpgrade(version) {
-  const tarballUrl = `https://registry.npmjs.org/@becrafter/prompt-server/-/@becrafter/prompt-server-${version}.tgz`;
-  const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'prompt-server-upgrade-'));
+  const tarballUrl = `https://registry.npmjs.org/@becrafter/prompt-manager/-/@becrafter/prompt-manager-${version}.tgz`;
+  const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'prompt-manager-upgrade-'));
   const tarballPath = path.join(tmpDir, `${version}.tgz`);
 
   try {

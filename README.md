@@ -1,6 +1,6 @@
 # MCP Prompt Server
 
-[![npm version](https://badge.fury.io/js/%40becrafter%2Fprompt-server.svg)](https://www.npmjs.com/package/@becrafter/prompt-server)
+[![npm version](https://badge.fury.io/js/%40becrafter%2Fprompt-manager.svg)](https://www.npmjs.com/package/@becrafter/prompt-manager)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
 
@@ -19,23 +19,23 @@
 
 ```bash
 # 全局安装
-npm install -g @becrafter/prompt-server
+npm install -g @becrafter/prompt-manager
 
 # 或作为项目依赖安装
-npm install @becrafter/prompt-server 
+npm install @becrafter/prompt-manager 
 ```
 
 ### 2. 启动服务器
 
 ```bash
 # 使用默认配置启动
-prompt-server
+prompt-manager
 
 # 指定提示词目录
-prompt-server --prompts-dir ./my-prompts
+prompt-manager --prompts-dir ./my-prompts
 
 # 指定端口
-prompt-server --port 5621
+prompt-manager --port 5621
 ```
 
 > 默认情况下，服务会在 `~/.prompt-manager/prompts` 下创建并读取提示词目录。第一次启动会将仓库中的 `examples/prompts` 同步过去，方便快速体验。
@@ -45,23 +45,23 @@ prompt-server --port 5621
 新版本的命令行逻辑已经集中在 `app/cli` 中，支持拓展式命令分发。常用用法保持不变：
 
 ```bash
-# 默认等价于 prompt-server start
-prompt-server
+# 默认等价于 prompt-manager start
+prompt-manager
 
 # 显式使用 start/run 命令
-prompt-server start --port 6000
-prompt-server run --prompts-dir ./examples/prompts
+prompt-manager start --port 6000
+prompt-manager run --prompts-dir ./examples/prompts
 
 # 获取帮助/版本信息
-prompt-server --help
-prompt-server --version
+prompt-manager --help
+prompt-manager --version
 ```
 
 后续如需增加自定义子命令，只需在 `app/cli/commands` 下添加对应实现并在 `app/cli/index.js` 注册即可。
 
 ## 桌面菜单应用（Electron）
 
-为了让非技术同学也能便捷地运行服务，仓库新增了一个 Electron 菜单栏应用，位于 `app/desktop`。打包后的应用会连同 Node.js 运行时、`prompt-server` 代码以及依赖一并分发，无需再额外配置环境。
+为了让非技术同学也能便捷地运行服务，仓库新增了一个 Electron 菜单栏应用，位于 `app/desktop`。打包后的应用会连同 Node.js 运行时、`prompt-manager` 代码以及依赖一并分发，无需再额外配置环境。
 
 ### 目录与结构
 
@@ -98,13 +98,13 @@ npm run dev
 npm run desktop:build
 ```
 
-`electron-builder` 会输出 macOS `.dmg`、Windows `.exe`（NSIS）以及 Linux `.AppImage` 安装包，`extraResources` 中包含 `prompt-server` 的源码与依赖，从而保证离线可用。
+`electron-builder` 会输出 macOS `.dmg`、Windows `.exe`（NSIS）以及 Linux `.AppImage` 安装包，`extraResources` 中包含 `prompt-manager` 的源码与依赖，从而保证离线可用。
 
 ### 升级机制
 
 菜单中的 “检查更新” 会：
 
-1. 读取当前运行的服务版本（`app.getPath('userData')/prompt-server/package.json`）
+1. 读取当前运行的服务版本（`app.getPath('userData')/prompt-manager/package.json`）
 2. 对比 npm Registry 上的最新版本
 3. 在用户确认后停止服务、下载最新 tarball、重新写入运行目录
 4. 通过 `npm install --omit=dev` 在沙盒目录中重新安装依赖
@@ -127,7 +127,7 @@ npm run desktop:build
 
 | 环境变量 | 描述 | 默认值 |
 |----------|------|--------|
-| `MCP_SERVER_NAME` | 服务器名称 | `prompt-server` |
+| `MCP_SERVER_NAME` | 服务器名称 | `prompt-manager` |
 | `SERVER_PORT` | 服务器端口 | `5621` |
 | `PROMPTS_DIR` | Prompts目录路径 | `~/.prompt-manager/prompts` |
 | `MCP_SERVER_VERSION` | 服务器版本 | `0.0.7` |
@@ -293,7 +293,7 @@ messages:
 ### 项目结构
 
 ```
-prompt-server/
+prompt-manager/
 ├── app/
 │   ├── cli/            # 命令行命令分发与共享工具
 │   └── desktop/        # Electron 菜单应用
@@ -311,8 +311,8 @@ prompt-server/
 
 ```bash
 # 克隆仓库
-git clone https://github.com/BeCrafter/prompt-server.git
-cd prompt-server
+git clone https://github.com/BeCrafter/prompt-manager.git
+cd prompt-manager
 
 # 安装依赖
 npm install

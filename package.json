@@ -1,5 +1,5 @@
 {
-  "name": "@becrafter/prompt-server",
+  "name": "@becrafter/prompt-manager",
   "version": "0.0.7",
   "description": "Remote MCP Server for managing prompts",
   "publishConfig": {
@@ -8,15 +8,15 @@
   "type": "module",
   "main": "packages/server/server.js",
   "bin": {
-    "prompt-server": "app/cli/cli.js"
+    "prompt-manager": "app/cli/cli.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/BeCrafter/prompt-server.git"
+    "url": "git+https://github.com/BeCrafter/prompt-manager.git"
   },
-  "homepage": "https://github.com/BeCrafter/prompt-server#readme",
+  "homepage": "https://github.com/BeCrafter/prompt-manager#readme",
   "bugs": {
-    "url": "https://github.com/BeCrafter/prompt-server/issues"
+    "url": "https://github.com/BeCrafter/prompt-manager/issues"
   },
   "scripts": {
     "start": "node packages/server/server.js",
@@ -30,8 +30,11 @@
     "postinstall": "node ./scripts/postinstall.js"
   },
   "keywords": [
+    "mcp",
     "prompt",
-    "prompt-server"
+    "prompt-mcp",
+    "prompt-server",
+    "prompt-manager"
   ],
   "author": "",
   "license": "MIT",

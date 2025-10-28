@@ -56,7 +56,7 @@ MCP Prompt Server - 智能 Prompt 管理服务器
   -v, --version              显示版本信息
 
 环境变量:
-  MCP_SERVER_NAME            服务器名称 (默认: prompt-server)
+  MCP_SERVER_NAME            服务器名称 (默认: prompt-manager)
   SERVER_PORT                服务器端口 (默认: 5621)
   PROMPTS_DIR                Prompts目录路径
   MCP_SERVER_VERSION         服务器版本
@@ -94,7 +94,7 @@ export class Config {
     this.port = cliArgs.port || process.env.SERVER_PORT || 5621;
     
     // 其他配置
-    this.serverName = process.env.MCP_SERVER_NAME || 'prompt-server';
+    this.serverName = process.env.MCP_SERVER_NAME || 'prompt-manager';
     this.serverVersion = process.env.MCP_SERVER_VERSION || '0.0.7';
     this.logLevel = process.env.LOG_LEVEL || 'info';
     this.maxPrompts = parseInt(process.env.MAX_PROMPTS) || 100;
