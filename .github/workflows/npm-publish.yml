@@ -53,17 +53,24 @@ jobs:
           # 更新 config.js 中的默认版本（使用双引号避免单引号嵌套问题）
           sed -i "s/this\.serverVersion = process\.env\.MCP_SERVER_VERSION || '[^']*';/this.serverVersion = process.env.MCP_SERVER_VERSION || '${{ steps.get_version.outputs.VERSION }}';/g" packages/server/config.js
 
-      - name: Debug package-lock.json update
+      - name: Update version with jq
         run: |
-          echo "Before update:"
+          sudo apt-get install -y jq
+          NEW_VERSION=${{ steps.get_version.outputs.VERSION }}
+          jq --arg v "$NEW_VERSION" \
+            '.version = $v | .packages."".version = $v' \
+            app/desktop/package-lock.json > tmp.json
+          mv tmp.json app/desktop/package-lock.json
+          echo "Updated to version $NEW_VERSION"
+
+          echo "After update 1:"
           grep -A 2 '"name": "@becrafter/prompt-desktop"' app/desktop/package-lock.json
-          # 执行更新命令
-          sed -i 's/\("name": "@becrafter\/prompt-desktop",\s*"version": "\)[^"]*/\10.0.13/' app/desktop/package-lock.json
 
-          # 更新packages部分版本
-          sed -i 's/\("name": "@becrafter\/prompt-desktop",\s*"version": "\)[^"]*/\10.0.13/' app/desktop/package-lock.json
+          cd app/desktop
+          npm install
+          cd ../..
 
-          echo "After update:"
+          echo "After update 2:"
           grep -A 2 '"name": "@becrafter/prompt-desktop"' app/desktop/package-lock.json
           
       - name: Commit version updates
