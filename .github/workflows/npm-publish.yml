@@ -66,13 +66,6 @@ jobs:
           echo "After update 1:"
           grep -A 2 '"name": "@becrafter/prompt-desktop"' app/desktop/package-lock.json
 
-          cd app/desktop
-          npm install
-          cd ../..
-
-          echo "After update 2:"
-          grep -A 2 '"name": "@becrafter/prompt-desktop"' app/desktop/package-lock.json
-          
       - name: Commit version updates
         run: |
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
