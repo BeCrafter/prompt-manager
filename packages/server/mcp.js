@@ -1,209 +1,234 @@
-// 由于循环依赖问题，我们需要重新实现获取提示词的逻辑
-import fs from 'fs';
-import path from 'path';
-import yaml from 'js-yaml';
-import crypto from 'crypto';
-import { fileURLToPath } from 'url';
+// 导入自定义模块
 import { config } from './config.js';
+import { logger } from './logger.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// 处理 get_prompt 工具调用
+export async function handleGetPrompt(args, promptManager) {
+  // 注意：这里为了兼容性，我们同时支持prompt_id和name参数
+  const promptId = args.prompt_id || args.name;
+  
+  if (!promptId) {
+    throw new Error("缺少必需参数: prompt_id 或 name");
+  }
+  
+  const prompt = promptManager.getPrompt(promptId);
+  if (!prompt) {
+    throw new Error(`未找到ID为 "${promptId}" 的prompt`);
+  }
+  
+  // 返回完整的prompt信息
+  const promptInfo = {
+    id: prompt.uniqueId,        // 使用基于文件路径的唯一ID
+    name: prompt.name,
+    description: prompt.description || `Prompt: ${prompt.name}`,
+    messages: prompt.messages || [],
+    arguments: prompt.arguments || [],
+    filePath: prompt.relativePath,  // 添加文件路径信息
+  };
 
-// 获取prompts目录路径
-let promptsDir = config.getPromptsDir();
-
-// 生成唯一ID的函数
-function generateUniqueId(relativePath) {
-  const hash = crypto.createHash('sha256');
-  hash.update(relativePath);
-  const hashHex = hash.digest('hex');
-  return hashHex.substring(0, 8);
-}
-
-// 读取组元数据的函数
-function readGroupMeta(dir) {
-  const GROUP_META_FILENAME = '.groupmeta.json';
-  try {
-    const metaPath = path.join(dir, GROUP_META_FILENAME);
-    if (!fs.existsSync(metaPath)) {
-      return { enabled: true };
-    }
-    const raw = fs.readFileSync(metaPath, 'utf8');
-    const data = JSON.parse(raw);
-    return {
-      enabled: data.enabled !== false
+  if (config.getLogLevel() === 'debug') {
+    promptInfo.metadata = {
+      uniqueId: prompt.uniqueId,
+      fileName: prompt.fileName,
+      fullPath: prompt.filePath,
     };
-  } catch (error) {
-    console.warn('读取类目元数据失败:', error);
-    return { enabled: true };
-  }
-}
-
-// 获取提示词的函数
-function getPromptsFromFiles() {
-  const prompts = [];
-
-  function traverseDir(currentPath, relativeDir = '', inheritedEnabled = true) {
-    let currentEnabled = inheritedEnabled;
-    if (relativeDir) {
-      const meta = readGroupMeta(currentPath);
-      currentEnabled = currentEnabled && (meta.enabled !== false);
-    }
-
-    try {
-      const entries = fs.readdirSync(currentPath, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(currentPath, entry.name);
-        if (entry.isDirectory()) {
-          const childRelativePath = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
-          traverseDir(fullPath, childRelativePath, currentEnabled);
-        } else if (entry.isFile() && entry.name.endsWith('.yaml')) {
-          try {
-            const fileContent = fs.readFileSync(fullPath, 'utf8');
-            const prompt = yaml.load(fileContent);
-            if (prompt && prompt.name) {
-              const relativePath = path.relative(promptsDir, fullPath);
-              const normalizedRelativePath = relativePath.split(path.sep).join('/');
-              const relativeDirForFile = path.dirname(normalizedRelativePath);
-              const topLevelGroup = relativeDirForFile && relativeDirForFile !== '.' ? relativeDirForFile.split('/')[0] : (prompt.group || 'default');
-              const groupPath = relativeDirForFile && relativeDirForFile !== '.' ? relativeDirForFile : topLevelGroup;
-              prompts.push({
-                ...prompt,
-                uniqueId: generateUniqueId(prompt.name + '.yaml'),
-                fileName: entry.name,
-                relativePath: normalizedRelativePath,
-                group: topLevelGroup,
-                groupPath,
-                groupEnabled: currentEnabled
-              });
-            }
-          } catch (error) {
-            console.error(`Error processing file ${fullPath}:`, error);
-          }
-        }
-      }
-    } catch (error) {
-      console.error(`Error reading directory ${currentPath}:`, error);
-    }
   }
 
-  traverseDir(promptsDir);
-  return prompts;
+  return convertToText({
+    success: true,
+    prompt: promptInfo
+  });
 }
 
-// 模拟MCP工具注册函数
-function registerTool(tool) {
-  // 在实际实现中，这里会与MCP SDK集成
-  console.log(`Registered MCP tool: ${tool.name}`);
-}
+// 处理 search_prompts 工具调用
+export async function handleSearchPrompts(args, promptManager) {
+  // 注意：这里为了兼容性，我们同时支持title和name参数
+  const searchTerm = args.title || args.name;
+  
+  const logLevel = config.getLogLevel();
+  const allPrompts = promptManager.getPrompts();
 
-// search_prompts工具实现
-async function searchPrompts(params = {}) {
-  try {
-    const { name } = params;
-    const allPrompts = getPromptsFromFiles();
-    
-    // 过滤出启用的提示词
-    const enabledPrompts = allPrompts.filter(prompt => {
-      const groupActive = prompt.groupEnabled !== false;
-      const promptActive = prompt.enabled === true;
-      return groupActive && promptActive;
+  // 如果搜索词为空，则返回所有提示词
+  if (!searchTerm) {
+    let simplifiedPrompts = formatResults(allPrompts);
+
+    return convertToText({
+      success: true,
+      query: searchTerm || '',
+      count: simplifiedPrompts.length,
+      results: simplifiedPrompts
     });
-    
-    // 如果提供了name参数，则进一步过滤
-    let filteredPrompts = enabledPrompts;
-    if (name) {
-      filteredPrompts = enabledPrompts.filter(prompt => 
-        prompt.name && prompt.name.includes(name)
-      );
-    }
-    
-    // 返回提示词列表，只包含必要的信息
-    return filteredPrompts.map(prompt => ({
-      name: prompt.name,
-      description: prompt.description,
-      group: prompt.group,
-      groupPath: prompt.groupPath
-    }));
-  } catch (error) {
-    console.error('Error in searchPrompts:', error);
-    throw error;
   }
-}
-
-// get_prompt工具实现
-async function getPrompt(params) {
-  try {
-    const { name } = params;
-    
-    // name参数是必需的
-    if (!name) {
-      throw new Error('name parameter is required');
-    }
-    
-    const allPrompts = getPromptsFromFiles();
-    
-    // 查找指定名称的提示词
-    const prompt = allPrompts.find(p => p.name === name);
-    
-    if (!prompt) {
-      throw new Error(`Prompt with name "${name}" not found`);
-    }
-    
-    // 检查提示词是否启用
-    const groupActive = prompt.groupEnabled !== false;
-    const promptActive = prompt.enabled === true;
-    
-    if (!groupActive || !promptActive) {
-      throw new Error(`Prompt with name "${name}" is not enabled`);
-    }
-    
-    // 返回提示词的完整信息
+  
+  // 实现相似度匹配算法
+  const searchResults = allPrompts.map(prompt => {
+    prompt.description = prompt.description || `Prompt: ${prompt.name}`;
+    prompt.arguments = prompt.arguments || [];
+    prompt.hasArguments = prompt.arguments && prompt.arguments.length > 0;
     return {
-      name: prompt.name,
-      description: prompt.description,
-      group: prompt.group,
-      groupPath: prompt.groupPath,
-      messages: prompt.messages,
-      parameters: prompt.parameters,
-      relativePath: prompt.relativePath
+      prompt: prompt,
+      score: calculateSimilarityScore(searchTerm, prompt),
     };
-  } catch (error) {
-    console.error('Error in getPrompt:', error);
-    throw error;
+  })
+  .filter(result => result.score > 0) // 只返回有匹配的结果
+  .sort((a, b) => b.score - a.score); // 按相似度得分降序排列
+  
+
+  let result = {
+    success: true,
+    query: searchTerm || '',
+    count: searchResults.length,
+    results: formatResults(searchResults),
   }
+
+  if (logLevel === 'debug') {
+    result.debug = {
+      scores: searchResults.map(result => ({
+        id: result.prompt.id,
+        name: result.prompt.name,
+        score: result.score,
+        fullPath: result.prompt.filePath,
+      }))
+    }
+  }
+
+  return convertToText(result);
 }
 
-// 注册MCP工具
-registerTool({
-  name: 'search_prompts',
-  description: 'Search for enabled prompts in the specified directory',
-  parameters: {
-    type: 'object',
-    properties: {
-      name: {
-        type: 'string',
-        description: 'Optional name filter for prompts'
+/**
+ * 处理 reload_prompts 工具调用
+ */
+export async function handleReloadPrompts(promptManager) {
+  logger.info('重新加载prompts...');
+  
+  const result = await promptManager.reloadPrompts();
+  
+  return {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          success: true,
+          message: `重新加载完成: 成功 ${result.success} 个, 失败 ${result.errorCount} 个`,
+          result: formatResults(result.prompts)
+        }, null, 2)
+      }
+    ]
+  };
+}
+
+/**
+ * 格式化搜索结果
+ * @param {*} results 
+ * @returns 
+ */
+function formatResults(results = []) {
+  if (!Array.isArray(results)) return [];
+
+  // console.log(results);
+
+  return results.map(result => {
+    const prompt = result.prompt ? result.prompt : result;
+    const baseItem = {
+      id: prompt.id || prompt.uniqueId || '',
+      name: prompt.name || 'Unnamed Prompt',
+      description: prompt.description || `Prompt: ${prompt.name || 'Unnamed'}`
+    };
+
+    if (config.getLogLevel() === 'debug') {
+      return {
+        ...baseItem,
+        metadata: {
+          fullPath: prompt.filePath || ''
+        }
+      };
+    }
+    return baseItem;
+  });
+}
+
+/**
+ * 将对象转换为text类型
+ * @param {*} object 
+ * @returns 
+ */
+function convertToText(result) {
+  return {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify(result, null, 2)
+      }
+    ]
+  };
+}
+
+/**
+ * 计算搜索关键词与prompt的相似度得分
+ * @param {string} searchTerm - 搜索关键词
+ * @param {Object} prompt - prompt对象
+ * @returns {number} 相似度得分 (0-100)
+ */
+function calculateSimilarityScore(searchTerm, prompt) {
+  let totalScore = 0;
+  const searchLower = searchTerm ? searchTerm.toLowerCase() : '';
+  
+  // 搜索字段权重配置（专注于内容搜索，不包含ID检索）
+  const fieldWeights = {
+    name: 60,         // 名称权重高，是主要匹配字段
+    description: 40   // 描述权重适中，是辅助匹配字段
+  };
+  
+  // 计算name匹配得分
+  if (prompt && prompt.name && typeof prompt.name === 'string') {
+    const nameScore = getStringMatchScore(searchLower, prompt.name.toLowerCase());
+    totalScore += nameScore * fieldWeights.name;
+  }
+  
+  // 计算description匹配得分
+  if (prompt.description) {
+    const descScore = getStringMatchScore(searchLower, prompt.description.toLowerCase());
+    totalScore += descScore * fieldWeights.description;
+  }
+  
+  // 标准化得分到0-100范围
+  const maxPossibleScore = Object.values(fieldWeights).reduce((sum, weight) => sum + weight, 0);
+  return Math.round((totalScore / maxPossibleScore) * 100);
+}
+
+/**
+ * 计算两个字符串的匹配得分
+ * @param {string} search - 搜索词 (已转小写)
+ * @param {string} target - 目标字符串 (已转小写)
+ * @returns {number} 匹配得分 (0-1)
+ */
+function getStringMatchScore(search, target) {
+  if (!search || !target) return 0;
+  
+  // 完全匹配得分最高
+  if (target === search) return 1.0;
+  
+  // 完全包含得分较高
+  if (target.includes(search)) return 0.8;
+  
+  // 部分词匹配
+  const searchWords = search.split(/\s+/).filter(word => word.length > 0);
+  const targetWords = target.split(/\s+/).filter(word => word.length > 0);
+  
+  let matchedWords = 0;
+  for (const searchWord of searchWords) {
+    for (const targetWord of targetWords) {
+      if (targetWord.includes(searchWord) || searchWord.includes(targetWord)) {
+        matchedWords++;
+        break;
       }
     }
-  },
-  handler: searchPrompts
-});
-
-registerTool({
-  name: 'get_prompt',
-  description: 'Get the specific content of a prompt by its identifier',
-  parameters: {
-    type: 'object',
-    properties: {
-      name: {
-        type: 'string',
-        description: 'Required prompt identifier'
-      }
-    },
-    required: ['name']
-  },
-  handler: getPrompt
-});
-
-export { searchPrompts, getPrompt };
+  }
+  
+  if (searchWords.length > 0) {
+    const wordMatchRatio = matchedWords / searchWords.length;
+    return wordMatchRatio * 0.6; // 部分词匹配得分
+  }
+  
+  return 0;
+}
