@@ -130,7 +130,7 @@ npm run desktop:build
 | `MCP_SERVER_NAME` | 服务器名称 | `prompt-manager` |
 | `SERVER_PORT` | 服务器端口 | `5621` |
 | `PROMPTS_DIR` | Prompts目录路径 | `~/.prompt-manager/prompts` |
-| `MCP_SERVER_VERSION` | 服务器版本 | `0.0.7` |
+| `MCP_SERVER_VERSION` | 服务器版本 | `0.0.8` |
 | `LOG_LEVEL` | 日志级别 (error, warn, info, debug) | `info` |
 | `MAX_PROMPTS` | 最大prompt数量限制 | `100` |
 | `RECURSIVE_SCAN` | 是否启用递归扫描子目录 | `true` |
