@@ -55,13 +55,13 @@ jobs:
 
       - name: Debug package-lock.json update
         run: |
-          echo "Before update:"
-          grep -A 2 '"name": "@becrafter/prompt-desktop"' app/desktop/package-lock.json
-          # 执行更新命令
-          sed -i "s/\"name\": \"@becrafter\/prompt-desktop\",.*\"version\": \"[^\"]*\"/\"name\": \"@becrafter\/prompt-desktop\", \"version\": \"${{ steps.get_version.outputs.VERSION }}\"/g" app/desktop/package-lock.json
-          echo "After update:"
-          grep -A 2 '"name": "@becrafter/prompt-desktop"' app/desktop/package-lock.json
-          
+          echo "匹配模式测试:"
+          grep -E '"name": "@becrafter/prompt-desktop"[[:space:]]*,[[:space:]]*"version":' app/desktop/package-lock.json -A 2
+          echo "执行更新..."
+          sed -i -E "s/(\"name\": \"@becrafter\/prompt-desktop\"[[:space:]]*,[[:space:]]*\"version\": \")([^\"]*)(\")/\10.0.13\3/g" app/desktop/package-lock.json
+          echo "更新后验证:"
+          grep -E '"name": "@becrafter/prompt-desktop"[[:space:]]*,[[:space:]]*"version":' app/desktop/package-lock.json -A 2
+
       - name: Commit version updates
         run: |
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
