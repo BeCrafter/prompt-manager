@@ -211,7 +211,7 @@ function refreshTrayMenu() {
   const adminUrl = currentServerState?.adminPath ? `${address}${currentServerState.adminPath}` : `${address}/admin`;
 
   const template = [
-    { label: `服务状态：${getServerStatusLabel()}`, enabled: false },
+    { label: `状态：${getServerStatusLabel()}`, enabled: false },
     { type: 'separator' },
     {
       label: serviceState === 'running' ? '停止服务' : '启动服务',
@@ -444,10 +444,10 @@ async function installServerDependencies(targetDir) {
 async function showAboutDialog() {
   const serviceVersion = await getCurrentServiceVersion();
   const lines = [
-    `桌面应用版本：${desktopPackageJson.version}`,
+    // `桌面应用版本：${desktopPackageJson.version}`,
     `服务版本：${serviceVersion}`,
     `Electron：${process.versions.electron}`,
-    `Chromium：${process.versions.chrome}`,
+    // `Chromium：${process.versions.chrome}`,
     `Node.js：${process.versions.node}`
   ];
 
