@@ -67,7 +67,7 @@ export class MCPManager {
         tools: [
           {
             name: 'search_prompts',
-            description: 'Search for enabled prompts in the specified directory',
+            description: 'For keyword search matching, retrieve or return all prompts. When a corresponding prompt word is matched, utilize the prompt ID to invoke the get_prompt tool to query the complete content of the prompt word.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -80,21 +80,21 @@ export class MCPManager {
           },
           {
             name: 'get_prompt',
-            description: 'Get the specific content of a prompt by its identifier',
+            description: 'Retrieve the complete content of a specific prompt by its ID, including all messages, arguments, and metadata.',
             inputSchema: {
               type: 'object',
               properties: {
-                name: {
+                prompt_id: {
                   type: 'string',
-                  description: 'Required prompt identifier'
+                  description: 'The unique identifier of the prompt to retrieve'
                 }
               },
-              required: ['name']
+              required: ['prompt_id']
             }
           },
           {
             name: 'reload_prompts',
-            description: 'Reload all prompts from the specified directory',
+            description: 'Force a reload of all preset prompts to overwrite the cache.',
             inputSchema: {
               type: 'object',
               properties: {}
