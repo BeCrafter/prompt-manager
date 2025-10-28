@@ -41,7 +41,9 @@ jobs:
           
           # 更新桌面应用的 package.json 和 package-lock.json 版本
           sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${{ steps.get_version.outputs.VERSION }}\"/" app/desktop/package.json
-          sed -i "s/\"name\": \"@becrafter\/prompt-desktop\",[[:space:]]*\"version\": \"[^\"]*\"/\"name\": \"@becrafter\/prompt-desktop\", \"version\": \"${{ steps.get_version.outputs.VERSION }}\"/g" app/desktop/package-lock.json
+          sed -i "s/\"name\": \"@becrafter\/prompt-desktop\",[[:space:]]*\"version\": \"[^\"]*\"/\"name\": \"@becrafter\/prompt-desktop\",\n      \"version\": \"${{ steps.get_version.outputs.VERSION }}\"/g" app/desktop/package-lock.json
+
+          cat app/desktop/package-lock.json
 
           # 更新 env.example 中的版本
           sed -i "s/MCP_SERVER_VERSION=.*/MCP_SERVER_VERSION=${{ steps.get_version.outputs.VERSION }}/" env.example
