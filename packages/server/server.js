@@ -1,23 +1,53 @@
 import express from 'express';
 import crypto from 'crypto';
 import fs from 'fs';
-import fse from 'fs-extra';
+import cors from 'cors';
 import path from 'path';
+import fse from 'fs-extra';
 import yaml from 'js-yaml';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { config } from './config.js';
 import { logger } from './logger.js';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { mcpManager } from './mcpManager.js';
+import { PromptManager } from './manager.js';
+// import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+// import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+// import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+// import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+// import { mcpManager } from './mcpManager.js';
+
+import { mcpServerInstance as mcpServer, mcpMiddleware } from './mcp.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(express.json());
+
+// 全局中间件
+app.use(cors());
+app.use(express.json({ limit: '8mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+app.use(mcpMiddleware);
+
+// 错误处理中间件
+app.use((err, req, res, next) => {
+  console.error(`[服务器错误]: ${err.message}`);
+  res.status(500).json({
+    error: 'Internal Server Error',
+    message: 'An error occurred',
+  });
+});
+
+// 404处理
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Not Found',
+    message: `Cannot ${req.method} ${req.path}`
+  });
+});
+
+// 挂载MCP流式服务（独立路径前缀，避免冲突）
+app.all('/mcp', mcpMiddleware);
 
 const adminUiRoot = path.join(__dirname, '..', 'admin-ui');
 const examplesPromptsRoot = path.join(__dirname, '..', '..', 'examples', 'prompts');
@@ -32,6 +62,9 @@ app.get(config.adminPath, (req, res) => {
 
 // 获取prompts目录路径（在启动时可能被覆盖）
 let promptsDir = config.getPromptsDir();
+
+// 创建全局PromptManager实例
+export const promptManager = new PromptManager(promptsDir);
 
 async function seedPromptsIfEmpty() {
   try {
@@ -868,6 +901,9 @@ export async function startServer(options = {}) {
   }
   promptsDir = config.getPromptsDir();
 
+  // 更新PromptManager的prompts目录
+  promptManager.promptsDir = promptsDir;
+
   serverStartingPromise = (async () => {
     try {
       await config.ensurePromptsDir();
@@ -875,6 +911,9 @@ export async function startServer(options = {}) {
       await seedPromptsIfEmpty();
       await config.validate();
       config.showConfig();
+
+      // 加载prompts
+      await promptManager.loadPrompts();
 
       return await new Promise((resolve, reject) => {
         const server = app.listen(config.getPort(), () => {
@@ -900,7 +939,7 @@ export async function startServer(options = {}) {
     serverInstance = await serverStartingPromise;
     
     // 启动MCP服务器
-    startMCPServer();
+    // startMCPServer();
     
     return serverInstance;
   } finally {
@@ -951,37 +990,37 @@ export function getServerState() {
   };
 }
 
-// 启动MCP服务器
-async function startMCPServer() {
-  try {
-    // 初始化MCP管理器
-    mcpManagerInstance = mcpManager;
-    await mcpManagerInstance.initialize();
+// // 启动MCP服务器
+// async function startMCPServer() {
+//   try {
+//     // 初始化MCP管理器
+//     mcpManagerInstance = mcpManager;
+//     await mcpManagerInstance.initialize();
     
-    // 添加MCP HTTP端点
-    app.post('/mcp', express.json(), async (req, res) => {
-      try {
-        await mcpManagerInstance.handleHTTPRequest(req, res);
-      } catch (error) {
-        logger.error('MCP HTTP请求处理失败:', error.message);
-        if (!res.headersSent) {
-          res.status(500).json({ 
-            jsonrpc: '2.0', 
-            error: { 
-              code: -32603, 
-              message: 'Internal error' 
-            } 
-          });
-        }
-      }
-    });
+//     // 添加MCP HTTP端点
+//     app.post('/mcp', express.json(), async (req, res) => {
+//       try {
+//         await mcpManagerInstance.handleHTTPRequest(req, res);
+//       } catch (error) {
+//         logger.error('MCP HTTP请求处理失败:', error.message);
+//         if (!res.headersSent) {
+//           res.status(500).json({ 
+//             jsonrpc: '2.0', 
+//             error: { 
+//               code: -32603, 
+//               message: 'Internal error' 
+//             } 
+//           });
+//         }
+//       }
+//     });
     
-    logger.info(`MCP服务器已启动  http://localhost:${config.getPort()}/mcp   端点`);
-  } catch (error) {
-    logger.error('启动MCP服务器失败:', error.message);
-    mcpManagerInstance = null;
-  }
-}
+//     logger.info(`MCP服务器已启动  http://localhost:${config.getPort()}/mcp   端点`);
+//   } catch (error) {
+//     logger.error('启动MCP服务器失败:', error.message);
+//     mcpManagerInstance = null;
+//   }
+// }
 
 const isDirectRun = (() => {
   try {
