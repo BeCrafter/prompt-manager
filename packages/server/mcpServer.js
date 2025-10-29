@@ -26,7 +26,7 @@ class Mcp {
       sessionIdGenerator: stateful ? () => randomUUID() : undefined,
       allowedHosts: security.allowedHosts || [],
       allowedOrigins: security.allowedOrigins || [],
-      enableDnsRebindingProtection: !!security.allowedHosts || !!security.allowedOrigins,
+      enableDnsRebindingProtection: security.enableDnsRebindingProtection !== undefined ? security.enableDnsRebindingProtection : false, // 默认禁用DNS重绑定保护
       enableJsonResponse: enableJsonResponse,
       eventStore: eventStore,
       onsessioninitialized: (sessionId) => {
@@ -133,6 +133,12 @@ class Mcp {
           method: req.method,
           url: req.url
         });
+        
+        // 检查Content-Type头
+        const contentType = req.headers['content-type'];
+        if (contentType && !contentType.includes('application/json')) {
+          this.logger.warn(`不支持的Content-Type: ${contentType}`);
+        }
         
         // 转发请求给MCP Transport处理
         await this.transport.handleRequest(req, res, req.body);

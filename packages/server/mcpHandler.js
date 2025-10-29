@@ -1,7 +1,17 @@
 // 导入自定义模块
 import { config } from './config.js';
 import { logger } from './logger.js';
-import { promptManager } from './server.js';
+
+// 延迟获取promptManager以避免循环依赖
+let _promptManager;
+
+async function getPromptManager() {
+  if (!_promptManager) {
+    const serverModule = await import('./server.js');
+    _promptManager = serverModule.promptManager;
+  }
+  return _promptManager;
+}
 
 // 处理 get_prompt 工具调用
 export async function handleGetPrompt(args) {
@@ -12,6 +22,7 @@ export async function handleGetPrompt(args) {
     throw new Error("缺少必需参数: prompt_id 或 name");
   }
   
+  const promptManager = await getPromptManager();
   const prompt = promptManager.getPrompt(promptId);
   if (!prompt) {
     throw new Error(`未找到ID为 "${promptId}" 的prompt`);
@@ -47,6 +58,7 @@ export async function handleSearchPrompts(args) {
   const searchTerm = args.title || args.name;
   
   const logLevel = config.getLogLevel();
+  const promptManager = await getPromptManager();
   const allPrompts = promptManager.getPrompts();
 
   // 如果搜索词为空，则返回所有提示词
@@ -102,6 +114,7 @@ export async function handleSearchPrompts(args) {
 export async function handleReloadPrompts(args) {
   logger.info('重新加载prompts...');
   
+  const promptManager = await getPromptManager();
   const result = await promptManager.reloadPrompts();
   
   return {
