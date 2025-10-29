@@ -3,8 +3,9 @@ import path from 'path';
 import YAML from 'yaml';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { logger } from './logger.js';
-import { config } from './config.js';
+import { logger } from '../utils/logger.js';
+import { config } from '../utils/config.js';
+import { GROUP_META_FILENAME } from '../utils/util.js';
 
 /**
  * Prompt数据结构验证schema
@@ -92,7 +93,6 @@ export class PromptManager {
    * @returns {Object} 组元数据
    */
   readGroupMeta(dir) {
-    const GROUP_META_FILENAME = '.groupmeta.json';
     try {
       const metaPath = path.join(dir, GROUP_META_FILENAME);
       if (!fs.existsSync(metaPath)) {

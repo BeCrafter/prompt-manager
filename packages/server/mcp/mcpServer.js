@@ -1,6 +1,6 @@
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomUUID } from 'node:crypto';
-import { logger } from './logger.js';
+import { logger } from '../utils/logger.js';
 
 class Mcp {
   /**
@@ -166,7 +166,7 @@ class Mcp {
       let result;
       
       // 处理不同的MCP方法
-      if (method === 'initialize') {
+      if (method === 'initialize' || method === 'notifications/initialized') {
         result = this._handleInitialize();
       } else if (method === 'tools/list') {
         result = this._handleListTools();
@@ -174,9 +174,12 @@ class Mcp {
         result = await this._handleCallTool(params, context);
       } else {
         // 处理自定义方法
+        console.log('处理自定义方法:', method,params,context);
         result = await this._handleCustomMethod(method, params, context);
       }
       
+      // console.log('方法结果:', result);
+
       // 发送成功响应
       if (id !== undefined) {
         this.logger.debug(`发送响应: ${method}`, { method, id });
@@ -192,7 +195,7 @@ class Mcp {
           error: {
             code: err.code || -32601,
             message: err.message,
-            data: process.env.NODE_ENV === 'development' ? err.stack : undefined
+            data: undefined
           }
         });
       }
@@ -206,7 +209,7 @@ class Mcp {
     return {
       protocolVersion: "2025-03-26",
       capabilities: {
-        tools: {},
+        tools: this._handleListTools(),
         resources: {},
         prompts: {}
       },
@@ -257,7 +260,17 @@ class Mcp {
     const methodDef = this.exposedMethods[method];
     
     if (!methodDef) {
-      throw new Error(`方法 ${method} 未找到`);
+      logger.error(`方法 ${method} 未找到`);
+
+      let methodList = method.split('/');
+      let field = methodList[methodList.length - 1];
+      console.log('field', field);
+
+      let result = {
+        'resources': [],
+        'prompts': [],
+      };
+      return result[field] || null;
     }
     
     return await methodDef.handler(params, context);

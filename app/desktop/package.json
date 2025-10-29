@@ -36,7 +36,9 @@
           "package-lock.json",
           "packages/**/*",
           "examples/**/*",
-          "node_modules/**/*"
+          "node_modules/**/*",
+          "!**/node_modules/**/test/**",
+          "!**/*.map"
         ]
       }
     ],

@@ -1,6 +1,5 @@
 import McpServer from './mcpServer.js';
-import { logger } from './logger.js';
-import { config } from './config.js';
+import { logger } from '../utils/logger.js';
 
 // 延迟导入处理函数以避免循环依赖
 let mcpServer;

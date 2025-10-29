@@ -1,13 +1,13 @@
 // 导入自定义模块
-import { config } from './config.js';
-import { logger } from './logger.js';
+import { config } from '../utils/config.js';
+import { logger } from '../utils/logger.js';
 
 // 延迟获取promptManager以避免循环依赖
 let _promptManager;
 
 async function getPromptManager() {
   if (!_promptManager) {
-    const serverModule = await import('./server.js');
+    const serverModule = await import('../../server/server.js');
     _promptManager = serverModule.promptManager;
   }
   return _promptManager;
