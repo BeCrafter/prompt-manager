@@ -343,17 +343,6 @@ app.post('/api/login', (req, res) => {
   res.json({ token: admin.token });
 });
 
-function resolveGroupDir(relativePath) {
-  const segments = validateGroupPath(relativePath);
-  if (!segments) return null;
-  const targetPath = path.resolve(promptsDir, ...segments);
-  const normalizedPromptsDir = path.resolve(promptsDir);
-  if (!targetPath.startsWith(normalizedPromptsDir)) {
-    return null;
-  }
-  return { dir: targetPath, segments };
-}
-
 
 function writeGroupMeta(dir, meta = {}) {
   const metaPath = getGroupMetaPath(dir);
@@ -844,6 +833,22 @@ function isValidGroupName(name) {
 }
 
 function validateGroupPath(relativePath) {
+  if (!relativePath || typeof relativePath !== 'string') {
+    return null;
+  }
+  const segments = relativePath.split('/').filter(Boolean);
+  if (!segments.length) {
+    return null;
+  }
+  for (const segment of segments) {
+    if (!isValidGroupName(segment)) {
+      return null;
+    }
+  }
+  return segments;
+}
+
+function resolveGroupDir(relativePath) {
   const segments = validateGroupPath(relativePath);
   if (!segments) return null;
   const targetPath = path.resolve(promptsDir, ...segments);
