@@ -1,5 +1,6 @@
 import McpServer from './mcpServer.js';
 import { logger } from './logger.js';
+import { config } from './config.js';
 
 // 延迟导入处理函数以避免循环依赖
 let mcpServer;
@@ -71,7 +72,7 @@ async function initializeMcpServer() {
     });
 
     mcpMiddleware = mcpServer.createMiddleware();
-    logger.info('MCP服务器初始化完成');
+    logger.info(`MCP服务器初始化完成\n`);
   } catch (error) {
     // 如果导入处理函数失败，清理已创建的服务器实例
     logger.error('MCP服务器初始化失败: ' + error.message);

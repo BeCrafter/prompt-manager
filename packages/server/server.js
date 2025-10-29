@@ -1386,9 +1386,10 @@ export async function startServer(options = {}) {
 
       return await new Promise((resolve, reject) => {
         const server = app.listen(config.getPort(), () => {
-          logger.info(`服务器已启动，监听端口 ${config.getPort()}`);
+          logger.info(`MCP服务启动成功  http://localhost:${config.getPort()}/mcp`);
           if (config.adminEnable) {
             logger.info(`管理员界面可通过 http://localhost:${config.getPort()}${config.adminPath} 访问`);
+            process.stderr.write('\n======================================================================================\n');
           }
           resolve(server);
         });
@@ -1406,9 +1407,6 @@ export async function startServer(options = {}) {
 
   try {
     serverInstance = await serverStartingPromise;
-    
-    // 启动MCP服务器
-    // startMCPServer();
     
     return serverInstance;
   } finally {

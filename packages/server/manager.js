@@ -322,7 +322,7 @@ export class PromptManager {
         }
       });
 
-      logger.info(`本地Prompt加载完成: 启用 ${loadedCount} 个, 禁用 ${disabledCount} 个, 失败 ${errorCount} 个`);
+      logger.info(`本地Prompt加载完成: 启用 ${loadedCount} 个, 禁用 ${disabledCount} 个, 失败 ${errorCount} 个\n`);
       
       return {
         success: loadedCount,

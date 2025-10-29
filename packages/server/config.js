@@ -15,10 +15,10 @@ const DEFAULT_PROMPTS_DIR = path.join(DEFAULT_HOME_DIR, 'prompts');
 function parseCommandLineArgs() {
   const args = process.argv.slice(2);
   const options = {};
-  
+
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    
+
     if (arg === '--prompts-dir' || arg === '-p') {
       options.promptsDir = args[i + 1];
       i++; // 跳过下一个参数
@@ -35,7 +35,7 @@ function parseCommandLineArgs() {
       options[key] = value;
     }
   }
-  
+
   return options;
 }
 
@@ -61,7 +61,7 @@ MCP Prompt Server - 智能 Prompt 管理服务器
   PROMPTS_DIR                Prompts目录路径
   MCP_SERVER_VERSION         服务器版本
   LOG_LEVEL                  日志级别 (默认: info)
-  MAX_PROMPTS                最大prompt数量限制 (默认: 100)
+  MAX_PROMPTS                最大prompt数量限制 (默认: 1000)
   RECURSIVE_SCAN             是否启用递归扫描子目录 (默认: true)
 
 示例:
@@ -77,34 +77,34 @@ MCP Prompt Server - 智能 Prompt 管理服务器
 export class Config {
   constructor() {
     const cliArgs = parseCommandLineArgs();
-    
+
     // 处理帮助和版本信息
     if (cliArgs.help) {
       showHelp();
       process.exit(0);
     }
-    
+
     // 确定prompts目录
-    this.promptsDir = cliArgs.promptsDir || 
-                     process.env.PROMPTS_DIR || 
-                     DEFAULT_PROMPTS_DIR;
+    this.promptsDir = cliArgs.promptsDir ||
+      process.env.PROMPTS_DIR ||
+      DEFAULT_PROMPTS_DIR;
     this.configHome = path.dirname(this.promptsDir);
-    
+
     // 服务器端口
     this.port = cliArgs.port || process.env.SERVER_PORT || 5621;
-    
+
     // 其他配置
     this.serverName = process.env.MCP_SERVER_NAME || 'prompt-manager';
     this.serverVersion = process.env.MCP_SERVER_VERSION || '0.0.16';
     this.logLevel = process.env.LOG_LEVEL || 'info';
-    this.maxPrompts = parseInt(process.env.MAX_PROMPTS) || 100;
+    this.maxPrompts = parseInt(process.env.MAX_PROMPTS) || 1000;
     this.recursiveScan = process.env.RECURSIVE_SCAN !== 'false'; // 默认启用递归扫描
-    
+
     // 管理员配置
     this.adminEnable = process.env.ADMIN_ENABLE !== 'false'; // 默认启用管理员功能
     this.adminPath = process.env.ADMIN_PATH || '/admin';
     this.exportToken = process.env.EXPORT_TOKEN || crypto.randomBytes(32).toString('hex');
-    
+
     // 管理员账户（从环境变量或默认值）
     const adminUsername = process.env.ADMIN_USERNAME || 'admin';
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin';
@@ -116,7 +116,7 @@ export class Config {
         token: process.env.ADMIN_TOKEN || crypto.randomBytes(32).toString('hex')
       }
     ];
-    
+
     if (cliArgs.version) {
       process.stderr.write(this.serverVersion + '\n');
       process.exit(0);
@@ -254,10 +254,10 @@ export class Config {
       if (!exists) {
         throw new Error(`Prompts目录不存在: ${this.promptsDir}`);
       }
-      
+
       // 检查目录是否可读
       await fs.access(this.promptsDir, fs.constants.R_OK);
-      
+
       return true;
     } catch (error) {
       throw new Error(`配置验证失败: ${error.message}`);
@@ -268,15 +268,15 @@ export class Config {
    * 显示当前配置（输出到 stderr，不干扰 MCP 通信）
    */
   showConfig() {
-    process.stderr.write('===== 服务器配置 =====\n');
-    process.stderr.write(`服务名称: ${this.serverName}\n`);
-    process.stderr.write(`服务版本: ${this.serverVersion}\n`);
-    process.stderr.write(`服务端口: ${this.port}\n`);
-    process.stderr.write(`日志级别: ${this.logLevel}\n`);
-    process.stderr.write(`递归扫描: ${this.recursiveScan ? '启用' : '禁用'}\n`);
-    process.stderr.write(`Prompts目录: ${this.promptsDir}\n`);
-    process.stderr.write(`最大Prompt数量: ${this.maxPrompts}\n`);
-    process.stderr.write('=====================\n');
+    process.stderr.write('===================================== 服务器配置 =====================================\n');
+    process.stderr.write(`   服务名称: ${this.serverName}\n`);
+    process.stderr.write(`   服务版本: ${this.serverVersion}\n`);
+    process.stderr.write(`   服务端口: ${this.port}\n`);
+    process.stderr.write(`   日志级别: ${this.logLevel}\n`);
+    process.stderr.write(`   递归扫描: ${this.recursiveScan ? '启用' : '禁用'}\n`);
+    process.stderr.write(`   Prompts目录: ${this.promptsDir}\n`);
+    process.stderr.write(`   最大Prompt数量: ${this.maxPrompts}\n`);
+    process.stderr.write('======================================================================================\n\n');
   }
 }
 
