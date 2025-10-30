@@ -1,14 +1,16 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import { randomUUID } from 'node:crypto';
+import { util } from './utils/util.js';
 import { config } from './utils/config.js';
 import { logger } from './utils/logger.js';
-import { util } from './utils/util.js';
-import { PromptManager } from './services/manager.js';
-import { getMcpMiddleware } from './mcp/mcp.js';
-import { staticRouter } from './api/static.routes.js';
 import { adminRouter } from './api/admin.routes.js';
 import { openRouter } from './api/open.routes.js';
+import { getMcpServer } from './mcp/mcp.server.js';
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { InMemoryEventStore } from '@modelcontextprotocol/sdk/examples/shared/inMemoryEventStore.js';
 
 
 const app = express();
@@ -40,21 +42,81 @@ app.use('/adminapi', adminRouter);
 // 注册开放API
 app.use('/openapi', openRouter);
 
+
+const transports = {};
 // 挂载MCP流式服务（独立路径前缀，避免冲突）
-app.all('/mcp', (req, res, next) => {
+app.all('/mcp', (req, res) => {
   try {
-    const middleware = getMcpMiddleware();
-    middleware(req, res, next);
+    let transport;
+    const sessionId = req.headers['mcp-session-id'] || '';
+    if (sessionId && transports[sessionId]) {
+      const existingTransport = transports[sessionId];
+      // Check if the transport is of the correct type
+      if (existingTransport instanceof StreamableHTTPServerTransport) {
+        // Reuse existing transport
+        transport = existingTransport;
+      } else {
+        // Transport exists but is not a StreamableHTTPServerTransport (could be SSEServerTransport)
+        res.status(400).json({
+            jsonrpc: '2.0',
+            error: {
+                code: -32000,
+                message: 'Bad Request: Session exists but uses a different transport protocol'
+            },
+            id: null
+        });
+        return;
+      }
+    }else if (!sessionId && req.method === 'POST' && isInitializeRequest(req.body)) {
+      const eventStore = new InMemoryEventStore();
+      transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => randomUUID(),
+          eventStore, // Enable resumability
+          onsessioninitialized: sessionId => {
+              // Store the transport by session ID when session is initialized
+              console.log(`StreamableHTTP session initialized with ID: ${sessionId}`);
+              transports[sessionId] = transport;
+          }
+      });
+
+      // Set up onclose handler to clean up transport when closed
+      transport.onclose = () => {
+          const sid = transport.sessionId;
+          if (sid && transports[sid]) {
+              console.log(`Transport closed for session ${sid}, removing from transports map`);
+              delete transports[sid];
+          }
+      };
+
+      // Connect the transport to the MCP server
+      const server = getMcpServer().connect(transport);
+    } else {
+      // Invalid request - no session ID or not initialization request
+      res.status(400).json({
+          jsonrpc: '2.0',
+          error: {
+              code: -32000,
+              message: 'Bad Request: No valid session ID provided'
+          },
+          id: null
+      });
+      return;
+    }
+    
+    // Handle the request with the transport
+    transport.handleRequest(req, res, req.body);
   } catch (error) {
-    return res.status(500).json({ error: 'MCP服务器未初始化: ' + error.message });
+    logger.error('Error handling MCP request: ' + error.message);
+    return res.status(500).json({
+        jsonrpc: '2.0',
+        error: {
+            code: -32603,
+            message: 'Internal server error'
+        },
+        id: null
+    });
   }
 });
-
-// 获取prompts目录路径（在启动时可能被覆盖）
-let promptsDir = config.getPromptsDir();
-
-// 创建全局PromptManager实例
-export const promptManager = new PromptManager(promptsDir);
 
 // 错误处理中间件
 app.use((err, req, res, next) => {

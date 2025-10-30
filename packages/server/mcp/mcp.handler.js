@@ -1,17 +1,7 @@
 // 导入自定义模块
 import { config } from '../utils/config.js';
 import { logger } from '../utils/logger.js';
-
-// 延迟获取promptManager以避免循环依赖
-let _promptManager;
-
-async function getPromptManager() {
-  if (!_promptManager) {
-    const serverModule = await import('../../server/server.js');
-    _promptManager = serverModule.promptManager;
-  }
-  return _promptManager;
-}
+import { util } from '../utils/util.js';
 
 // 处理 get_prompt 工具调用
 export async function handleGetPrompt(args) {
@@ -22,7 +12,7 @@ export async function handleGetPrompt(args) {
     throw new Error("缺少必需参数: prompt_id 或 name");
   }
   
-  const promptManager = await getPromptManager();
+  const promptManager = await util.getPromptManager();
   const prompt = promptManager.getPrompt(promptId);
   if (!prompt) {
     throw new Error(`未找到ID为 "${promptId}" 的prompt`);
@@ -58,7 +48,7 @@ export async function handleSearchPrompts(args) {
   const searchTerm = args.title || args.name;
   
   const logLevel = config.getLogLevel();
-  const promptManager = await getPromptManager();
+  const promptManager = await util.getPromptManager();
   const allPrompts = promptManager.getPrompts();
 
   // 如果搜索词为空，则返回所有提示词
@@ -80,7 +70,7 @@ export async function handleSearchPrompts(args) {
     prompt.hasArguments = prompt.arguments && prompt.arguments.length > 0;
     return {
       prompt: prompt,
-      score: calculateSimilarityScore(searchTerm, prompt),
+      score: util.calculateSimilarityScore(searchTerm, prompt),
     };
   })
   .filter(result => result.score > 0) // 只返回有匹配的结果
@@ -114,7 +104,7 @@ export async function handleSearchPrompts(args) {
 export async function handleReloadPrompts(args) {
   logger.info('重新加载prompts...');
   
-  const promptManager = await getPromptManager();
+  const promptManager = await util.getPromptManager();
   const result = await promptManager.reloadPrompts();
   
   return {
@@ -138,8 +128,6 @@ export async function handleReloadPrompts(args) {
  */
 function formatResults(results = []) {
   if (!Array.isArray(results)) return [];
-
-  // console.log(results);
 
   return results.map(result => {
     const prompt = result.prompt ? result.prompt : result;
@@ -175,74 +163,4 @@ function convertToText(result) {
       }
     ]
   };
-}
-
-/**
- * 计算搜索关键词与prompt的相似度得分
- * @param {string} searchTerm - 搜索关键词
- * @param {Object} prompt - prompt对象
- * @returns {number} 相似度得分 (0-100)
- */
-function calculateSimilarityScore(searchTerm, prompt) {
-  let totalScore = 0;
-  const searchLower = searchTerm ? searchTerm.toLowerCase() : '';
-  
-  // 搜索字段权重配置（专注于内容搜索，不包含ID检索）
-  const fieldWeights = {
-    name: 60,         // 名称权重高，是主要匹配字段
-    description: 40   // 描述权重适中，是辅助匹配字段
-  };
-  
-  // 计算name匹配得分
-  if (prompt && prompt.name && typeof prompt.name === 'string') {
-    const nameScore = getStringMatchScore(searchLower, prompt.name.toLowerCase());
-    totalScore += nameScore * fieldWeights.name;
-  }
-  
-  // 计算description匹配得分
-  if (prompt.description) {
-    const descScore = getStringMatchScore(searchLower, prompt.description.toLowerCase());
-    totalScore += descScore * fieldWeights.description;
-  }
-  
-  // 标准化得分到0-100范围
-  const maxPossibleScore = Object.values(fieldWeights).reduce((sum, weight) => sum + weight, 0);
-  return Math.round((totalScore / maxPossibleScore) * 100);
-}
-
-/**
- * 计算两个字符串的匹配得分
- * @param {string} search - 搜索词 (已转小写)
- * @param {string} target - 目标字符串 (已转小写)
- * @returns {number} 匹配得分 (0-1)
- */
-function getStringMatchScore(search, target) {
-  if (!search || !target) return 0;
-  
-  // 完全匹配得分最高
-  if (target === search) return 1.0;
-  
-  // 完全包含得分较高
-  if (target.includes(search)) return 0.8;
-  
-  // 部分词匹配
-  const searchWords = search.split(/\s+/).filter(word => word.length > 0);
-  const targetWords = target.split(/\s+/).filter(word => word.length > 0);
-  
-  let matchedWords = 0;
-  for (const searchWord of searchWords) {
-    for (const targetWord of targetWords) {
-      if (targetWord.includes(searchWord) || searchWord.includes(targetWord)) {
-        matchedWords++;
-        break;
-      }
-    }
-  }
-  
-  if (searchWords.length > 0) {
-    const wordMatchRatio = matchedWords / searchWords.length;
-    return wordMatchRatio * 0.6; // 部分词匹配得分
-  }
-  
-  return 0;
 }
