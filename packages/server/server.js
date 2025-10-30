@@ -4,7 +4,7 @@ import { config } from './utils/config.js';
 import { logger } from './utils/logger.js';
 import { util } from './utils/util.js';
 import { PromptManager } from './services/manager.js';
-import { initializeMcpServer } from './mcp/mcp.js';
+import { initializeMcpServer } from './mcp/initializer.js';
 
 
 // 获取prompts目录路径（在启动时可能被覆盖）

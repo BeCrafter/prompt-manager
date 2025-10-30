@@ -5,8 +5,7 @@ import { config } from './utils/config.js';
 import { logger } from './utils/logger.js';
 import { util } from './utils/util.js';
 import { PromptManager } from './services/manager.js';
-import { getMcpMiddleware } from './mcp/mcp.js';
-import { staticRouter } from './api/static.routes.js';
+import { getMcpMiddleware } from './mcp/initializer.js';
 import { adminRouter } from './api/admin.routes.js';
 import { openRouter } from './api/open.routes.js';
 

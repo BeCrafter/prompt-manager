@@ -1,10 +1,118 @@
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomUUID } from 'node:crypto';
 import { logger } from '../utils/logger.js';
+import IMcpServer from './interfaces/IMcpServer.js';
+import { ErrorHandler } from './services/ErrorHandler.js';
 
-class Mcp {
+/**
+ * MCP传输层实现
+ */
+class McpTransport {
   /**
-   * 初始化MCP管理器
+   * 初始化MCP传输层
+   * @param {Object} options - 配置项
+   * @param {boolean} options.stateful - 有状态模式
+   * @param {Object} options.security - 安全配置
+   * @param {boolean} options.enableJsonResponse - 启用JSON响应模式
+   * @param {Object} options.eventStore - 事件存储
+   */
+  constructor({ 
+    stateful = true, 
+    security = {},
+    enableJsonResponse = false,
+    eventStore = null
+  } = {}) {
+    this.transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: stateful ? () => randomUUID() : undefined,
+      allowedHosts: security.allowedHosts || [],
+      allowedOrigins: security.allowedOrigins || [],
+      enableDnsRebindingProtection: security.enableDnsRebindingProtection !== undefined ? security.enableDnsRebindingProtection : false,
+      enableJsonResponse: enableJsonResponse,
+      eventStore: eventStore
+    });
+  }
+
+  /**
+   * 启动传输层
+   */
+  async start() {
+    return await this.transport.start();
+  }
+
+  /**
+   * 处理HTTP请求
+   */
+  async handleRequest(req, res, body) {
+    return await this.transport.handleRequest(req, res, body);
+  }
+
+  /**
+   * 发送消息
+   */
+  async send(message) {
+    return await this.transport.send(message);
+  }
+
+  /**
+   * 关闭传输层
+   */
+  async close() {
+    return await this.transport.close();
+  }
+
+  /**
+   * 标记为断开连接
+   */
+  markAsDisconnected() {
+    return this.transport.markAsDisconnected();
+  }
+
+  /**
+   * 重新连接
+   */
+  async reconnect() {
+    return await this.transport.reconnect();
+  }
+
+  /**
+   * 设置消息处理器
+   * @param {Function} handler - 消息处理器
+   */
+  setOnMessageHandler(handler) {
+    this.transport.onmessage = handler;
+  }
+
+  /**
+   * 设置会话初始化回调
+   * @param {Function} callback - 回调函数
+   */
+  setOnSessionInitialized(callback) {
+    this.transport.onsessioninitialized = callback;
+  }
+
+  /**
+   * 设置会话关闭回调
+   * @param {Function} callback - 回调函数
+   */
+  setOnSessionClosed(callback) {
+    this.transport.onsessionclosed = callback;
+  }
+
+  /**
+   * 获取底层传输实例
+   */
+  getTransport() {
+    return this.transport;
+  }
+}
+
+/**
+ * MCP核心服务类
+ * 实现IMcpServer接口
+ */
+class McpCore extends IMcpServer {
+  /**
+   * 初始化MCP核心服务
    * @param {Object} options - 配置项
    * @param {boolean} options.stateful - 有状态模式（默认true）
    * @param {Object} options.security - 安全配置
@@ -19,28 +127,30 @@ class Mcp {
     enableJsonResponse = false,
     eventStore = null
   } = {}) {
+    super();
+    
     this.exposedMethods = {};
     this.logger = logger;
+    this.initialized = false; // 添加服务器初始化状态跟踪
     
-    this.transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: stateful ? () => randomUUID() : undefined,
-      allowedHosts: security.allowedHosts || [],
-      allowedOrigins: security.allowedOrigins || [],
-      enableDnsRebindingProtection: security.enableDnsRebindingProtection !== undefined ? security.enableDnsRebindingProtection : false, // 默认禁用DNS重绑定保护
-      enableJsonResponse: enableJsonResponse,
-      eventStore: eventStore,
-      onsessioninitialized: (sessionId) => {
-        this.logger.info(`会话初始化：${sessionId}`);
-        this._handleSessionEvent('initialized', sessionId);
-      },
-      onsessionclosed: (sessionId) => {
-        this.logger.info(`会话关闭：${sessionId}`);
-        this._handleSessionEvent('closed', sessionId);
-      },
+    // 初始化传输层
+    this.transport = new McpTransport({
+      stateful,
+      security,
+      enableJsonResponse,
+      eventStore
     });
     
-    // 绑定消息处理逻辑
-    this.transport.onmessage = this._handleMessage.bind(this);
+    // 设置会话事件回调
+    this.transport.setOnSessionInitialized((sessionId) => {
+      this.logger.info(`会话初始化：${sessionId}`);
+      this._handleSessionEvent('initialized', sessionId);
+    });
+    
+    this.transport.setOnSessionClosed((sessionId) => {
+      this.logger.info(`会话关闭：${sessionId}`);
+      this._handleSessionEvent('closed', sessionId);
+    });
     
     // 存储会话事件处理器
     this.sessionEventHandlers = [];
@@ -52,7 +162,7 @@ class Mcp {
       });
     }, 30000);
     
-    this.logger.info(`MCP管理器初始化完成`, {
+    this.logger.info(`MCP核心服务初始化完成`, {
       stateful,
       enableJsonResponse,
       security: {
@@ -68,10 +178,8 @@ class Mcp {
    */
   async _checkHealth() {
     try {
-      if (!this.transport || typeof this.transport.handleRequest !== 'function') {
-        this.logger.warn('健康检查: Transport 不可用');
-        await this._recoverConnection();
-      }
+      // 健康检查逻辑可以在这里实现
+      this.logger.debug('健康检查执行中...');
     } catch (err) {
       this.logger.error('健康检查失败:', err.message);
     }
@@ -96,6 +204,11 @@ class Mcp {
    * @param {string} sessionId - 会话ID
    */
   _handleSessionEvent(eventType, sessionId) {
+    // 在会话关闭时重置初始化状态，以便下次连接可以重新初始化
+    if (eventType === 'closed') {
+      this.initialized = false;
+    }
+    
     for (const handler of this.sessionEventHandlers) {
       try {
         handler(eventType, sessionId);
@@ -172,6 +285,41 @@ class Mcp {
   }
 
   /**
+   * 设置消息处理器
+   * @param {Function} handler - 消息处理器
+   */
+  setMessageHandler(handler) {
+    this.transport.setOnMessageHandler(handler);
+  }
+
+  /**
+   * 关闭MCP服务
+   */
+  async close() {
+    await this.transport.close();
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+    }
+    // 重置初始化状态
+    this.initialized = false;
+    this.logger.info('服务已关闭');
+  }
+
+  /**
+   * 获取传输层实例
+   */
+  getTransport() {
+    return this.transport;
+  }
+
+  /**
+   * 获取暴露的方法
+   */
+  getExposedMethods() {
+    return this.exposedMethods;
+  }
+
+  /**
    * 内部：处理JSON-RPC消息
    */
   async _handleMessage(message, context) {
@@ -200,12 +348,10 @@ class Mcp {
         result = await this._handleCallTool(params, context);
       } else {
         // 处理自定义方法
-        console.log('处理自定义方法:', method, params, context);
+        this.logger.debug('处理自定义方法:', method, params, context);
         result = await this._handleCustomMethod(method, params, context);
       }
       
-      // console.log('方法结果:', result);
-
       // 发送成功响应
       if (id !== undefined) {
         this.logger.debug(`发送响应: ${method}`, { method, id });
@@ -214,22 +360,13 @@ class Mcp {
     } catch (err) {
       // 发送错误响应
       this.logger.error(`处理消息错误: ${err.message}`, { method, id, stack: err.stack });
-
-      // 标记连接为不可用
-      this.transport.markAsDisconnected();
       
-      // 尝试自动恢复
-      setTimeout(() => this._recoverConnection(), 5000);
-
       if (id !== undefined) {
+        const errorResponse = ErrorHandler.handleMcpError(err, { method, id });
         await this.transport.send({
           jsonrpc: '2.0',
           id,
-          error: {
-            code: err.code || -32601,
-            message: err.message,
-            data: undefined
-          }
+          error: errorResponse.error
         });
       }
     }
@@ -239,6 +376,12 @@ class Mcp {
    * 处理初始化请求
    */
   _handleInitialize() {
+    // 检查是否已经初始化
+    if (!this.initialized) {
+      // 标记服务器为已初始化
+      this.initialized = true;
+    }
+    
     return {
       protocolVersion: "2025-03-26",
       capabilities: {
@@ -251,22 +394,6 @@ class Mcp {
         version: "1.0.0"
       }
     };
-  }
-
-  /**
-   * 尝试恢复连接
-   */
-  async _recoverConnection() {
-    try {
-      await this.transport.reconnect();
-      this.logger.info('连接已恢复');
-    } catch (err) {
-      this.logger.error('恢复连接失败:', err.message);
-      // 指数退避重试
-      const delay = Math.min(30000, 5000 * Math.pow(2, this.reconnectAttempts));
-      setTimeout(() => this._recoverConnection(), delay);
-      this.reconnectAttempts++;
-    }
   }
 
   /**
@@ -335,7 +462,7 @@ class Mcp {
       } else {
         field = methodList[0] || '';
       }
-      console.log('field', field);
+      this.logger.debug('field', field);
 
       // default return structure
       ret[field] = [];
@@ -343,65 +470,51 @@ class Mcp {
     };
     
     if (!methodDef) {
-      logger.warn(`方法 ${method} 未找到`);
+      this.logger.warn(`方法 ${method} 未找到`);
       return getReturnByMethod(method) || null;
     }
     
     return await methodDef.handler(params, context);
   }
-
-  /**
-   * 关闭MCP服务
-   */
-  async close() {
-    await this.transport.close();
-    if (this.healthCheckInterval) {
-      clearInterval(this.healthCheckInterval);
-    }
-    this.logger.info('服务已关闭');
-  }
-  
-  /**
-   * 获取Transport实例（用于高级用法）
-   */
-  getTransport() {
-    return this.transport;
-  }
 }
 
-
+/**
+ * MCP服务器主类
+ * 提供统一的入口点
+ */
 class McpServer {
-    /**
-     * 初始化MCP流式服务器
-     * @param {Object} options - 配置项
-     * @param {boolean} options.stateful - 有状态模式（默认true）
-     * @param {Object} options.security - 安全配置
-     * @param {boolean} options.enableJsonResponse - 启用JSON响应模式（默认false）
-     * @param {Object} options.eventStore - 事件存储（用于恢复功能）
-     */
-    constructor(options = {}) {
-        this.mcpServer = new Mcp(options);
-        
-        // 绑定常用方法到实例
-        this.expose = this.mcpServer.expose.bind(this.mcpServer);
-        this.createMiddleware = this.mcpServer.createMiddleware.bind(this.mcpServer);
-        this.close = this.mcpServer.close.bind(this.mcpServer);
-        this.onSessionEvent = this.mcpServer.onSessionEvent.bind(this.mcpServer);
-    }
+  /**
+   * 初始化MCP流式服务器
+   * @param {Object} options - 配置项
+   * @param {boolean} options.stateful - 有状态模式（默认true）
+   * @param {Object} options.security - 安全配置
+   * @param {boolean} options.enableJsonResponse - 启用JSON响应模式（默认false）
+   * @param {Object} options.eventStore - 事件存储（用于恢复功能）
+   */
+  constructor(options = {}) {
+    this.mcpCore = new McpCore(options);
+    
+    // 绑定常用方法到实例
+    this.expose = this.mcpCore.expose.bind(this.mcpCore);
+    this.createMiddleware = this.mcpCore.createMiddleware.bind(this.mcpCore);
+    this.close = this.mcpCore.close.bind(this.mcpCore);
+    this.onSessionEvent = this.mcpCore.onSessionEvent.bind(this.mcpCore);
+    this.setMessageHandler = this.mcpCore.setMessageHandler.bind(this.mcpCore);
+  }
 
-    /**
-     * 获取底层MCP管理器（用于高级用法）
-     */
-    getManager() {
-        return this.mcpServer;
-    }
+  /**
+   * 获取底层MCP核心服务（用于高级用法）
+   */
+  getCore() {
+    return this.mcpCore;
+  }
 
-    /**
-     * 获取Transport实例（用于高级用法）
-     */
-    getTransport() {
-        return this.mcpServer.getTransport();
-    }
+  /**
+   * 获取传输层实例（用于高级用法）
+   */
+  getTransport() {
+    return this.mcpCore.getTransport();
+  }
 }
 
 export default McpServer;
