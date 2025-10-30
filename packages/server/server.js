@@ -1,14 +1,10 @@
-import express from 'express';
-import cors from 'cors';
+import app from './app.js';
 import { pathToFileURL } from 'url';
 import { config } from './utils/config.js';
 import { logger } from './utils/logger.js';
 import { util } from './utils/util.js';
 import { PromptManager } from './services/manager.js';
-import { getMcpMiddleware, initializeMcpServer } from './mcp/mcp.js';
-import { adminRouter } from './api/admin.routes.js';
-import { openRouter } from './api/open.routes.js';
-import app from './app.js';
+import { initializeMcpServer } from './mcp/mcp.js';
 
 
 // 获取prompts目录路径（在启动时可能被覆盖）
@@ -30,36 +26,28 @@ export function isServerRunning() {
   return Boolean(serverInstance);
 }
 
-export async function startServer(options = {}) {
-  if (serverInstance) {
-    return serverInstance;
-  }
-  if (serverStartingPromise) {
-    return serverStartingPromise;
-  }
-
-  const { configOverrides } = options;
-  if (configOverrides) {
-    config.applyOverrides(configOverrides);
+// 封装配置处理逻辑
+async function _handleConfig(options) {
+  if (options.configOverrides) {
+    config.applyOverrides(options.configOverrides);
   }
   promptsDir = config.getPromptsDir();
-
-  // 更新PromptManager的prompts目录
   promptManager.promptsDir = promptsDir;
+  await config.ensurePromptsDir();
+  await util.seedPromptsIfEmpty();
+  await config.validate();
+  config.showConfig();
+}
+
+export async function startServer(options = {}) {
+  if (serverInstance) return serverInstance;
+  if (serverStartingPromise) return serverStartingPromise;
 
   serverStartingPromise = (async () => {
     try {
-      await config.ensurePromptsDir();
-      promptsDir = config.getPromptsDir();
-      await util.seedPromptsIfEmpty();
-      await config.validate();
-      config.showConfig();
-
-      // 加载prompts
+      await _handleConfig(options);
       await promptManager.loadPrompts();
-
-      // 初始化MCP服务器
-      await initializeMcpServer();
+      mcpManagerInstance = await initializeMcpServer();
 
       return await new Promise((resolve, reject) => {
         const server = app.listen(config.getPort(), () => {
@@ -79,16 +67,12 @@ export async function startServer(options = {}) {
     } catch (error) {
       logger.error('服务器启动失败:', error.message);
       throw error;
+    } finally {
+      serverStartingPromise = null;
     }
   })();
 
-  try {
-    serverInstance = await serverStartingPromise;
-    
-    return serverInstance;
-  } finally {
-    serverStartingPromise = null;
-  }
+  return serverStartingPromise;
 }
 
 export async function stopServer() {
@@ -134,6 +118,7 @@ export function getServerState() {
   };
 }
 
+// 是否直接运行
 const isDirectRun = (() => {
   try {
     const executed = process.argv[1];

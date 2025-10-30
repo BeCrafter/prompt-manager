@@ -13,7 +13,7 @@ async function importMcpHandlers() {
   return mcpHandlers;
 }
 
-async function initializeMcpServer() {
+export async function initializeMcpServer() {
   if (mcpServer) return;
   
   logger.info('正在初始化MCP服务器...');
@@ -78,9 +78,8 @@ async function initializeMcpServer() {
     mcpServer = null;
     throw new Error('初始化MCP服务器失败: ' + error.message);
   }
+  return mcpServer;
 }
-
-export { initializeMcpServer };
 
 export function getMcpMiddleware() {
   if (!mcpServer) {

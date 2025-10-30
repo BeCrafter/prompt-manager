@@ -44,6 +44,13 @@ class Mcp {
     
     // 存储会话事件处理器
     this.sessionEventHandlers = [];
+  
+    // 设置定时健康检查
+    this.healthCheckInterval = setInterval(() => {
+      this._checkHealth().catch(err => {
+        this.logger.error('健康检查异常:', err.message);
+      });
+    }, 30000);
     
     this.logger.info(`MCP管理器初始化完成`, {
       stateful,
@@ -54,6 +61,20 @@ class Mcp {
         dnsRebindingProtection: !!security.allowedHosts || !!security.allowedOrigins
       }
     });
+  }
+
+  /**
+   * 健康检查
+   */
+  async _checkHealth() {
+    try {
+      if (!this.transport || typeof this.transport.handleRequest !== 'function') {
+        this.logger.warn('健康检查: Transport 不可用');
+        await this._recoverConnection();
+      }
+    } catch (err) {
+      this.logger.error('健康检查失败:', err.message);
+    }
   }
 
   /**
@@ -154,6 +175,11 @@ class Mcp {
    * 内部：处理JSON-RPC消息
    */
   async _handleMessage(message, context) {
+    if (!this.transport || typeof this.transport.handleRequest !== 'function') {
+      this.logger.error('连接已断开，无法处理消息');
+      return;
+    }
+
     if (!message.jsonrpc) {
       this.logger.debug('收到非JSON-RPC消息', { message });
       return;
@@ -174,7 +200,7 @@ class Mcp {
         result = await this._handleCallTool(params, context);
       } else {
         // 处理自定义方法
-        console.log('处理自定义方法:', method,params,context);
+        console.log('处理自定义方法:', method, params, context);
         result = await this._handleCustomMethod(method, params, context);
       }
       
@@ -188,6 +214,13 @@ class Mcp {
     } catch (err) {
       // 发送错误响应
       this.logger.error(`处理消息错误: ${err.message}`, { method, id, stack: err.stack });
+
+      // 标记连接为不可用
+      this.transport.markAsDisconnected();
+      
+      // 尝试自动恢复
+      setTimeout(() => this._recoverConnection(), 5000);
+
       if (id !== undefined) {
         await this.transport.send({
           jsonrpc: '2.0',
@@ -218,6 +251,22 @@ class Mcp {
         version: "1.0.0"
       }
     };
+  }
+
+  /**
+   * 尝试恢复连接
+   */
+  async _recoverConnection() {
+    try {
+      await this.transport.reconnect();
+      this.logger.info('连接已恢复');
+    } catch (err) {
+      this.logger.error('恢复连接失败:', err.message);
+      // 指数退避重试
+      const delay = Math.min(30000, 5000 * Math.pow(2, this.reconnectAttempts));
+      setTimeout(() => this._recoverConnection(), delay);
+      this.reconnectAttempts++;
+    }
   }
 
   /**
@@ -258,19 +307,47 @@ class Mcp {
    */
   async _handleCustomMethod(method, params, context) {
     const methodDef = this.exposedMethods[method];
+    const getFieldValue = (field, result) => {
+      let val = {};
+      for (const key in result) {
+        if (key.toLowerCase() === field.toLowerCase()) {
+          val[field] = result[key];
+          break;
+        }
+      }
+
+      if (Object.keys(val).length === 0) {
+        val[field] = [];
+      }
+      console.log('getFieldValue', field, val);
+      return val || null
+    };
     
     if (!methodDef) {
       logger.error(`方法 ${method} 未找到`);
 
       let methodList = method.split('/');
-      let field = methodList[methodList.length - 1];
+      let field;
+      if (methodList.length === 2) {
+        field = methodList[0];  // 长度为2时使用第一个元素
+      } else if (methodList.length > 2) {
+        // 小驼峰拼接前 length-1 个元素
+        field = methodList.slice(0, -1).reduce((acc, curr, index) => 
+          index === 0 ? curr : acc + curr.charAt(0).toUpperCase() + curr.slice(1), 
+          ''
+        );
+      } else {
+        field = methodList[0] || '';  // 默认处理
+      }
       console.log('field', field);
 
       let result = {
         'resources': [],
         'prompts': [],
+        'notifications': [],
+        'templates': []
       };
-      return result[field] || null;
+      return getFieldValue(field, result) || null;
     }
     
     return await methodDef.handler(params, context);
@@ -281,6 +358,9 @@ class Mcp {
    */
   async close() {
     await this.transport.close();
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+    }
     this.logger.info('服务已关闭');
   }
   

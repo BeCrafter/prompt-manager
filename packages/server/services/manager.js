@@ -345,6 +345,11 @@ export class PromptManager {
     const filePath = typeof fileInfo === 'string' ? path.join(this.promptsDir, fileInfo) : fileInfo.filePath;
     const relativePath = typeof fileInfo === 'string' ? fileInfo : fileInfo.relativePath;
     
+    if (fileName === GROUP_META_FILENAME) {
+      // 跳过组元数据文件
+      return null;
+    }
+
     try {
       const content = await fs.readFile(filePath, 'utf8');
       const ext = path.extname(fileName).toLowerCase();
