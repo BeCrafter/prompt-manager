@@ -307,47 +307,44 @@ class Mcp {
    */
   async _handleCustomMethod(method, params, context) {
     const methodDef = this.exposedMethods[method];
-    const getFieldValue = (field, result) => {
-      let val = {};
-      for (const key in result) {
-        if (key.toLowerCase() === field.toLowerCase()) {
-          val[field] = result[key];
-          break;
-        }
+    const getReturnByMethod = (method) => {
+      let methodReturn = {
+        'resources/list': {'resources': []},
+        'resources/templates/list': {'resourceTemplates': []},
+        'prompts/list': {'prompts': []},
+        'notifications/list': {'notifications': []},
+      };
+
+      // get return structure by method name
+      let ret = methodReturn[method] || {};
+
+      if (Object.keys(ret).length > 0) {
+        return ret;
       }
 
-      if (Object.keys(val).length === 0) {
-        val[field] = [];
-      }
-      console.log('getFieldValue', field, val);
-      return val || null
-    };
-    
-    if (!methodDef) {
-      logger.error(`方法 ${method} 未找到`);
-
-      let methodList = method.split('/');
+      // get return structure by method name parsing
       let field;
+      let methodList = method.split('/');
       if (methodList.length === 2) {
-        field = methodList[0];  // 长度为2时使用第一个元素
+        field = methodList[0];
       } else if (methodList.length > 2) {
-        // 小驼峰拼接前 length-1 个元素
         field = methodList.slice(0, -1).reduce((acc, curr, index) => 
           index === 0 ? curr : acc + curr.charAt(0).toUpperCase() + curr.slice(1), 
           ''
         );
       } else {
-        field = methodList[0] || '';  // 默认处理
+        field = methodList[0] || '';
       }
       console.log('field', field);
 
-      let result = {
-        'resources': [],
-        'prompts': [],
-        'notifications': [],
-        'templates': []
-      };
-      return getFieldValue(field, result) || null;
+      // default return structure
+      ret[field] = [];
+      return ret || null
+    };
+    
+    if (!methodDef) {
+      logger.warn(`方法 ${method} 未找到`);
+      return getReturnByMethod(method) || null;
     }
     
     return await methodDef.handler(params, context);
