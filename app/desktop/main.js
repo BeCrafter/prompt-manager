@@ -16,6 +16,7 @@ let serverModuleVersion = 0;
 let serverModuleLoading = null;
 let isQuitting = false;
 let runtimeServerRoot = null;
+let startFailureCount = 0;
 
 const desktopPackageJson = JSON.parse(
   fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')
@@ -50,9 +51,11 @@ async function ensureRuntimeServerRoot() {
 }
 
 async function loadServerModule(options = {}) {
-  if (options.forceReload) {
+  // 如果强制重新加载或服务状态异常，则清理缓存
+  if (options.forceReload || serviceState === 'error') {
     serverModule = null;
     serverModuleVersion += 1;
+    serverModuleLoading = null;
   }
 
   if (serverModule) {
@@ -67,14 +70,22 @@ async function loadServerModule(options = {}) {
   const serverEntry = path.join(serverRoot, 'packages', 'server', 'server.js');
   const entryUrl = pathToFileURL(serverEntry);
   entryUrl.searchParams.set('v', String(serverModuleVersion));
+  
   serverModuleLoading = import(entryUrl.href)
     .then((mod) => {
       serverModule = mod;
       return mod;
     })
+    .catch((error) => {
+      // 清理加载状态，以便下次重试
+      serverModuleLoading = null;
+      serverModule = null;
+      throw error;
+    })
     .finally(() => {
       serverModuleLoading = null;
     });
+    
   return serverModuleLoading;
 }
 
@@ -94,6 +105,7 @@ function getServerStatusLabel() {
 }
 
 async function startService() {
+  // 如果正在运行或正在启动，直接返回
   if (serviceState === 'running' || serviceState === 'starting') {
     return;
   }
@@ -102,21 +114,33 @@ async function startService() {
   refreshTrayMenu();
 
   try {
-    const module = await loadServerModule();
+    // 强制重新加载模块以确保获取最新状态
+    const module = await loadServerModule({ forceReload: true });
     await module.startServer();
     currentServerState = module.getServerState();
     serviceState = 'running';
+    startFailureCount = 0; // 重置失败计数
   } catch (error) {
     serviceState = 'error';
     currentServerState = null;
-    dialog.showErrorBox('服务启动失败', error?.message || String(error));
+    startFailureCount++;
+    
+    console.error('服务启动失败:', error);
+    
+    // 如果连续失败3次，提示用户重启应用
+    if (startFailureCount >= 3) {
+      await promptForRestart();
+    } else {
+      dialog.showErrorBox('服务启动失败', error?.message || String(error));
+    }
   } finally {
     refreshTrayMenu();
   }
 }
 
 async function stopService() {
-  if (serviceState !== 'running') {
+  // 如果服务未运行或正在停止，直接返回
+  if (serviceState !== 'running' && serviceState !== 'error') {
     return;
   }
 
@@ -125,10 +149,13 @@ async function stopService() {
 
   try {
     const module = await loadServerModule();
-    await module.stopServer();
+    if (module && typeof module.stopServer === 'function') {
+      await module.stopServer();
+    }
     currentServerState = null;
     serviceState = 'stopped';
   } catch (error) {
+    console.error('停止服务失败:', error);
     dialog.showErrorBox('停止服务失败', error?.message || String(error));
     serviceState = 'error';
   } finally {
@@ -439,6 +466,22 @@ async function installServerDependencies(targetDir) {
       }
     });
   });
+}
+
+async function promptForRestart() {
+  const { response } = await dialog.showMessageBox({
+    type: 'error',
+    buttons: ['重启应用', '取消'],
+    defaultId: 0,
+    cancelId: 1,
+    message: '服务启动失败',
+    detail: '多次尝试启动服务均失败，建议重启应用以恢复正常状态。'
+  });
+
+  if (response === 0) {
+    app.relaunch();
+    app.exit(0);
+  }
 }
 
 async function showAboutDialog() {
