@@ -89,7 +89,13 @@ app.all('/mcp', (req, res) => {
       };
 
       // Connect the transport to the MCP server
-      const server = getMcpServer().connect(transport);
+      const server = getMcpServer();
+      server.connect(transport);
+      
+      // 添加错误处理
+      transport.onerror = (error) => {
+          console.error('MCP Transport error:', error);
+      };
     } else {
       // Invalid request - no session ID or not initialization request
       res.status(400).json({
