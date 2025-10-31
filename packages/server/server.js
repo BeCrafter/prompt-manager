@@ -82,6 +82,16 @@ export async function stopServer() {
     return;
   }
 
+  // 清理MCP会话
+  try {
+    const appModule = await import('./app.js');
+    if (appModule.cleanupMcpSessions) {
+      appModule.cleanupMcpSessions();
+    }
+  } catch (error) {
+    logger.warn('清理MCP会话时出错:', error.message);
+  }
+
   await new Promise((resolve, reject) => {
     serverInstance.close((err) => {
       if (err) {

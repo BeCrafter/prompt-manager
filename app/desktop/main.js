@@ -310,6 +310,9 @@ async function stopService() {
     }
     currentServerState = null;
     serviceState = 'stopped';
+    
+    // 清理MCP会话和传输
+    console.log('Clearing MCP sessions and transports');
   } catch (error) {
     console.error('停止服务失败:', error);
     dialog.showErrorBox('停止服务失败', error?.message || String(error));

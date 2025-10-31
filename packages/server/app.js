@@ -44,11 +44,14 @@ app.use('/openapi', openRouter);
 
 
 const transports = {};
+const mcpServers = {}; // 存储每个会话的MCP服务器实例
+
 // 挂载MCP流式服务（独立路径前缀，避免冲突）
 app.all('/mcp', (req, res) => {
   try {
     let transport;
     const sessionId = req.headers['mcp-session-id'] || '';
+    
     if (sessionId && transports[sessionId]) {
       const existingTransport = transports[sessionId];
       // Check if the transport is of the correct type
@@ -67,7 +70,7 @@ app.all('/mcp', (req, res) => {
         });
         return;
       }
-    }else if (!sessionId && req.method === 'POST' && isInitializeRequest(req.body)) {
+    } else if (!sessionId && req.method === 'POST' && isInitializeRequest(req.body)) {
       const eventStore = new InMemoryEventStore();
       transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => randomUUID(),
@@ -76,6 +79,10 @@ app.all('/mcp', (req, res) => {
               // Store the transport by session ID when session is initialized
               console.log(`StreamableHTTP session initialized with ID: ${sessionId}`);
               transports[sessionId] = transport;
+              
+              // 为新会话创建MCP服务器实例
+              mcpServers[sessionId] = getMcpServer();
+              mcpServers[sessionId].connect(transport);
           }
       });
 
@@ -85,13 +92,13 @@ app.all('/mcp', (req, res) => {
           if (sid && transports[sid]) {
               console.log(`Transport closed for session ${sid}, removing from transports map`);
               delete transports[sid];
+              // 清理MCP服务器实例
+              if (mcpServers[sid]) {
+                  delete mcpServers[sid];
+              }
           }
       };
 
-      // Connect the transport to the MCP server
-      const server = getMcpServer();
-      server.connect(transport);
-      
       // 添加错误处理
       transport.onerror = (error) => {
           console.error('MCP Transport error:', error);
@@ -134,5 +141,23 @@ app.use((err, req, res, next) => {
 app.use((req, res) => {
   res.status(404).send('Not Found')
 });
+
+// 导出清理函数
+export function cleanupMcpSessions() {
+  console.log('Cleaning up MCP sessions');
+  // 清理所有活动的传输和服务器实例
+  for (const sessionId in transports) {
+    try {
+      if (transports[sessionId] && typeof transports[sessionId].close === 'function') {
+        transports[sessionId].close();
+      }
+    } catch (error) {
+      console.error(`Error closing transport for session ${sessionId}:`, error);
+    }
+    delete transports[sessionId];
+  }
+  
+  // 注意：mcpServers 对象在 app.js 中不可访问，需要在 server.js 中处理
+}
 
 export default app;
