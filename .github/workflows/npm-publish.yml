@@ -51,7 +51,7 @@ jobs:
           sed -i "s/| \`MCP_SERVER_VERSION\` | 服务器版本 | \`.*\` |/| \`MCP_SERVER_VERSION\` | 服务器版本 | \`${{ steps.get_version.outputs.VERSION }}\` |/" README.md
 
           # 更新 config.js 中的默认版本（使用双引号避免单引号嵌套问题）
-          sed -i "s/this\.serverVersion = process\.env\.MCP_SERVER_VERSION || '[^']*';/this.serverVersion = process.env.MCP_SERVER_VERSION || '${{ steps.get_version.outputs.VERSION }}';/g" packages/server/config.js
+          sed -i "s/this\.serverVersion = process\.env\.MCP_SERVER_VERSION || '[^']*';/this.serverVersion = process.env.MCP_SERVER_VERSION || '${{ steps.get_version.outputs.VERSION }}';/g" packages/server/utils/config.js
 
       - name: Update version with jq
         run: |
@@ -70,7 +70,7 @@ jobs:
         run: |
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-          git add package.json package-lock.json env.example README.md packages/server/config.js app/desktop/package.json app/desktop/package-lock.json
+          git add package.json package-lock.json env.example README.md packages/server/utils/config.js app/desktop/package.json app/desktop/package-lock.json
           git commit -m "chore: update version to ${{ steps.get_version.outputs.VERSION }}" || echo "No changes to commit"
           git push origin HEAD:main
       
