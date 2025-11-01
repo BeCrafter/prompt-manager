@@ -65,18 +65,18 @@ export const getMcpServer = () => {
                 return handleSearchPrompts(args);
             }
         },
-        {
-            name: 'reload_prompts',
-            description: 'Force a reload of all preset prompts to overwrite the cache.',
-            inputSchema: {
-                type: 'object',
-                properties: {},
-                required: []
-            },
-            handler: async (args) => {
-                return handleReloadPrompts(args);
-            }
-        }
+        // {
+        //     name: 'reload_prompts',
+        //     description: 'Force a reload of all preset prompts to overwrite the cache.',
+        //     inputSchema: {
+        //         type: 'object',
+        //         properties: {},
+        //         required: []
+        //     },
+        //     handler: async (args) => {
+        //         return handleReloadPrompts(args);
+        //     }
+        // }
     ]);
     return mcpServer.getServer();
 };

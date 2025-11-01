@@ -72,7 +72,7 @@ export async function startServer(options = {}) {
 export async function stopServer() {
   if (serverStartingPromise) {
     try {
-      await serverStartingPromise;
+      await serverStartingPromise.exitCode();
     } catch (error) {
       // ignore failing start when stopping
     }

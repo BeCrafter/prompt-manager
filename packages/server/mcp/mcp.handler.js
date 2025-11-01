@@ -49,7 +49,7 @@ export async function handleSearchPrompts(args) {
   
   const logLevel = config.getLogLevel();
   const promptManager = await util.getPromptManager();
-  const allPrompts = promptManager.getPrompts();
+  let allPrompts = (await promptManager.loadPrompts()).prompts || [];
 
   // 如果搜索词为空，则返回所有提示词
   if (!searchTerm) {
