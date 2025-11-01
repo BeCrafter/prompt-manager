@@ -3,20 +3,13 @@ import { pathToFileURL } from 'url';
 import { config } from './utils/config.js';
 import { logger } from './utils/logger.js';
 import { util } from './utils/util.js';
-import { PromptManager } from './services/manager.js';
-import { initializeMcpServer } from './mcp/initializer.js';
-
+import { promptManager } from './services/manager.js';
 
 // 获取prompts目录路径（在启动时可能被覆盖）
 let promptsDir = config.getPromptsDir();
 
-// 创建全局PromptManager实例
-export const promptManager = new PromptManager(promptsDir);
-
-
 let serverInstance = null;
 let serverStartingPromise = null;
-let mcpManagerInstance = null;
 
 export function getServerAddress() {
   return `http://127.0.0.1:${config.getPort()}`;
@@ -47,7 +40,6 @@ export async function startServer(options = {}) {
     try {
       await _handleConfig(options);
       await promptManager.loadPrompts();
-      mcpManagerInstance = await initializeMcpServer();
 
       return await new Promise((resolve, reject) => {
         const server = app.listen(config.getPort(), () => {
@@ -56,6 +48,8 @@ export async function startServer(options = {}) {
             logger.info(`管理员界面可通过 http://localhost:${config.getPort()}${config.adminPath} 访问`);
             process.stderr.write('\n======================================================================================\n');
           }
+          // 保存服务器实例引用，以便后续可以关闭它
+          serverInstance = server;
           resolve(server);
         });
 
@@ -65,7 +59,7 @@ export async function startServer(options = {}) {
         });
       });
     } catch (error) {
-      logger.error('服务器启动失败:', error.message);
+      logger.error('服务器启动失败::', error.message);
       throw error;
     } finally {
       serverStartingPromise = null;
@@ -88,6 +82,16 @@ export async function stopServer() {
     return;
   }
 
+  // 清理MCP会话
+  try {
+    const appModule = await import('./app.js');
+    if (appModule.cleanupMcpSessions) {
+      appModule.cleanupMcpSessions();
+    }
+  } catch (error) {
+    logger.warn('清理MCP会话时出错:', error.message);
+  }
+
   await new Promise((resolve, reject) => {
     serverInstance.close((err) => {
       if (err) {
@@ -101,12 +105,6 @@ export async function stopServer() {
   });
 
   serverInstance = null;
-  
-  // 停止MCP服务器
-  if (mcpManagerInstance) {
-    await mcpManagerInstance.close();
-    mcpManagerInstance = null;
-  }
 }
 
 export function getServerState() {

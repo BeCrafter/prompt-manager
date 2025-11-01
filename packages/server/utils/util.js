@@ -20,6 +20,7 @@ const projectRoot = path.resolve(__dirname, '../../..');
 const examplesPromptsRoot = path.join(projectRoot, 'examples', 'prompts');
 const promptsDir = path.join(os.homedir(), '.prompt-manager', 'prompts');
 
+let _promptManager;
 
 export class Util {
     /**
@@ -126,8 +127,8 @@ export class Util {
      * @returns {number} 相似度得分 (0-100)
      */
     calculateSimilarityScore(searchTerm, prompt) {
-        const searchLower = searchTerm.toLowerCase();
         let totalScore = 0;
+        const searchLower = searchTerm ? searchTerm.toLowerCase() : '';
 
         // 搜索字段权重配置（专注于内容搜索，不包含ID检索）
         const fieldWeights = {
@@ -136,14 +137,14 @@ export class Util {
         };
 
         // 计算name匹配得分
-        if (prompt.name) {
-            const nameScore = this.getStringMatchScore(searchLower, prompt.name.toLowerCase());
+        if (prompt && prompt.name && typeof prompt.name === 'string') {
+            const nameScore = util.getStringMatchScore(searchLower, prompt.name.toLowerCase());
             totalScore += nameScore * fieldWeights.name;
         }
 
         // 计算description匹配得分
         if (prompt.description) {
-            const descScore = this.getStringMatchScore(searchLower, prompt.description.toLowerCase());
+            const descScore = util.getStringMatchScore(searchLower, prompt.description.toLowerCase());
             totalScore += descScore * fieldWeights.description;
         }
 
@@ -344,6 +345,14 @@ export class Util {
         const __filename = fileURLToPath(import.meta.url);
         const __dirname = path.dirname(path.dirname(__filename));
         return path.join(__dirname, '..', 'admin-ui');
+    };
+
+    async getPromptManager() {
+    if (!_promptManager) {
+        const serviceModule = await import('../services/manager.js');
+        _promptManager = serviceModule.promptManager;
+    }
+    return _promptManager;
     }
 }
 

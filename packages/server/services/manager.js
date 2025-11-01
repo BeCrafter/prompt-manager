@@ -35,7 +35,7 @@ const PromptSchema = z.object({
 /**
  * Prompt管理器类
  */
-export class PromptManager {
+class PromptManager {
   constructor(promptsDir) {
     this.promptsDir = promptsDir;
     this.loadedPrompts = new Map();
@@ -476,3 +476,6 @@ export class PromptManager {
     return await this.loadPrompts();
   }
 }
+
+// 创建全局PromptManager实例
+export const promptManager = new PromptManager(config.getPromptsDir());
