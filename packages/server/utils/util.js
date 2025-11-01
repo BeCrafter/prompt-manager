@@ -1,13 +1,10 @@
-import express from 'express';
 import crypto from 'crypto';
 import fs from 'fs';
 import os from 'os';
-import cors from 'cors';
 import path from 'path';
 import fse from 'fs-extra';
 import yaml from 'js-yaml';
 import { fileURLToPath } from 'url';
-import { config } from './config.js';
 import { logger } from './logger.js';
 
 export const GROUP_META_FILENAME = '.groupmeta.json';

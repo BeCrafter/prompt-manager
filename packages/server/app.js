@@ -5,7 +5,6 @@ import { randomUUID } from 'node:crypto';
 import { util } from './utils/util.js';
 import { config } from './utils/config.js';
 import { logger } from './utils/logger.js';
-import { util } from './utils/util.js';
 import { adminRouter } from './api/admin.routes.js';
 import { openRouter } from './api/open.routes.js';
 import { getMcpServer } from './mcp/mcp.server.js';
