@@ -1,4 +1,5 @@
 import { config } from '../utils/config.js';
+import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import {
     handleGetPrompt,
@@ -19,7 +20,13 @@ class Server {
 
     registerTools(tools) {
         for (const tool of tools) {
-            this.server.tool(tool.name, tool.description, tool.inputSchema, tool.handler);
+            this.server.registerTool(tool.name,
+                {
+                    description: tool.description,
+                    inputSchema: tool.inputSchema,
+                },
+                tool.handler
+            );
         }
     }
 
@@ -35,14 +42,7 @@ export const getMcpServer = () => {
             name: 'get_prompt',
             description: 'Retrieve the complete content of a specific prompt by its ID, including all messages, arguments, and metadata.',
             inputSchema: {
-                type: 'object',
-                properties: {
-                    prompt_id: {
-                        type: 'string',
-                        description: 'the unique identifier of the prompt to retrieve'
-                    }
-                },
-                required: ['prompt_id']
+                prompt_id: z.string().describe('the unique identifier of the prompt to retrieve'),
             },
             handler: async (args) => {
                 return handleGetPrompt(args);
@@ -52,14 +52,7 @@ export const getMcpServer = () => {
             name: 'search_prompts',
             description: 'For keyword search matching, retrieve or return all prompts. When a corresponding prompt word is matched, utilize the prompt ID to invoke the get_prompt tool to query the complete content of the prompt word.',
             inputSchema: {
-                type: 'object',
-                properties: {
-                    name: {
-                        type: 'string',
-                        description: 'Optional name filter for prompts'
-                    }
-                },
-                required: []
+                name: z.string().optional().describe('Optional name filter for prompts'),
             },
             handler: async (args) => {
                 return handleSearchPrompts(args);
@@ -68,11 +61,7 @@ export const getMcpServer = () => {
         // {
         //     name: 'reload_prompts',
         //     description: 'Force a reload of all preset prompts to overwrite the cache.',
-        //     inputSchema: {
-        //         type: 'object',
-        //         properties: {},
-        //         required: []
-        //     },
+        //     inputSchema: {},
         //     handler: async (args) => {
         //         return handleReloadPrompts(args);
         //     }
