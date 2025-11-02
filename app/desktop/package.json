@@ -15,14 +15,16 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.20.2",
-    "tar": "^6.2.1"
+    "tar": "^7.5.2"
   },
   "build": {
     "appId": "com.becrafter.promptserver",
     "productName": "Prompt Manager",
     "files": [
       "**/*",
-      "assets/icon.png"
+      "assets/icon.png",
+      "!node_modules/**/test/**",
+      "!node_modules/**/example/**"
     ],
     "directories": {
       "output": "../../dist",
