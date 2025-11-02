@@ -168,7 +168,7 @@ async function loadServerModule(options = {}) {
   console.log('serverModuleLoading exists:', !!serverModuleLoading);
   
   // 如果强制重新加载或服务状态异常，则清理缓存
-  if (options.forceReload || serviceState === 'error') {
+  if (options.forceReload || serviceState === 'error' || serviceState === 'stopped') {
     console.log('Forcing module reload, clearing cache');
     serverModule = null;
     serverModuleVersion += 1;
@@ -267,6 +267,16 @@ async function startService() {
       throw new Error('Invalid server module or missing startServer function');
     }
     
+    // 在启动服务器之前，确保停止任何可能的旧服务器实例
+    if (typeof module.stopServer === 'function') {
+      try {
+        await module.stopServer();
+        console.log('Any existing server instance stopped');
+      } catch (error) {
+        console.log('No existing server instance to stop or error stopping it:', error.message);
+      }
+    }
+    
     await module.startServer();
     console.log('Server started successfully');
     currentServerState = module.getServerState();
@@ -313,6 +323,11 @@ async function stopService() {
     
     // 清理MCP会话和传输
     console.log('Clearing MCP sessions and transports');
+    
+    // 清理模块缓存，确保下次启动时重新加载
+    serverModule = null;
+    serverModuleVersion += 1;
+    serverModuleLoading = null;
   } catch (error) {
     console.error('停止服务失败:', error);
     dialog.showErrorBox('停止服务失败', error?.message || String(error));
@@ -654,49 +669,63 @@ async function installServerDependencies(targetDir) {
     console.error('Error checking/adding @modelcontextprotocol/sdk to package.json:', error);
   }
   
-  const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  const args = ['install', '--omit=dev', '--no-audit', '--no-fund'];
-  
-  console.log('Running npm install with args:', args);
-
-  await new Promise((resolve, reject) => {
-    const child = spawn(npmCommand, args, {
-      cwd: targetDir,
-      stdio: ['ignore', 'pipe', 'pipe']
-    });
-
-    let stdout = '';
-    let stderr = '';
+  // 在生产环境中，我们不需要重新安装依赖，因为它们应该已经打包在应用中
+  // 只在开发环境中尝试安装依赖
+  if (!app.isPackaged) {
+    const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+    const args = ['install', '--omit=dev', '--no-audit', '--no-fund'];
     
-    child.stdout.on('data', (data) => {
-      const output = data.toString().trim();
-      stdout += output;
-      console.log(`[npm stdout] ${output}`);
-    });
-    
-    child.stderr.on('data', (data) => {
-      const output = data.toString().trim();
-      stderr += output;
-      console.error(`[npm stderr] ${output}`);
-    });
+    console.log('Running npm install with args:', args);
 
-    child.on('error', (error) => {
-      console.error('npm process error:', error);
-      reject(new Error(`Failed to start npm process: ${error.message}`));
-    });
+    await new Promise((resolve, reject) => {
+      const child = spawn(npmCommand, args, {
+        cwd: targetDir,
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
 
-    child.on('close', (code) => {
-      console.log('npm process exited with code:', code);
-      if (code === 0) {
-        console.log('npm install completed successfully');
-        resolve();
-      } else {
-        const errorMsg = `npm install failed with exit code ${code}: ${stderr}`;
-        console.error(errorMsg);
-        reject(new Error(errorMsg));
-      }
+      let stdout = '';
+      let stderr = '';
+      
+      child.stdout.on('data', (data) => {
+        const output = data.toString().trim();
+        stdout += output;
+        console.log(`[npm stdout] ${output}`);
+      });
+      
+      child.stderr.on('data', (data) => {
+        const output = data.toString().trim();
+        stderr += output;
+        console.error(`[npm stderr] ${output}`);
+      });
+
+      child.on('error', (error) => {
+        console.error('npm process error:', error);
+        reject(new Error(`Failed to start npm process: ${error.message}`));
+      });
+
+      child.on('close', (code) => {
+        console.log('npm process exited with code:', code);
+        if (code === 0) {
+          console.log('npm install completed successfully');
+          resolve();
+        } else {
+          const errorMsg = `npm install failed with exit code ${code}: ${stderr}`;
+          console.error(errorMsg);
+          reject(new Error(errorMsg));
+        }
+      });
     });
-  });
+  } else {
+    console.log('App is packaged, skipping npm install');
+    // 在生产环境中，检查 node_modules 是否存在
+    const nodeModulesPath = path.join(targetDir, 'node_modules');
+    try {
+      await fs.promises.access(nodeModulesPath, fs.constants.F_OK);
+      console.log('node_modules found in packaged app');
+    } catch (error) {
+      console.warn('node_modules not found in packaged app, this may cause issues');
+    }
+  }
 }
 
 async function promptForRestart() {
