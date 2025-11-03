@@ -51,8 +51,8 @@ for (const size of winSizes) {
   console.log(`  - ${filename}`);
   const buffer = await sharp(sourceIcon).resize(size, size).toBuffer();
   fs.writeFileSync(filepath, buffer);
-  // 保存前几个尺寸用于创建 ICO 文件
-  if (size <= 128) {
+  // 保存前几个尺寸用于创建 ICO 文件，现在包括 256x256
+  if (size <= 256) {
     winIconBuffers.push(buffer);
   }
 }

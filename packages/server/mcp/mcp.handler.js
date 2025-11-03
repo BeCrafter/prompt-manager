@@ -9,7 +9,7 @@ export async function handleGetPrompt(args) {
   const promptId = args.prompt_id || args.name;
   
   if (!promptId) {
-    throw new Error("缺少必需参数: prompt_id 或 name");
+    throw new Error("缺少必需参数: prompt_id");
   }
   
   const promptManager = await util.getPromptManager();
