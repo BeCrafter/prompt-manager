@@ -27,6 +27,10 @@
     "admin": "ADMIN_ENABLE=true ADMIN_USERNAME=admin ADMIN_PASSWORD=admin123 node packages/server/server.js -p ./examples/prompts",
     "desktop:dev": "npm run dev --prefix app/desktop",
     "desktop:build": "npm run build --prefix app/desktop",
+    "desktop:build:all": "npm run build --prefix app/desktop -- --mac --win --linux",
+    "desktop:build:mac": "npm run build --prefix app/desktop -- --mac",
+    "desktop:build:win": "npm run build --prefix app/desktop -- --win",
+    "desktop:build:linux": "npm run build --prefix app/desktop -- --linux",
     "postinstall": "node ./scripts/postinstall.js"
   },
   "keywords": [
@@ -45,7 +49,9 @@
     "express": "^5.1.0",
     "fs-extra": "^11.2.0",
     "js-yaml": "^4.1.0",
+    "sharp": "^0.34.4",
     "tar": "^7.5.1",
+    "to-ico": "^1.0.1",
     "yaml": "^2.4.1",
     "zod": "^3.23.8"
   },

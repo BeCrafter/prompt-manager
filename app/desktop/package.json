@@ -2,15 +2,18 @@
   "name": "@becrafter/prompt-desktop",
   "version": "0.0.18",
   "description": "Menu bar desktop wrapper for @becrafter/prompt-manager",
+  "author": "BeCrafter",
+  "homepage": "https://github.com/BeCrafter/prompt-manager",
   "private": true,
   "main": "main.js",
   "scripts": {
     "dev": "electron .",
     "start": "npm run dev",
+    "prebuild": "node ../../scripts/build-icons.js",
     "build": "electron-builder"
   },
   "devDependencies": {
-    "electron": "^31.0.2",
+    "electron": "^39.0.0",
     "electron-builder": "^24.13.3"
   },
   "dependencies": {
@@ -20,6 +23,7 @@
   "build": {
     "appId": "com.becrafter.promptserver",
     "productName": "Prompt Manager",
+    "icon": "assets/icon.png",
     "files": [
       "**/*",
       "assets/icon.png",
@@ -38,7 +42,13 @@
           "package.json",
           "packages/**/*",
           "examples/**/*",
-          "node_modules",
+          "node_modules/**/*",
+          "!node_modules/7zip-bin/mac/**/*",
+          "!node_modules/@img/sharp-darwin-x64/**/*",
+          "!node_modules/@img/sharp-darwin-arm64/**/*",
+          "!node_modules/@img/sharp-libvips-darwin-x64/**/*",
+          "!node_modules/@img/sharp-libvips-darwin-arm64/**/*",
+          "!node_modules/app-builder-bin/mac/**/*",
           "!dist",
           "!app/desktop",
           "!scripts",
@@ -51,23 +61,44 @@
       }
     ],
     "mac": {
-      "category": "public.app-category.productivity"
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
     },
     "win": {
       "target": [
         {
           "target": "nsis",
           "arch": [
-            "x64"
+            "x64",
+            "ia32",
+            "arm64"
           ]
         }
-      ]
+      ],
+      "icon": "assets/icon.ico"
     },
     "linux": {
       "target": [
-        "AppImage"
+        "AppImage",
+        "tar.xz"
       ],
-      "category": "Utility"
+      "category": "Utility",
+      "maintainer": "support@becrafter.com",
+      "synopsis": "Menu bar desktop wrapper for Prompt Manager",
+      "description": "Prompt Manager is a desktop application that provides a menu bar interface for managing prompts via MCP (Model Context Protocol).",
+      "desktop": {
+        "StartupNotify": "true"
+      },
+      "artifactName": "${productName}-${version}.${ext}"
     }
   }
 }
