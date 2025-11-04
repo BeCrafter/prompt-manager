@@ -1,5 +1,5 @@
 const electron = require('electron');
-const { app, BrowserWindow, Tray, Menu, clipboard, dialog, nativeImage, shell } = electron;
+const { app, BrowserWindow, Tray, Menu, clipboard, dialog, nativeImage, shell, ipcMain } = electron;
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -25,7 +25,7 @@ function initLogStream() {
     console.log = function(...args) {
       const message = `[${new Date().toISOString()}] [INFO] ${args.join(' ')}\n`;
       process.stdout.write(message);
-      if (logStream) {
+      if (logStream && (debugLogEnabled || args.some(arg => typeof arg === 'string' && arg.toLowerCase().includes('error')))) {
         logStream.write(message);
       }
     };
@@ -33,7 +33,7 @@ function initLogStream() {
     console.error = function(...args) {
       const message = `[${new Date().toISOString()}] [ERROR] ${args.join(' ')}\n`;
       process.stderr.write(message);
-      if (logStream) {
+      if (logStream) { // 错误日志始终记录
         logStream.write(message);
       }
     };
@@ -41,7 +41,7 @@ function initLogStream() {
     console.warn = function(...args) {
       const message = `[${new Date().toISOString()}] [WARN] ${args.join(' ')}\n`;
       process.stdout.write(message);
-      if (logStream) {
+      if (logStream && debugLogEnabled) {
         logStream.write(message);
       }
     };
@@ -49,12 +49,13 @@ function initLogStream() {
     console.debug = function(...args) {
       const message = `[${new Date().toISOString()}] [DEBUG] ${args.join(' ')}\n`;
       process.stdout.write(message);
-      if (logStream) {
+      if (logStream && debugLogEnabled) {
         logStream.write(message);
       }
     };
     
     console.log(`Logging initialized. Log file: ${logFilePath}`);
+    console.log(`Debug logging is ${debugLogEnabled ? 'enabled' : 'disabled'}`);
   } catch (error) {
     console.error('Failed to initialize logging:', error);
   }
@@ -70,6 +71,11 @@ let serverModuleLoading = null;
 let isQuitting = false;
 let runtimeServerRoot = null;
 let startFailureCount = 0;
+let aboutClickCount = 0; // 用于跟踪关于服务按钮的点击次数
+let lastAboutClickTime = 0; // 用于跟踪上次点击时间，实现超时重置
+let debugLogEnabled = false; // 调试日志开关状态
+let aboutWindowClickCount = 0; // 用于跟踪关于窗口内的点击次数
+let lastWindowClickTime = 0; // 用于跟踪窗口内上次点击时间，实现超时重置
 
 const desktopPackageJson = JSON.parse(
   fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')
@@ -430,16 +436,6 @@ function refreshTrayMenu() {
     },
     { type: 'separator' },
     {
-      label: '查看日志文件',
-      click: () => {
-        try {
-          shell.openPath(logFilePath);
-        } catch (error) {
-          dialog.showErrorBox('打开日志文件失败', error.message);
-        }
-      }
-    },
-    {
       label: '检查更新',
       click: () => checkForUpdates()
     },
@@ -744,21 +740,95 @@ async function promptForRestart() {
   }
 }
 
-async function showAboutDialog() {
-  const serviceVersion = await getCurrentServiceVersion();
-  const lines = [
-    // `桌面应用版本：${desktopPackageJson.version}`,
-    `服务版本：${serviceVersion}`,
-    `Electron：${process.versions.electron}`,
-    // `Chromium：${process.versions.chrome}`,
-    `Node.js：${process.versions.node}`
-  ];
 
-  await dialog.showMessageBox({
-    type: 'info',
-    title: '关于 Prompt Server',
-    message: '组件版本信息',
-    detail: lines.join('\n')
+let aboutWindow = null;
+
+// 渲染关于页面模板
+function renderAboutPage(options = {}) {
+  const {
+    version = desktopPackageJson.version,
+    electronVersion = process.versions.electron,
+    nodeVersion = process.versions.node,
+    debugLogEnabled = false,
+    clickCount = 3,
+    logFilePath = ''
+  } = options;
+  
+  // 读取HTML模板文件
+  const templatePath = path.join(__dirname, 'about.html');
+  let htmlContent = fs.readFileSync(templatePath, 'utf8');
+  
+  // 读取logo图片并转换为base64
+  const logoPath = path.join(__dirname, 'assets', 'icon_64x64.png');
+  let logoData = '';
+  if (fs.existsSync(logoPath)) {
+    const logoBuffer = fs.readFileSync(logoPath);
+    logoData = logoBuffer.toString('base64');
+  }
+  
+  // 简单的模板替换
+  htmlContent = htmlContent
+    .replace('{{version}}', version)
+    .replace('{{electronVersion}}', electronVersion)
+    .replace('{{nodeVersion}}', nodeVersion)
+    .replace('{{clickCount}}', clickCount)
+    .replace('{{logFilePath}}', logFilePath)
+    .replace('{{logoData}}', logoData)
+    // 处理完整的条件渲染块（非贪婪匹配）
+    .replace(/\{\{#if debugLogEnabled\}\}([\s\S]*?)\{\{\/if\}\}/g, debugLogEnabled ? '$1' : '')
+    // 处理内联的条件值
+    .replace(/\{\{#if debugLogEnabled\}\}([^}]+)\{\{else\}\}([^}]+)\{\{\/if\}\}/g, debugLogEnabled ? '$1' : '$2');
+  
+  return htmlContent;
+}
+
+function showAboutDialog() {
+  // 如果窗口已存在，直接聚焦
+  if (aboutWindow) {
+    aboutWindow.focus();
+    return;
+  }
+
+  // 创建关于服务窗口
+  aboutWindow = new BrowserWindow({
+    width: 400,
+    height: 320,
+    title: '关于 Prompt Manager',
+    resizable: false,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false, // 设置为false以允许preload脚本运行
+      preload: path.join(__dirname, 'preload.js')
+    }
+  });
+
+  // 生成关于信息内容
+  const infoContent = renderAboutPage({
+    debugLogEnabled: debugLogEnabled,
+    clickCount: 3 - aboutWindowClickCount
+  });
+
+  aboutWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(infoContent)}`);
+
+  // 监听窗口内的点击事件
+  aboutWindow.webContents.on('did-finish-load', () => {
+    aboutWindow.webContents.executeJavaScript(`
+      document.addEventListener('click', (event) => {
+        const currentTime = Date.now();
+        
+        // 发送点击信息到主进程
+        if (window.electronAPI) {
+          window.electronAPI.sendAboutWindowClick({
+            currentTime: currentTime
+          });
+        }
+      });
+    `);
+  });
+
+  aboutWindow.on('closed', () => {
+    aboutWindow = null;
   });
 }
 
@@ -806,6 +876,58 @@ app.on('before-quit', async (event) => {
     logStream.end();
   }
   app.quit();
+});
+
+// 监听关于窗口的点击事件
+ipcMain.on('about-window-click', (event, data) => {
+  const currentTime = Date.now();
+  
+  // 如果距离上次点击超过3秒，重置计数器
+  if (currentTime - lastWindowClickTime > 3000) {
+    aboutWindowClickCount = 0;
+  }
+  
+  // 更新点击时间和计数器
+  lastWindowClickTime = currentTime;
+  aboutWindowClickCount++;
+  
+  // 如果点击了3次，切换调试日志状态
+  if (aboutWindowClickCount >= 3) {
+    aboutWindowClickCount = 0; // 重置计数器
+    debugLogEnabled = !debugLogEnabled;
+    
+    // 显示状态变更消息
+    if (aboutWindow) {
+      const infoContent = renderAboutPage({
+        debugLogEnabled: debugLogEnabled,
+        clickCount: 3 - aboutWindowClickCount,
+        logFilePath: logFilePath
+      });
+      
+      aboutWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(infoContent)}`);
+    }
+    
+    // 如果开启了调试日志，显示日志文件路径
+    // if (debugLogEnabled) {
+    //   dialog.showMessageBox({
+    //     type: 'info',
+    //     title: '调试日志已开启',
+    //     message: '调试日志已开启',
+    //     detail: `日志文件路径: ${logFilePath}\n\n现在将记录更多详细信息。`
+    //   });
+    // }
+  } else {
+    // 更新窗口内容显示剩余点击次数
+    if (aboutWindow) {
+      const infoContent = renderAboutPage({
+        debugLogEnabled: debugLogEnabled,
+        clickCount: 3 - aboutWindowClickCount,
+        logFilePath: logFilePath
+      });
+      
+      aboutWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(infoContent)}`);
+    }
+  }
 });
 
 app.on('activate', () => {

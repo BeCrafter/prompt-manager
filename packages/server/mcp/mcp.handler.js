@@ -39,7 +39,7 @@ export async function handleGetPrompt(args) {
   return convertToText({
     success: true,
     prompt: promptInfo
-  });
+  }, 'detail');
 }
 
 // 处理 search_prompts 工具调用
@@ -60,7 +60,7 @@ export async function handleSearchPrompts(args) {
       query: searchTerm || '',
       count: simplifiedPrompts.length,
       results: simplifiedPrompts
-    });
+    }, 'list');
   }
   
   // 实现相似度匹配算法
@@ -95,7 +95,7 @@ export async function handleSearchPrompts(args) {
     }
   }
 
-  return convertToText(result);
+  return convertToText(result, 'list');
 }
 
 /**
@@ -150,16 +150,115 @@ function formatResults(results = []) {
 }
 
 /**
- * 将对象转换为text类型
- * @param {*} object 
+ * 处理列表格式输出
+ * @param {*} result 
  * @returns 
  */
-function convertToText(result) {
+function formatListOutput(result) {
+  // 生成当前时间戳
+  const now = new Date();
+  const formattedDate = `${now.getFullYear()}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getDate().toString().padStart(2, '0')} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+  
+  // 构建新的输出格式
+  let output = "";
+  output += "[PROMPT_HEADER_AREA]\n";
+  output += "🎭 **PromptManager 提示词清单**\n";
+  output += `📅 ${formattedDate}\n\n`;
+  output += "--------------------------------------------------\n";
+  output += "[PROMPT_LIST_AREA]\n\n";
+  output += `📦 **提示词列表** (${result.count}个)\n`;
+  
+  // 添加提示词列表
+  if (result.results && Array.isArray(result.results) && result.results.length > 0) {
+    result.results.forEach(prompt => {
+      output += `- [${prompt.id}] ${prompt.name}\n`;
+      output += `  - ${prompt.description}\n`;
+    });
+  } else {
+    output += "(无提示词)\n";
+  }
+  
+  output += "\n--------------------------------------------------\n";
+  output += "[STATE_AREA]\n";
+  output += "📍 **当前状态**：prompts_completed\n";
+  
+  // 返回格式化文本
+  return output;
+}
+
+/**
+ * 处理详情格式输出
+ * @param {*} result 
+ * @returns string
+ */
+function formatDetailOutput(result) {
+  const prompt = result.prompt;
+  
+  // 生成当前时间戳
+  const now = new Date();
+  const formattedDate = `${now.getFullYear()}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getDate().toString().padStart(2, '0')} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+  
+  // 构建新的输出格式
+  let output = "";
+  output += "--------------------------------------------------\n";
+  output += "[PROMPT_HEADER_AREA]\n";
+  output += `- id: ${prompt.id}\n`;
+  output += `- name: ${prompt.name}\n`;
+  output += `- description: ${prompt.description}\n`;
+  output += `- filepath: ${prompt.filePath}\n\n`;
+  output += "--------------------------------------------------\n";
+  output += "[PROMPT_PARAMS_AREA]\n";
+  
+  // 添加参数信息
+  if (prompt.arguments && Array.isArray(prompt.arguments) && prompt.arguments.length > 0) {
+    prompt.arguments.forEach(param => {
+      const requiredText = param.required ? "必填" : "非必填";
+      output += `- ${param.name}: ${param.type}; ${requiredText}; ${param.description}\n`;
+    });
+  } else {
+    output += "(无参数)\n";
+  }
+  
+  output += "\n--------------------------------------------------\n";
+  output += "[PROMPT_CONTENT_AREA]\n";
+  
+  // 添加消息内容
+  if (prompt.messages && Array.isArray(prompt.messages)) {
+    const userMessages = prompt.messages.filter(msg => msg.role === "user");
+    if (userMessages.length > 0 && userMessages[0].content && userMessages[0].content.text) {
+      output += userMessages[0].content.text + "\n";
+    }
+  }
+  
+  output += "\n[STATE_AREA]\n";
+  output += "📍 **当前状态**：prompt_loaded\n";
+  
+  return output;
+}
+
+/**
+ * 将对象转换为格式化的text类型输出
+ * @param {*} result 
+ * @param {string} format - 输出格式类型: 'list' 或 'detail'
+ * @returns 
+ */
+function convertToText(result, format) {
+  let ret = ""
+  switch (format) {
+    case 'list':
+      ret = formatListOutput(result);
+      break;
+    case 'detail':
+      ret = formatDetailOutput(result);
+      break;
+    default:
+      ret =JSON.stringify(result, null, 2);
+  }
   return {
     content: [
       {
         type: "text",
-        text: JSON.stringify(result, null, 2)
+        text: ret
       }
     ]
   };
