@@ -115,71 +115,10 @@ class IconManager {
   }
 
   /**
-   * 获取窗口图标
-   */
-  getWindowIcon() {
-    return this.getIcon('256') || this.getIcon('128') || this.getIcon('default');
-  }
-
-  /**
-   * 获取应用图标（用于安装包等）
-   */
-  getAppIcon() {
-    const platform = process.platform;
-    
-    switch (platform) {
-      case 'darwin':
-        return this.getIcon('icns') || this.getIcon('1024');
-      case 'win32':
-        return this.getIcon('ico') || this.getIcon('256');
-      default:
-        return this.getIcon('256') || this.getIcon('128');
-    }
-  }
-
-  /**
-   * 获取所有可用图标尺寸
-   */
-  getAvailableSizes() {
-    return Object.keys(this.iconPaths);
-  }
-
-  /**
-   * 检查图标是否存在
-   */
-  hasIcon(size) {
-    const iconPath = this.iconPaths[String(size)];
-    return iconPath && fs.existsSync(iconPath);
-  }
-
-  /**
    * 清除图标缓存
    */
   clearCache() {
     this.iconCache.clear();
-  }
-
-  /**
-   * 重新加载图标
-   */
-  reloadIcons() {
-    this.clearCache();
-    this.iconPaths = this.getIconPaths();
-  }
-
-  /**
-   * 获取图标信息
-   */
-  getIconInfo(size) {
-    const icon = this.getIcon(size);
-    if (!icon) return null;
-
-    return {
-      size: icon.getSize(),
-      isEmpty: icon.isEmpty(),
-      hasTemplateImage: icon.isTemplateImage(),
-      scaleFactors: icon.getScaleFactors()
-    };
   }
 }
 

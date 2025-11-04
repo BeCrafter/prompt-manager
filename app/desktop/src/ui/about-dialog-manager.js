@@ -5,14 +5,14 @@ const TemplateRenderer = require('../utils/template-renderer');
 const IconManager = require('../utils/icon-manager');
 
 class AboutDialogManager {
-  constructor(logger, runtimeManager) {
+  constructor(logger, runtimeManager, iconManager) {
     this.logger = logger;
     this.runtimeManager = runtimeManager;
+    this.iconManager = iconManager;
     this.aboutWindow = null;
     this.clickCount = 0;
     this.lastClickTime = 0;
     this.templateRenderer = new TemplateRenderer();
-    this.iconManager = new IconManager();
   }
 
   async showAboutDialog() {
@@ -32,40 +32,23 @@ class AboutDialogManager {
       
       this.aboutWindow = this.createAboutWindow();
       
-      // 使用现有的about.html模板文件
-      const templatePath = path.join(__dirname, '..', '..', 'assets', 'templates', 'about.html');
-      const templateContent = fs.readFileSync(templatePath, 'utf8');
+      // 获取图标数据
+      const logoIcon = this.iconManager.getAboutDialogIcon();
+      const logoData = logoIcon ? logoIcon.toPNG().toString('base64') : '';
       
-      // 替换模板中的变量
-      const logoPath = path.join(__dirname, '..', '..', 'assets', 'icons', 'icon_64x64.png');
-      let logoData = '';
-      if (fs.existsSync(logoPath)) {
-        const logoBuffer = fs.readFileSync(logoPath);
-        logoData = logoBuffer.toString('base64');
-      }
+      // 准备模板数据
+      const templateData = {
+        version: packageInfo.version,
+        electronVersion: electronVersion,
+        nodeVersion: nodeVersion,
+        logoData: logoData,
+        debugLogEnabled: debugEnabled,
+        clickCount: 3 - this.clickCount,
+        logFilePath: debugEnabled ? this.logger.getLogFilePath() : ''
+      };
       
-      let htmlContent = templateContent
-        .replace(/\{\{version\}\}/g, packageInfo.version)
-        .replace(/\{\{electronVersion\}\}/g, electronVersion)
-        .replace(/\{\{nodeVersion\}\}/g, nodeVersion)
-        .replace(/\{\{logoData\}\}/g, logoData);
-      
-      // 处理调试日志状态
-      const clickCount = 3 - this.clickCount;
-      if (debugEnabled) {
-        const logFilePath = this.logger.getLogFilePath();
-        htmlContent = htmlContent.replace(
-          /\{\{#if debugLogEnabled\}\}(.*?)\{\{\/if\}\}/gs,
-          `<div class="notification">
-      <div class="notification-title">调试日志已开启</div>
-      <div class="notification-content">日志文件路径: ${logFilePath}</div>
-    </div>`
-        );
-        htmlContent = htmlContent.replace(/\{\{clickCount\}\}/g, clickCount.toString());
-      } else {
-        htmlContent = htmlContent.replace(/\{\{#if debugLogEnabled\}\}(.*?)\{\{\/if\}\}/gs, '');
-        htmlContent = htmlContent.replace(/连续点击此窗口 (\d+) 次可(.*?)调试日志/, `连续点击此窗口 ${clickCount} 次可开启调试日志`);
-      }
+      // 使用TemplateRenderer渲染模板
+      const htmlContent = this.templateRenderer.render('about', templateData);
       
       this.aboutWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
       
@@ -179,39 +162,24 @@ class AboutDialogManager {
       const electronVersion = process.versions.electron;
       const nodeVersion = process.versions.node;
       const debugEnabled = this.logger.debugEnabled;
-      const clickCount = 3 - this.clickCount;
       
-      // 使用现有的about.html模板文件
-      const templatePath = path.join(__dirname, '..', '..', 'assets', 'templates', 'about.html');
-      const templateContent = fs.readFileSync(templatePath, 'utf8');
+      // 获取图标数据
+      const logoIcon = this.iconManager.getAboutDialogIcon();
+      const logoData = logoIcon ? logoIcon.toPNG().toString('base64') : '';
       
-      // 替换模板中的变量
-      const logoPath = path.join(__dirname, '..', '..', 'assets', 'icons', 'icon_64x64.png');
-      let logoData = '';
-      if (fs.existsSync(logoPath)) {
-        const logoBuffer = fs.readFileSync(logoPath);
-        logoData = logoBuffer.toString('base64');
-      }
+      // 准备模板数据
+      const templateData = {
+        version: packageInfo.version,
+        electronVersion: electronVersion,
+        nodeVersion: nodeVersion,
+        logoData: logoData,
+        debugLogEnabled: debugEnabled,
+        clickCount: 3 - this.clickCount,
+        logFilePath: debugEnabled ? this.logger.getLogFilePath() : ''
+      };
       
-      let htmlContent = templateContent
-        .replace(/\{\{version\}\}/g, packageInfo.version)
-        .replace(/\{\{electronVersion\}\}/g, electronVersion)
-        .replace(/\{\{nodeVersion\}\}/g, nodeVersion)
-        .replace(/\{\{logoData\}\}/g, logoData);
-      
-      // 处理调试日志状态和点击提示
-      if (debugEnabled) {
-        const logFilePath = this.logger.getLogFilePath();
-        htmlContent = htmlContent.replace(
-          /\{\{#if debugLogEnabled\}\}(.*?)\{\{\/if\}\}/gs,
-          `<div class="notification">
-            <div class="notification-title">调试日志已开启</div>
-            <div class="notification-content">日志文件路径: ${logFilePath}</div>
-          </div>`
-        );
-      } else {
-        htmlContent = htmlContent.replace(/\{\{#if debugLogEnabled\}\}(.*?)\{\{\/if\}\}/gs, '');
-      }
+      // 使用TemplateRenderer重新渲染模板
+      const htmlContent = this.templateRenderer.render('about', templateData);
       
       this.aboutWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
       

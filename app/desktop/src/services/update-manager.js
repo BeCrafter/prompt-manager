@@ -4,7 +4,7 @@ const path = require('path');
 const tar = require('tar');
 const os = require('os');
 const VersionUtils = require('../utils/version-utils');
-const PathUtils = require('../utils/path-utils');
+const ResourcePaths = require('../utils/resource-paths');
 
 class UpdateManager {
   constructor(logger, errorHandler, runtimeManager) {
@@ -204,26 +204,26 @@ class UpdateManager {
     
     try {
       // 备份示例文件
-      if (await PathUtils.pathExists(examplesDir)) {
+      if (await ResourcePaths.pathExists(examplesDir)) {
         this.logger.info('Backing up examples directory', { examplesDir });
-        await PathUtils.copyDir(examplesDir, examplesBackup);
+        await ResourcePaths.copyDir(examplesDir, examplesBackup);
       }
       
       // 删除旧版本
       this.logger.info('Removing old version', { serverRoot });
-      await PathUtils.safeRemoveDir(serverRoot);
+      await ResourcePaths.safeRemoveDir(serverRoot);
       
       // 复制新版本
       this.logger.info('Copying new version', { extractedPath, serverRoot });
-      await PathUtils.ensureDir(serverRoot);
-      await PathUtils.copyDir(extractedPath, serverRoot);
+      await ResourcePaths.ensureDir(serverRoot);
+      await ResourcePaths.copyDir(extractedPath, serverRoot);
       
       // 恢复示例文件
-      if (await PathUtils.pathExists(examplesBackup)) {
+      if (await ResourcePaths.pathExists(examplesBackup)) {
         this.logger.info('Restoring examples directory', { examplesBackup });
         const targetExamples = path.join(serverRoot, 'examples', 'prompts');
-        await PathUtils.ensureDir(path.dirname(targetExamples));
-        await PathUtils.copyDir(examplesBackup, targetExamples);
+        await ResourcePaths.ensureDir(path.dirname(targetExamples));
+        await ResourcePaths.copyDir(examplesBackup, targetExamples);
       }
       
       // 重新安装依赖
@@ -234,8 +234,8 @@ class UpdateManager {
       
     } finally {
       // 清理备份文件
-      if (await PathUtils.pathExists(examplesBackup)) {
-        await PathUtils.safeRemoveDir(examplesBackup);
+      if (await ResourcePaths.pathExists(examplesBackup)) {
+        await ResourcePaths.safeRemoveDir(examplesBackup);
       }
     }
   }
@@ -261,7 +261,7 @@ class UpdateManager {
   }
 
   async pathExists(targetPath) {
-    return PathUtils.pathExists(targetPath);
+    return ResourcePaths.pathExists(targetPath);
   }
 }
 

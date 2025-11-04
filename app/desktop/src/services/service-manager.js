@@ -1,7 +1,9 @@
 const { dialog, shell } = require('electron');
+const EventEmitter = require('../core/event-emitter');
 
-class ServiceManager {
+class ServiceManager extends EventEmitter {
   constructor(logger, errorHandler, moduleLoader) {
+    super();
     this.logger = logger;
     this.errorHandler = errorHandler;
     this.moduleLoader = moduleLoader;
@@ -156,30 +158,11 @@ class ServiceManager {
   }
 
   emitStatusUpdate(stateManager) {
-    if (this.listeners && this.listeners['status-update']) {
-      this.listeners['status-update'].forEach(listener => {
-        listener(stateManager.getServiceStatus());
-      });
-    }
+    this.emit('status-update', stateManager.getServiceStatus());
   }
 
   emitRestartRequested() {
-    if (this.listeners && this.listeners['restart-requested']) {
-      this.listeners['restart-requested'].forEach(listener => listener());
-    }
-  }
-
-  // 事件监听
-  on(event, listener) {
-    this.listeners = this.listeners || {};
-    this.listeners[event] = this.listeners[event] || [];
-    this.listeners[event].push(listener);
-  }
-
-  removeAllListeners(event) {
-    if (this.listeners && this.listeners[event]) {
-      delete this.listeners[event];
-    }
+    this.emit('restart-requested');
   }
 }
 

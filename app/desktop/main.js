@@ -16,6 +16,7 @@ const ServiceManager = require('./src/services/service-manager');
 const TrayManager = require('./src/ui/tray-manager');
 const UpdateManager = require('./src/services/update-manager');
 const AboutDialogManager = require('./src/ui/about-dialog-manager');
+const IconManager = require('./src/utils/icon-manager');
 
 class PromptManagerApp {
   constructor() {
@@ -24,10 +25,11 @@ class PromptManagerApp {
     this.errorHandler = new ErrorHandler(this.logger);
     this.runtimeManager = new RuntimeManager(this.logger, this.errorHandler);
     this.moduleLoader = new ModuleLoader(this.logger, this.errorHandler);
+    this.iconManager = new IconManager();
     this.serviceManager = new ServiceManager(this.logger, this.errorHandler, this.moduleLoader);
     this.updateManager = new UpdateManager(this.logger, this.errorHandler, this.runtimeManager);
-    this.aboutDialogManager = new AboutDialogManager(this.logger, this.runtimeManager);
-    this.trayManager = new TrayManager(this.logger, this.errorHandler);
+    this.aboutDialogManager = new AboutDialogManager(this.logger, this.runtimeManager, this.iconManager);
+    this.trayManager = new TrayManager(this.logger, this.errorHandler, this.iconManager);
     
     this.isInitialized = false;
   }

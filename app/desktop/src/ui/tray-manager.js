@@ -1,11 +1,14 @@
 const { Tray, Menu, clipboard, nativeImage, dialog, shell, BrowserWindow } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const EventEmitter = require('../core/event-emitter');
 
-class TrayManager {
-  constructor(logger, errorHandler) {
+class TrayManager extends EventEmitter {
+  constructor(logger, errorHandler, iconManager) {
+    super();
     this.logger = logger;
     this.errorHandler = errorHandler;
+    this.iconManager = iconManager;
     this.tray = null;
     this.menuTemplate = [];
     this.iconPaths = [];
@@ -15,9 +18,6 @@ class TrayManager {
 
   async initialize(stateManager) {
     this.currentState = stateManager;
-    
-    // 初始化图标管理器
-    this.iconManager = new (require('../utils/icon-manager'))();
 
     await this.createTray();
     this.updateMenu();
@@ -183,19 +183,6 @@ class TrayManager {
   quitApplication() {
     this.logger.info('User requested to quit application');
     this.emit('quit-requested');
-  }
-
-  // 简单的事件发射器实现
-  emit(event, ...args) {
-    if (this.listeners && this.listeners[event]) {
-      this.listeners[event].forEach(listener => listener(...args));
-    }
-  }
-
-  on(event, listener) {
-    this.listeners = this.listeners || {};
-    this.listeners[event] = this.listeners[event] || [];
-    this.listeners[event].push(listener);
   }
 
   destroy() {
