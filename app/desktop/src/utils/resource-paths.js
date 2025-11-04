@@ -58,7 +58,7 @@ class ResourcePaths {
    * 主入口路径
    */
   static get main() {
-    return path.join(__dirname, '..', '..', 'main-refactored.js');
+    return path.join(__dirname, '..', '..', 'main.js');
   }
 
   /**

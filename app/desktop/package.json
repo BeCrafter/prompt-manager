@@ -5,7 +5,7 @@
   "author": "BeCrafter",
   "homepage": "https://github.com/BeCrafter/prompt-manager",
   "private": true,
-  "main": "main-refactored.js",
+  "main": "main.js",
   "scripts": {
     "dev": "electron .",
     "start": "npm run dev",

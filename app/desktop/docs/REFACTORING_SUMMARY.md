@@ -18,7 +18,7 @@
 重构后：
 ```
 app/desktop/
-├── main-refactored.js          # 主入口 (150行)
+├── main.js          # 主入口 (150行)
 ├── src/
 │   ├── state-manager.js        # 状态管理器
 │   ├── logger.js               # 日志管理器

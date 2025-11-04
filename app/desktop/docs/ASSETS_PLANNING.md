@@ -31,7 +31,7 @@ app/desktop/
 ├── about.html
 ├── preload.js
 ├── package.json
-└── main-refactored.js
+└── main.js
 ```
 
 ## 推荐重构结构
@@ -77,7 +77,7 @@ app/desktop/
 │       └── template-renderer.js # 模板渲染工具
 ├── preload.js
 ├── package.json
-└── main-refactored.js
+└── main.js
 ```
 
 ## HTML Assets 管理策略
