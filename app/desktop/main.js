@@ -78,6 +78,7 @@ let aboutWindowClickCount = 0; // 用于跟踪关于窗口内的点击次数
 let lastWindowClickTime = 0; // 用于跟踪窗口内上次点击时间，实现超时重置
 
 const desktopPackageJson = JSON.parse(
+  console.log('1111', path.join(__dirname, 'package.json'));
   fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')
 );
 

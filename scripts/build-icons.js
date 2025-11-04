@@ -12,8 +12,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // 图标文件路径
-const sourceIcon = path.join(__dirname, '..', 'app', 'desktop', 'assets', 'icon.png');
-const assetsDir = path.join(__dirname, '..', 'app', 'desktop', 'assets');
+const sourceIcon = path.join(__dirname, '..', 'app', 'desktop', 'assets', 'icons', 'icon.png');
+const assetsDir = path.join(__dirname, '..', 'app', 'desktop', 'assets', 'icons');
 
 // 确保 assets 目录存在
 if (!fs.existsSync(assetsDir)) {
