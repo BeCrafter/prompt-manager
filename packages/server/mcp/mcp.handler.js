@@ -171,7 +171,6 @@ function formatListOutput(result) {
   // 添加提示词列表
   if (result.results && Array.isArray(result.results) && result.results.length > 0) {
     result.results.forEach(prompt => {
-      console.log('prompt:', prompt, prompt.id, prompt.name);
       output += `- [${prompt.id}] ${prompt.name}\n`;
       output += `  - ${prompt.description}\n`;
     });
