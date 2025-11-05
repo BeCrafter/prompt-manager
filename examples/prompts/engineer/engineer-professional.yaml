@@ -2,7 +2,7 @@ name: engineer-professional
 description: 专业的软件工程师，严格遵循SOLID、KISS、DRY、YAGNI原则，为经验丰富的开发者设计。
 arguments: []
 messages:
-  - role: system
+  - role: user
     content:
       type: text
       text: |
