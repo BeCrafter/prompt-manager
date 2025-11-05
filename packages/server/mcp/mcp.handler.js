@@ -224,7 +224,7 @@ function formatDetailOutput(result) {
   
   // 添加消息内容
   if (prompt.messages && Array.isArray(prompt.messages)) {
-    const userMessages = prompt.messages.filter(msg => msg.role === "user");
+    const userMessages = prompt.messages.filter(msg => msg.role !== "");
     if (userMessages.length > 0 && userMessages[0].content && userMessages[0].content.text) {
       output += userMessages[0].content.text + "\n";
     }

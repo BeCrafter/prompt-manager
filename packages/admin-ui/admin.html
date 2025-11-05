@@ -3059,7 +3059,7 @@
 
     function getFirstUserMessage(promptObj) {
       if (!promptObj || !Array.isArray(promptObj.messages)) return null
-      return promptObj.messages.find(message => message?.role === 'user') || null
+      return promptObj.messages.find(message => message?.role !== '') || null
     }
 
     function buildPromptObjectFromUI() {
