@@ -49,11 +49,16 @@ for (const size of winSizes) {
   const filename = `icon_${size}x${size}.png`;
   const filepath = path.join(assetsDir, filename);
   console.log(`  - ${filename}`);
-  const buffer = await sharp(sourceIcon).resize(size, size).toBuffer();
+  const buffer = await sharp(sourceIcon).resize(size, size).png({ compressionLevel: 9 }).toBuffer();
   fs.writeFileSync(filepath, buffer);
   // 保存前几个尺寸用于创建 ICO 文件，现在包括 256x256
-  if (size <= 256) {
-    winIconBuffers.push(buffer);
+  if (size == 256) {
+    // 确保 buffer 是有效的 Buffer 对象
+    if (Buffer.isBuffer(buffer) && buffer.length > 0) {
+      winIconBuffers.push(buffer);
+    } else {
+      console.log(`  - Skipping invalid buffer for size ${size}`);
+    }
   }
 }
 
@@ -75,18 +80,26 @@ try {
     }
   });
 } catch (error) {
-  console.log('  - Failed to create ICNS file:', error.message);
+  console.log('  - Failed to create ICNS file:', error.message, error.stack);
 }
 
 // 创建 ICO 文件 (Windows)
 console.log('Creating ICO file for Windows...');
 try {
-  const icoBuffer = await toIco(winIconBuffers);
-  const icoPath = path.join(assetsDir, 'icon.ico');
-  fs.writeFileSync(icoPath, icoBuffer);
-  console.log('  - icon.ico');
+  // 确保 winIconBuffers 不为空并且包含有效的缓冲区
+  if (winIconBuffers.length > 0) {
+    // 验证所有缓冲区都是有效的
+    const validBuffers = winIconBuffers.filter(buffer => Buffer.isBuffer(buffer) && buffer.length > 0);
+    if (validBuffers.length > 0) {
+      const icoBuffer = await toIco(validBuffers);
+      const icoPath = path.join(assetsDir, 'icon.ico');
+      fs.writeFileSync(icoPath, icoBuffer);
+    } else {
+      console.log('  - No valid buffers for ICO creation');
+    }
+  }
 } catch (error) {
-  console.log('  - Failed to create ICO file:', error.message);
+  console.log('  - Failed to create ICO file:', error.message, error.stack);
 }
 
 console.log('Icon preparation completed.');

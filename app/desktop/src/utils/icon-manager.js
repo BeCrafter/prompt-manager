@@ -50,6 +50,12 @@ class IconManager {
 
     const iconPath = this.iconPaths[sizeKey];
     if (!iconPath || !fs.existsSync(iconPath)) {
+      // 防止递归调用：如果正在请求默认图标但找不到，返回 null
+      if (sizeKey === 'default') {
+        console.warn(`Default icon not found at ${iconPath}`);
+        return null;
+      }
+      
       console.warn(`Icon not found for size ${sizeKey}, trying default`);
       return this.getIcon('default');
     }
@@ -59,14 +65,24 @@ class IconManager {
       
       if (icon.isEmpty()) {
         console.warn(`Failed to load icon from ${iconPath}`);
-        return null;
+        // 如果是默认图标加载失败，返回 null 避免递归
+        if (sizeKey === 'default') {
+          return null;
+        }
+        // 否则尝试加载默认图标
+        return this.getIcon('default');
       }
 
       this.iconCache.set(sizeKey, icon);
       return icon;
     } catch (error) {
       console.error(`Error loading icon ${iconPath}:`, error);
-      return null;
+      // 如果是默认图标加载失败，返回 null 避免递归
+      if (sizeKey === 'default') {
+        return null;
+      }
+      // 否则尝试加载默认图标
+      return this.getIcon('default');
     }
   }
 

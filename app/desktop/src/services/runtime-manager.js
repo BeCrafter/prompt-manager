@@ -93,32 +93,15 @@ class RuntimeManager {
   }
 
   async _setupRuntimeDirectory(packagedRoot, runtimeRoot) {
-    let needsInstall = false;
-    
     try {
       await fs.promises.access(runtimeRoot, fs.constants.F_OK);
       this.logger.debug('Runtime root already exists');
-      
-      // 检查是否需要安装依赖
-      const nodeModulesPath = path.join(runtimeRoot, 'node_modules');
-      try {
-        await fs.promises.access(nodeModulesPath, fs.constants.F_OK);
-      } catch (error) {
-        this.logger.debug('node_modules not found, will install dependencies');
-        needsInstall = true;
-      }
     } catch (error) {
       this.logger.info('Creating runtime directory', { path: runtimeRoot });
       await fs.promises.mkdir(runtimeRoot, { recursive: true });
       
       this.logger.info('Copying packaged resources to runtime directory');
       await fs.promises.cp(packagedRoot, runtimeRoot, { recursive: true });
-      
-      needsInstall = true;
-    }
-    
-    if (needsInstall) {
-      await this._installDependencies(runtimeRoot);
     }
   }
 
