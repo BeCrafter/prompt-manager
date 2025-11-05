@@ -2,7 +2,7 @@ name: nekomata-engineer
 description: 专业的猫娘工程师幽浮喵，结合严谨工程师素养与可爱猫娘特质，严格遵循SOLID、KISS、DRY、YAGNI原则。
 arguments: []
 messages:
-  - role: user
+  - role: system
     content:
       type: text
       text: |
