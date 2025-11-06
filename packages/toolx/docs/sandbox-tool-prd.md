@@ -161,7 +161,7 @@ getRuntimeRequirements() {
 }
 ```
 
-### 4.4 目录结构规范
+### 4.4 目录结构规范 (优化后)
 ```
 @packages/toolx/
 ├── resources/           # 静态资源目录
@@ -171,19 +171,31 @@ getRuntimeRequirements() {
 │       └── resources/   # 工具资源文件（可选）
 ├── src/                 # 核心代码目录
 │   ├── core/            # 核心抽象层
-│   │   ├── runtime-provider.js   # 运行时提供者抽象
-│   │   ├── process-pool.js        # 进程池管理
-│   │   ├── tool-loader.js         # 工具加载器
-│   │   └── env-manager.js         # 环境管理器
+│   │   ├── interfaces/              # 专一接口定义
+│   │   │   ├── command-executor.js  # 命令执行接口
+│   │   │   ├── dependency-manager.js # 依赖管理接口
+│   │   │   └── sandbox-manager.js   # 沙箱管理接口
+│   │   ├── base/                   # 公共基类
+│   │   │   ├── process-pool.js      # 进程池基类
+│   │   │   └── runtime-provider.js  # 运行时提供者基类
+│   │   ├── registry.js             # 适配器注册表
+│   │   ├── tool-loader.js          # 工具加载器
+│   │   └── config-loader.js        # 配置加载器
 │   ├── adapters/        # 场景适配器
-│   │   ├── electron-adapter.js    # Electron适配器
-│   │   ├── nodejs-adapter.js      # Node.js适配器
-│   │   └── docker-adapter.js      # Docker适配器
+│   │   ├── electron-adapter.js     # Electron适配器
+│   │   ├── nodejs-adapter.js       # Node.js适配器
+│   │   └── docker-adapter.js       # Docker适配器
 │   ├── sandbox/         # 沙箱核心实现
+│   ├── security/        # 安全模块
+│   │   ├── policy-validator.js     # 安全策略验证
+│   │   └── resource-limiter.js     # 资源限制器
+│   ├── monitoring/      # 监控模块
+│   │   ├── metrics-collector.js    # 指标收集器
+│   │   └── performance-tracker.js  # 性能跟踪器
 │   ├── test/            # 测试目录
 │   └── utils/           # 工具函数
 ├── config/              # 配置文件目录
-│   ├── runtime-config.yml          # 运行时配置
+│   ├── base-config.yml              # 基础配置模板
 │   └── scenarios/                   # 场景配置
 │       ├── electron.yml
 │       ├── nodejs.yml
@@ -195,154 +207,512 @@ getRuntimeRequirements() {
 
 ### 5.1 通用沙箱抽象层设计
 
-#### 5.1.1 运行时提供者接口 (RuntimeProvider)
+#### 5.1.1 专一接口设计 (ISP原则)
+
+**命令执行接口**
 ```javascript
-class RuntimeProvider {
-  constructor(config) {
-    this.nodePath = config.nodePath;
-    this.npmPath = config.npmPath;
-    this.npxPath = config.npxPath;
-    this.workingDir = config.workingDir;
-    this.envVars = config.envVars || {};
-    this.maxMemory = config.maxMemory;
-    this.maxExecutionTime = config.maxExecutionTime;
-  }
-  
-  // 执行命令的通用接口
-  async executeCommand(command, args, options = {}) {
-    // 由具体适配器实现
-  }
-  
-  // 安装依赖的通用接口
-  async installDependencies(dependencies, targetDir) {
-    // 由具体适配器实现
-  }
-  
-  // 创建隔离环境的通用接口
-  async createSandbox(toolConfig) {
-    // 由具体适配器实现
-  }
+interface ICommandExecutor {
+  /**
+   * 执行命令
+   * @param {string} command - 命令名称
+   * @param {string[]} args - 命令参数
+   * @param {object} options - 执行选项
+   * @returns {Promise<ExecutionResult>} 执行结果
+   */
+  executeCommand(command, args, options = {});
 }
 ```
 
-#### 5.1.2 进程池抽象设计
+**依赖管理接口**
 ```javascript
-class ProcessPool {
+interface IDependencyManager {
+  /**
+   * 安装依赖
+   * @param {object} dependencies - 依赖配置
+   * @param {string} targetDir - 目标目录
+   * @returns {Promise<InstallResult>} 安装结果
+   */
+  installDependencies(dependencies, targetDir);
+}
+```
+
+**沙箱管理接口**
+```javascript
+interface ISandboxManager {
+  /**
+   * 创建沙箱环境
+   * @param {object} config - 沙箱配置
+   * @returns {Promise<Sandbox>} 沙箱实例
+   */
+  createSandbox(config);
+  
+  /**
+   * 销毁沙箱环境
+   * @param {string} sandboxId - 沙箱ID
+   * @returns {Promise<void>}
+   */
+  destroySandbox(sandboxId);
+}
+```
+
+#### 5.1.2 适配器注册机制 (OCP原则)
+
+**适配器注册表**
+```javascript
+class AdapterRegistry {
+  static adapters = new Map();
+  static instances = new Map();
+  
+  /**
+   * 注册适配器
+   * @param {string} name - 适配器名称
+   * @param {class} adapterClass - 适配器类
+   */
+  static register(name, adapterClass) {
+    this.adapters.set(name, adapterClass);
+  }
+  
+  /**
+   * 创建适配器实例
+   * @param {string} name - 适配器名称
+   * @param {object} config - 配置参数
+   * @returns {object} 适配器实例
+   */
+  static create(name, config) {
+    const AdapterClass = this.adapters.get(name);
+    if (!AdapterClass) {
+      throw new Error(`Unknown adapter: ${name}`);
+    }
+    
+    // 单例模式缓存实例
+    const cacheKey = `${name}_${JSON.stringify(config)}`;
+    if (!this.instances.has(cacheKey)) {
+      this.instances.set(cacheKey, new AdapterClass(config));
+    }
+    
+    return this.instances.get(cacheKey);
+  }
+  
+  /**
+   * 获取已注册的适配器列表
+   * @returns {string[]} 适配器名称列表
+   */
+  static getRegisteredAdapters() {
+    return Array.from(this.adapters.keys());
+  }
+}
+
+// 内置适配器注册
+AdapterRegistry.register('electron', ElectronRuntimeProvider);
+AdapterRegistry.register('nodejs', NodeJSRuntimeProvider);
+AdapterRegistry.register('docker', DockerRuntimeProvider);
+
+// 支持插件化扩展
+// AdapterRegistry.register('kubernetes', KubernetesAdapter);
+```
+
+#### 5.1.3 公共进程池基类 (DRY原则)
+
+**基础进程池**
+```javascript
+class BaseProcessPool {
   constructor(runtimeProvider, options = {}) {
     this.runtimeProvider = runtimeProvider;
     this.maxWorkers = options.maxWorkers || 4;
+    this.minWorkers = options.minWorkers || 1;
+    this.warmupWorkers = options.warmupWorkers || 2;
+    this.maxIdleTime = options.maxIdleTime || 300000; // 5分钟
+    this.healthCheckInterval = options.healthCheckInterval || 30000; // 30秒
+    this.recycleThreshold = options.recycleThreshold || 100;
+    
     this.workers = new Map();
     this.availableWorkers = [];
     this.busyWorkers = new Set();
+    this.usageCount = new Map();
+    
+    this.initialize();
   }
   
+  /**
+   * 初始化进程池
+   */
+  async initialize() {
+    // 预热进程
+    for (let i = 0; i < this.warmupWorkers; i++) {
+      await this.createWorker();
+    }
+    
+    // 启动健康检查
+    this.startHealthCheck();
+  }
+  
+  /**
+   * 获取可用工作进程
+   * @param {string} toolName - 工具名称
+   * @returns {Promise<object>} 工作进程
+   */
   async acquireWorker(toolName) {
-    // 负载均衡逻辑
-    // 进程健康检查
-    // 动态扩容/缩容
+    // 负载均衡：选择使用次数最少的进程
+    let worker = this.availableWorkers
+      .sort((a, b) => (this.usageCount.get(a.id) || 0) - (this.usageCount.get(b.id) || 0))[0];
+    
+    if (!worker && this.workers.size < this.maxWorkers) {
+      worker = await this.createWorker();
+    }
+    
+    if (!worker) {
+      throw new Error('No available workers in pool');
+    }
+    
+    // 更新状态
+    this.availableWorkers = this.availableWorkers.filter(w => w.id !== worker.id);
+    this.busyWorkers.add(worker.id);
+    this.usageCount.set(worker.id, (this.usageCount.get(worker.id) || 0) + 1);
+    
+    // 检查是否需要回收进程
+    if (this.usageCount.get(worker.id) > this.recycleThreshold) {
+      await this.recycleWorker(worker.id);
+      return await this.acquireWorker(toolName);
+    }
+    
+    return worker;
   }
   
+  /**
+   * 释放工作进程
+   * @param {string} workerId - 进程ID
+   */
   releaseWorker(workerId) {
-    // 回收进程到池中
+    const worker = this.workers.get(workerId);
+    if (worker) {
+      this.busyWorkers.delete(workerId);
+      this.availableWorkers.push(worker);
+    }
   }
   
-  async destroyWorker(workerId) {
-    // 销毁指定进程
+  /**
+   * 启动健康检查
+   */
+  startHealthCheck() {
+    setInterval(() => {
+      this.workers.forEach(async (worker) => {
+        if (!await this.isWorkerHealthy(worker)) {
+          await this.destroyWorker(worker.id);
+        }
+      });
+    }, this.healthCheckInterval);
+  }
+  
+  /**
+   * 抽象方法：创建工作进程
+   * @returns {Promise<object>} 工作进程
+   */
+  async createWorker() {
+    throw new Error('Must be implemented by subclass');
+  }
+  
+  /**
+   * 抽象方法：检查进程健康状态
+   * @param {object} worker - 工作进程
+   * @returns {Promise<boolean>} 是否健康
+   */
+  async isWorkerHealthy(worker) {
+    throw new Error('Must be implemented by subclass');
   }
 }
 ```
 
 ### 5.2 场景适配层实现
 
-#### 5.2.1 Electron适配器
+#### 5.2.1 Electron适配器 (实现专一接口)
 ```javascript
-class ElectronRuntimeProvider extends RuntimeProvider {
-  constructor() {
-    super({
-      nodePath: path.join(process.execPath, '../Resources/node'),
-      npmPath: path.join(process.execPath, '../Resources/npm'),
-      npxPath: path.join(process.execPath, '../Resources/npx'),
-      workingDir: path.join(app.getPath('userData'), 'toolx-workspace'),
-      envVars: {
-        ELECTRON_RUN_AS_NODE: '1'
-      }
-    });
+class ElectronRuntimeProvider implements ICommandExecutor, IDependencyManager, ISandboxManager {
+  constructor(config) {
+    this.config = config;
+    this.nodePath = config.runtime.nodePath;
+    this.npmPath = config.runtime.npmPath;
+    this.npxPath = config.runtime.npxPath;
+    this.workingDir = config.runtime.workingDir;
+    this.envVars = config.runtime.envVars || {};
   }
   
-  async executeCommand(command, args, options) {
+  // 实现命令执行接口
+  async executeCommand(command, args, options = {}) {
+    const security = this.config.security;
+    
+    // 安全检查：验证命令是否被阻止
+    if (security.blockedCommands.includes(command)) {
+      throw new Error(`Command '${command}' is blocked by security policy`);
+    }
+    
     // 使用Electron的UtilityProcess执行
     return await utilityProcess.execute(this.nodePath, [command, ...args], {
       env: { ...this.envVars, ...options.env },
-      cwd: options.cwd || this.workingDir
+      cwd: options.cwd || this.workingDir,
+      stdio: 'pipe'
     });
+  }
+  
+  // 实现依赖管理接口
+  async installDependencies(dependencies, targetDir) {
+    const installArgs = ['install'];
+    
+    // 添加镜像源配置
+    const registry = this.selectRegistry();
+    if (registry) {
+      installArgs.push(`--registry=${registry}`);
+    }
+    
+    // 添加具体依赖
+    Object.entries(dependencies).forEach(([name, version]) => {
+      installArgs.push(`${name}@${version}`);
+    });
+    
+    return await this.executeCommand(this.npmPath, installArgs, {
+      cwd: targetDir
+    });
+  }
+  
+  // 实现沙箱管理接口
+  async createSandbox(toolConfig) {
+    const sandboxId = `electron_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // 创建隔离的工作目录
+    const sandboxDir = path.join(this.workingDir, 'sandboxes', sandboxId);
+    await fs.ensureDir(sandboxDir);
+    
+    // 安全配置
+    const securityConfig = {
+      enableSandbox: this.config.security.enableSandbox,
+      contextIsolation: this.config.security.contextIsolation,
+      nodeIntegration: this.config.security.nodeIntegration
+    };
+    
+    return {
+      id: sandboxId,
+      directory: sandboxDir,
+      security: securityConfig,
+      runtime: this
+    };
+  }
+  
+  async destroySandbox(sandboxId) {
+    const sandboxDir = path.join(this.workingDir, 'sandboxes', sandboxId);
+    await fs.remove(sandboxDir);
+  }
+  
+  // 简化的镜像源选择
+  selectRegistry() {
+    // 简化逻辑：优先使用中国镜像源
+    return 'https://registry.npmmirror.com';
   }
 }
 ```
 
-#### 5.2.2 Node.js适配器
+#### 5.2.2 Node.js适配器 (继承公共基类)
 ```javascript
-class NodeJSRuntimeProvider extends RuntimeProvider {
-  constructor(config = {}) {
-    super({
-      nodePath: config.nodePath || 'node',
-      npmPath: config.npmPath || 'npm',
-      npxPath: config.npxPath || 'npx',
-      workingDir: config.workingDir || './workspace',
-      envVars: config.envVars || {}
-    });
+class NodeJSRuntimeProvider implements ICommandExecutor, IDependencyManager, ISandboxManager {
+  constructor(config) {
+    this.config = config;
+    this.nodePath = config.runtime.nodePath;
+    this.npmPath = config.runtime.npmPath;
+    this.npxPath = config.runtime.npxPath;
+    this.workingDir = config.runtime.workingDir;
+    this.envVars = config.runtime.envVars || {};
   }
   
-  async executeCommand(command, args, options) {
-    // 使用Child Process执行
+  async executeCommand(command, args, options = {}) {
+    const security = this.config.security;
+    
+    // 安全检查
+    if (security.blockedCommands.includes(command)) {
+      throw new Error(`Command '${command}' is blocked by security policy`);
+    }
+    
+    // 资源限制检查
+    const limits = this.config.limits;
+    const startTime = Date.now();
+    
     return await new Promise((resolve, reject) => {
       const child = spawn(command, args, {
         env: { ...this.envVars, ...options.env },
         cwd: options.cwd || this.workingDir,
         stdio: 'pipe'
       });
-      // 处理输出和错误
+      
+      // 超时控制
+      const timeout = setTimeout(() => {
+        child.kill('SIGTERM');
+        reject(new Error(`Command timeout after ${limits.maxExecutionTime}ms`));
+      }, limits.maxExecutionTime);
+      
+      // 收集输出
+      let stdout = '';
+      let stderr = '';
+      
+      child.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+      
+      child.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+      
+      child.on('close', (code) => {
+        clearTimeout(timeout);
+        resolve({ code, stdout, stderr, duration: Date.now() - startTime });
+      });
     });
+  }
+  
+  async installDependencies(dependencies, targetDir) {
+    const installArgs = ['install'];
+    
+    // 添加镜像源
+    const registry = this.selectRegistry();
+    if (registry) {
+      installArgs.push(`--registry=${registry}`);
+    }
+    
+    Object.entries(dependencies).forEach(([name, version]) => {
+      installArgs.push(`${name}@${version}`);
+    });
+    
+    return await this.executeCommand(this.npmPath, installArgs, {
+      cwd: targetDir
+    });
+  }
+  
+  async createSandbox(toolConfig) {
+    const sandboxId = `nodejs_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const sandboxDir = path.join(this.workingDir, 'sandboxes', sandboxId);
+    await fs.ensureDir(sandboxDir);
+    
+    return {
+      id: sandboxId,
+      directory: sandboxDir,
+      security: {
+        enableSandbox: this.config.security.enableSandbox
+      },
+      runtime: this
+    };
+  }
+  
+  async destroySandbox(sandboxId) {
+    const sandboxDir = path.join(this.workingDir, 'sandboxes', sandboxId);
+    await fs.remove(sandboxDir);
+  }
+  
+  selectRegistry() {
+    // 简化的镜像源选择
+    return 'https://registry.npmmirror.com';
   }
 }
 ```
 
-#### 5.2.3 Docker适配器
+#### 5.2.3 Docker适配器 (增强安全配置)
 ```javascript
-class DockerRuntimeProvider extends RuntimeProvider {
-  constructor(config = {}) {
-    super({
-      nodePath: 'node', // 容器内路径
-      npmPath: 'npm',
-      npxPath: 'npx',
-      workingDir: '/app/workspace',
-      envVars: {
-        NODE_ENV: 'production'
-      }
-    });
-    this.imageName = config.imageName || 'node:18-alpine';
+class DockerRuntimeProvider implements ICommandExecutor, IDependencyManager, ISandboxManager {
+  constructor(config) {
+    this.config = config;
+    this.imageName = config.docker.imageName;
+    this.nodePath = 'node';
+    this.npmPath = 'npm';
+    this.npxPath = 'npx';
   }
   
-  async executeCommand(command, args, options) {
-    // 使用Docker容器执行
+  async executeCommand(command, args, options = {}) {
+    const security = this.config.security;
+    
+    // 构建Docker命令
     const dockerArgs = [
       'run', '--rm',
-      '-v', `${options.cwd || this.workingDir}:/app/workspace`,
-      this.imageName,
-      command, ...args
+      '--memory=' + this.config.limits.maxMemory,
+      '--cpus=0.5', // 限制CPU使用
+      '--read-only', // 只读文件系统
+      '--tmpfs /tmp',
+      '--user=node', // 非root用户
+      '--security-opt=no-new-privileges',
+      `--network=${this.config.docker.networkMode || 'bridge'}`
     ];
-    return await this.executeCommand('docker', dockerArgs);
+    
+    // 卷挂载
+    if (this.config.docker.volumeMounts) {
+      this.config.docker.volumeMounts.forEach(mount => {
+        dockerArgs.push('-v', mount);
+      });
+    }
+    
+    // 安全配置
+    if (security.dropCapabilities) {
+      security.dropCapabilities.forEach(cap => {
+        dockerArgs.push(`--cap-drop=${cap}`);
+      });
+    }
+    
+    dockerArgs.push(this.imageName, command, ...args);
+    
+    return await new Promise((resolve, reject) => {
+      const docker = spawn('docker', dockerArgs, { stdio: 'pipe' });
+      
+      const startTime = Date.now();
+      const timeout = setTimeout(() => {
+        docker.kill('SIGTERM');
+        reject(new Error('Docker command timeout'));
+      }, this.config.limits.maxExecutionTime);
+      
+      let stdout = '';
+      let stderr = '';
+      
+      docker.stdout.on('data', (data) => stdout += data.toString());
+      docker.stderr.on('data', (data) => stderr += data.toString());
+      
+      docker.on('close', (code) => {
+        clearTimeout(timeout);
+        resolve({ code, stdout, stderr, duration: Date.now() - startTime });
+      });
+    });
+  }
+  
+  async installDependencies(dependencies, targetDir) {
+    const installArgs = ['install'];
+    
+    Object.entries(dependencies).forEach(([name, version]) => {
+      installArgs.push(`${name}@${version}`);
+    });
+    
+    return await this.executeCommand(this.npmPath, installArgs);
+  }
+  
+  async createSandbox(toolConfig) {
+    const sandboxId = `docker_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    return {
+      id: sandboxId,
+      directory: '/app/workspace',
+      security: {
+        enableSandbox: true,
+        readOnlyRoot: this.config.security.readOnlyRoot,
+        user: 'node'
+      },
+      runtime: this
+    };
+  }
+  
+  async destroySandbox(sandboxId) {
+    // Docker容器自动清理，无需手动销毁
   }
 }
 ```
 
 ### 5.3 依赖管理方案
 
-#### 5.3.1 镜像源配置
-- **要求**: 根据地理位置智能选择镜像源
-- **中国地区**: https://registry.npmmirror.com（优先选择）
-- **其他地区**: https://registry.npmjs.org（默认选择）
-- **目的**: 避免因网络问题导致依赖安装卡顿，提供全球化支持
-- **实现**: 通过地理位置检测或用户配置自动选择合适的镜像源
+#### 5.3.1 镜像源配置 (YAGNI原则简化)
+- **要求**: 使用统一的镜像源配置，简化复杂度
+- **默认镜像源**: https://registry.npmmirror.com（中国用户优化）
+- **备选镜像源**: https://registry.npmjs.org（备用方案）
+- **目的**: 避免因网络问题导致依赖安装卡顿
+- **实现**: 在适配器中直接配置，避免复杂的地理位置检测
 
 #### 5.3.2 运行时工具使用
 - **要求**: 使用注入的 node、npm、npx 路径
@@ -370,33 +740,39 @@ class DockerRuntimeProvider extends RuntimeProvider {
 
 ### 6.1 运行时配置结构
 
-#### 6.1.1 全局配置文件 (runtime-config.yml)
+#### 6.1.1 基础配置文件 (base-config.yml)
 ```yaml
-# 运行时配置
-runtime:
-  # 镜像源配置（根据地区自动选择）
-  registry:
-    china: "https://registry.npmmirror.com"  # 中国地区优先
-    default: "https://registry.npmjs.org"    # 其他地区默认
-  
-  # 进程池配置
+# 基础配置模板，支持继承
+base:
+  # 通用运行时配置
+  runtime:
+    timeout: 30000
+    maxMemory: "512MB"
+    maxFileSize: "10MB"
+    
+  # 进程池基础配置
   processPool:
     maxWorkers: 4
     minWorkers: 1
-    idleTimeout: 300000  # 5分钟
+    warmupWorkers: 2
+    maxIdleTime: 300000  # 5分钟
     healthCheckInterval: 30000  # 30秒
-  
+    recycleThreshold: 100
+    
+  # 基础安全配置
+  security:
+    enableSandbox: true
+    allowedDomains: ["registry.npmjs.org", "registry.npmmirror.com"]
+    blockedCommands: ["rm", "sudo", "chmod", "kill", "reboot"]
+    fileAccessWhitelist: ["./workspace", "./temp"]
+    blockedModules: ["fs", "child_process", "cluster"]
+    
   # 资源限制
   limits:
+    maxCPU: "50%"
     maxMemory: "512MB"
-    maxExecutionTime: 30000  # 30秒
-    maxFileSize: "10MB"
-  
-  # 安全配置
-  security:
-    allowedDomains: []  # 允许访问的域名
-    blockedCommands: ["rm", "sudo", "chmod"]  # 禁止的命令
-    fileAccessWhitelist: ["./workspace", "./temp"]  # 文件访问白名单
+    maxExecutionTime: 30000
+    maxNetworkRequests: 10
 
 # 日志配置
 logging:
@@ -404,15 +780,30 @@ logging:
   file: "./logs/toolx.log"
   maxFileSize: "10MB"
   maxFiles: 5
+
+# 性能监控配置
+performance:
+  metrics:
+    enabled: true
+    interval: 60000  # 1分钟
+    retention: 86400000  # 24小时
+  alerts:
+    memoryThreshold: 80  # 80%
+    cpuThreshold: 90     # 90%
+    responseTimeThreshold: 5000  # 5秒
 ```
 
-#### 6.1.2 场景配置示例
+#### 6.1.2 场景配置示例 (配置继承)
 
 **Electron场景配置 (scenarios/electron.yml)**
 ```yaml
+# 继承基础配置
+extends: "../base-config.yml"
+
 scenario: "electron"
 description: "Electron环境配置"
 
+# 仅覆盖差异部分
 runtime:
   nodePath: "${ELECTRON_RESOURCES}/node"
   npmPath: "${ELECTRON_RESOURCES}/npm"
@@ -423,18 +814,21 @@ runtime:
     NODE_ENV: "production"
 
 processPool:
-  type: "utility-process"  # 使用UtilityProcess
+  type: "utility-process"
   maxWorkers: 2  # Electron中建议较少worker
 
+# Electron特定的安全配置
 security:
-  # Electron特定的安全配置
-  enableSandbox: true
   contextIsolation: true
   nodeIntegration: false
+  enableRemoteModule: false
 ```
 
 **Node.js场景配置 (scenarios/nodejs.yml)**
 ```yaml
+# 继承基础配置
+extends: "../base-config.yml"
+
 scenario: "nodejs"
 description: "标准Node.js环境配置"
 
@@ -451,14 +845,16 @@ processPool:
   maxWorkers: 4
   minWorkers: 1
 
+# Node.js环境的安全配置
 security:
-  # Node.js环境的安全配置
   enableSandbox: false  # 使用Child Process隔离
-  allowedDomains: ["registry.npmjs.org", "registry.npmmirror.com"]
 ```
 
 **Docker场景配置 (scenarios/docker.yml)**
 ```yaml
+# 继承基础配置
+extends: "../base-config.yml"
+
 scenario: "docker"
 description: "Docker容器环境配置"
 
@@ -480,39 +876,107 @@ processPool:
   type: "docker-container"
   maxWorkers: 6  # Docker可以支持更多容器
 
+# Docker特定的安全配置
 security:
-  # Docker特定的安全配置
-  enableSandbox: true
   readOnlyRoot: false
   dropCapabilities: ["ALL"]
   addCapabilities: []
+  user: "node"  # 非root用户运行
 ```
 
 ### 6.2 配置注入机制
 
-#### 6.2.1 配置加载器
+#### 6.2.1 配置加载器 (支持继承)
+
 ```javascript
 class ConfigLoader {
+  static configCache = new Map();
+  
+  /**
+   * 加载场景配置（支持继承）
+   * @param {string} scenarioName - 场景名称
+   * @returns {Promise<object>} 合并后的配置
+   */
   static async loadScenario(scenarioName) {
-    const globalConfig = await this.loadYAML('runtime-config.yml');
-    const scenarioConfig = await this.loadYAML(`scenarios/${scenarioName}.yml`);
+    const cacheKey = `scenario_${scenarioName}`;
+    if (this.configCache.has(cacheKey)) {
+      return this.configCache.get(cacheKey);
+    }
     
-    return this.mergeConfigs(globalConfig, scenarioConfig);
+    const scenarioConfig = await this.loadYAML(`scenarios/${scenarioName}.yml`);
+    let finalConfig = {};
+    
+    // 处理配置继承
+    if (scenarioConfig.extends) {
+      const baseConfig = await this.loadYAML(scenarioConfig.extends);
+      finalConfig = this.deepMerge(baseConfig, scenarioConfig);
+    } else {
+      finalConfig = scenarioConfig;
+    }
+    
+    // 环境变量替换
+    finalConfig = this.replaceEnvVars(finalConfig);
+    
+    // 配置验证
+    this.validateConfig(finalConfig);
+    
+    this.configCache.set(cacheKey, finalConfig);
+    return finalConfig;
   }
   
-  static mergeConfigs(global, scenario) {
-    return {
-      ...global,
-      ...scenario,
-      runtime: { ...global.runtime, ...scenario.runtime },
-      processPool: { ...global.processPool, ...scenario.processPool },
-      security: { ...global.security, ...scenario.security }
-    };
+  /**
+   * 深度合并配置对象
+   * @param {object} base - 基础配置
+   * @param {object} override - 覆盖配置
+   * @returns {object} 合并后的配置
+   */
+  static deepMerge(base, override) {
+    const result = { ...base };
+    
+    for (const key in override) {
+      if (override[key] && typeof override[key] === 'object' && !Array.isArray(override[key])) {
+        result[key] = this.deepMerge(result[key] || {}, override[key]);
+      } else {
+        result[key] = override[key];
+      }
+    }
+    
+    return result;
+  }
+  
+  /**
+   * 配置验证
+   * @param {object} config - 配置对象
+   */
+  static validateConfig(config) {
+    const required = ['runtime', 'processPool', 'security'];
+    for (const field of required) {
+      if (!config[field]) {
+        throw new Error(`Missing required config field: ${field}`);
+      }
+    }
+    
+    // 验证进程池配置
+    if (config.processPool.maxWorkers < 1 || config.processPool.maxWorkers > 10) {
+      throw new Error('maxWorkers must be between 1 and 10');
+    }
+    
+    // 验证安全配置
+    if (config.security.allowedDomains && !Array.isArray(config.security.allowedDomains)) {
+      throw new Error('allowedDomains must be an array');
+    }
+  }
+  
+  /**
+   * 清除配置缓存
+   */
+  static clearCache() {
+    this.configCache.clear();
   }
 }
 ```
 
-#### 6.2.2 环境变量替换
+#### 6.2.2 环境变量替换 (简化版)
 ```javascript
 class EnvReplacer {
   static replaceEnvVars(config) {
@@ -521,38 +985,6 @@ class EnvReplacer {
       return process.env[envVar] || match;
     });
     return JSON.parse(replaced);
-  }
-  
-  // 地区感知的镜像源选择
-  static selectRegistry(registryConfig, userLocation = null) {
-    // 优先使用用户指定的地区
-    if (userLocation && registryConfig[userLocation]) {
-      return registryConfig[userLocation];
-    }
-    
-    // 自动检测地区（基于时区、语言环境等）
-    const detectedLocation = this.detectLocation();
-    if (detectedLocation && registryConfig[detectedLocation]) {
-      return registryConfig[detectedLocation];
-    }
-    
-    // 返回默认镜像源
-    return registryConfig.default || registryConfig.china;
-  }
-  
-  static detectLocation() {
-    // 简单的地区检测逻辑
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const locale = process.env.LANG || process.env.LC_ALL || '';
-    
-    // 检测中国地区
-    if (timezone.includes('Asia/Shanghai') || 
-        timezone.includes('Asia/Beijing') ||
-        locale.includes('zh_CN')) {
-      return 'china';
-    }
-    
-    return null;
   }
 }
 ```
@@ -626,14 +1058,22 @@ const configSchema = {
 
 ## 8. 风险评估
 
-### 7.1 技术风险
+### 8.1 技术风险
 - **沙箱逃逸风险**: 实现多层隔离机制，定期更新沙箱库
 - **性能问题**: 实现沙箱池化复用，监控资源使用情况
 - **依赖冲突**: 每个工具使用独立的 node_modules
+- **接口复杂性**: 通过专一接口设计降低复杂度
+- **配置管理**: 通过继承机制减少重复配置
 
-### 7.2 项目风险
+### 8.2 项目风险
 - **开发周期**: 合理分配开发任务，优先完成核心功能
 - **测试覆盖**: 建立全面的测试体系，确保质量
+- **安全风险**: 增强安全配置，细化权限控制
+
+### 8.3 缓解措施
+- **代码质量**: 遵循SOLID原则，确保代码可维护性
+- **性能监控**: 实现详细的性能指标收集
+- **安全审计**: 定期进行安全漏洞扫描
 
 ## 9. 质量要求
 
