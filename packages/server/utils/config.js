@@ -3,6 +3,11 @@ import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
+import dotenv from 'dotenv';
+
+// 加载 .env 文件
+const configHome = path.join(os.homedir(), '.prompt-manager');
+dotenv.config({ path: path.join(configHome, '.env') });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -63,11 +68,16 @@ MCP Prompt Server - 智能 Prompt 管理服务器
   LOG_LEVEL                  日志级别 (默认: info)
   MAX_PROMPTS                最大prompt数量限制 (默认: 1000)
   RECURSIVE_SCAN             是否启用递归扫描子目录 (默认: true)
+  ADMIN_ENABLE               是否启用管理员功能 (默认: true)
+  ADMIN_REQUIRE_AUTH         是否需要登录认证 (默认: true)
+  ADMIN_USERNAME             管理员用户名 (默认: admin)
+  ADMIN_PASSWORD             管理员密码 (默认: admin)
 
 示例:
   node packages/server/server.js --prompts-dir /path/to/prompts
   node packages/server/server.js -p ./examples/prompts -P 8080
   LOG_LEVEL=debug node packages/server/server.js -p /custom/prompts
+  ADMIN_REQUIRE_AUTH=false node packages/server/server.js  # 禁用登录认证
 `);
 }
 
@@ -104,6 +114,8 @@ export class Config {
     this.adminEnable = process.env.ADMIN_ENABLE !== 'false'; // 默认启用管理员功能
     this.adminPath = process.env.ADMIN_PATH || '/admin';
     this.exportToken = process.env.EXPORT_TOKEN || crypto.randomBytes(32).toString('hex');
+    // 是否需要认证（默认需要）
+    this.adminRequireAuth = process.env.ADMIN_REQUIRE_AUTH !== 'false';
 
     // 管理员账户（从环境变量或默认值）
     const adminUsername = process.env.ADMIN_USERNAME || 'admin';
@@ -144,6 +156,7 @@ export class Config {
       recursiveScan,
       adminEnable,
       adminPath,
+      adminRequireAuth,
       admins,
       exportToken
     } = overrides;
@@ -175,6 +188,9 @@ export class Config {
     }
     if (adminPath) {
       this.adminPath = adminPath;
+    }
+    if (typeof adminRequireAuth === 'boolean') {
+      this.adminRequireAuth = adminRequireAuth;
     }
     if (Array.isArray(admins) && admins.length) {
       this.admins = admins;
@@ -276,6 +292,10 @@ export class Config {
     process.stderr.write(`   递归扫描: ${this.recursiveScan ? '启用' : '禁用'}\n`);
     process.stderr.write(`   Prompts目录: ${this.promptsDir}\n`);
     process.stderr.write(`   最大Prompt数量: ${this.maxPrompts}\n`);
+    process.stderr.write(`   管理员功能: ${this.adminEnable ? '启用' : '禁用'}\n`);
+    if (this.adminEnable) {
+      process.stderr.write(`   登录认证: ${this.adminRequireAuth ? '需要' : '不需要'}\n`);
+    }
     process.stderr.write('======================================================================================\n\n');
   }
 }

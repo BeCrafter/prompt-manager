@@ -13,6 +13,12 @@ export function adminAuthMiddleware(req, res, next) {
         return res.status(404).json({ error: 'Admin功能未启用' });
     }
 
+    // 如果不需要认证，直接通过
+    if (!config.adminRequireAuth) {
+        next();
+        return;
+    }
+
     // 检查Authorization请求头是否存在且格式正确
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

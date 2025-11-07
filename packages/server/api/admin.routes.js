@@ -18,11 +18,29 @@ const router = express.Router();
 // 获取prompts目录路径（在启动时可能被覆盖）
 let promptsDir = config.getPromptsDir();
 
+// 获取服务器配置端点
+router.get('/config', (req, res) => {
+    // 检查是否启用了管理员功能
+    if (!config.adminEnable) {
+        return res.status(404).json({ error: 'Admin功能未启用' });
+    }
+
+    res.json({
+        requireAuth: config.adminRequireAuth,
+        adminEnable: config.adminEnable
+    });
+});
+
 // 登录端点
 router.post('/login', (req, res) => {
     // 检查是否启用了管理员功能
     if (!config.adminEnable) {
         return res.status(404).json({ error: 'Admin功能未启用' });
+    }
+
+    // 如果不需要认证，返回默认token
+    if (!config.adminRequireAuth) {
+        return res.json({ token: config.admins[0].token });
     }
 
     const { username, password } = req.body;
