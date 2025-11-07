@@ -15,3 +15,6 @@ prefer-frozen-lockfile=true
 
 # Set the store directory
 store-dir=~/Library/pnpm/store
+
+# Set the workspace file path
+workspace-file=config/pnpm-workspace.yaml

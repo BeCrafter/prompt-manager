@@ -25,12 +25,24 @@
     "appId": "com.becrafter.promptserver",
     "productName": "Prompt Manager",
     "icon": "assets/icons/icon.png",
+    "asar": true,
     "files": [
       "**/*",
       "assets/**/*",
       "!node_modules/**/test/**",
       "!node_modules/**/example/**",
-      "!docs"
+      "!node_modules/**/docs/**",
+      "!node_modules/**/doc/**",
+      "!node_modules/**/*.{md,MD,markdown,txt}",
+      "!node_modules/**/.*",
+      "!node_modules/**/package-lock.json",
+      "!node_modules/**/yarn.lock",
+      "!node_modules/**/node_modules/**/test/**",
+      "!node_modules/**/node_modules/**/example/**",
+      "!node_modules/**/node_modules/**/docs/**",
+      "!node_modules/**/node_modules/**/doc/**",
+      "!node_modules/**/node_modules/**/*.{md,MD,markdown,txt}",
+      "!node_modules/**/node_modules/**/.*"
     ],
     "directories": {
       "output": "../../dist",
@@ -44,29 +56,7 @@
           "package.json",
           "packages/**/*",
           "examples/**/*",
-          "node_modules/**/*",
-          "!node_modules/7zip-bin/mac/**/*",
-          "!node_modules/@img/sharp-darwin-x64/**/*",
-          "!node_modules/@img/sharp-darwin-arm64/**/*",
-          "!node_modules/@img/sharp-libvips-darwin-x64/**/*",
-          "!node_modules/@img/sharp-libvips-darwin-arm64/**/*",
-          "!node_modules/app-builder-bin/mac/**/*",
-          "!dist",
-          "!docs",
-          "!app/desktop",
-          "!scripts",
-          "!*.md",
-          "!*.lock",
-          "!*.log",
-          "!*.gitignore",
-          "!*.npmignore"
-        ]
-      },
-      {
-        "from": "../../node_modules",
-        "to": "prompt-manager/node_modules",
-        "filter": [
-          "**/*"
+          "!node_modules/**/*"
         ]
       }
     ],
