@@ -8,10 +8,11 @@
   "main": "main.js",
   "scripts": {
     "dev": "electron .",
-    "start": "npm run dev",
+    "start": "pnpm run dev",
     "prebuild": "node ../../scripts/build-icons.js",
-    "build": "electron-builder"
+    "build": "npx electron-builder"
   },
+  "packageManager": "pnpm@9.12.3",
   "devDependencies": {
     "electron": "^39.0.0",
     "electron-builder": "^24.13.3"
@@ -60,6 +61,13 @@
           "!*.gitignore",
           "!*.npmignore"
         ]
+      },
+      {
+        "from": "../../node_modules",
+        "to": "prompt-manager/node_modules",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "mac": {
@@ -97,9 +105,6 @@
       "maintainer": "support@becrafter.com",
       "synopsis": "Menu bar desktop wrapper for Prompt Manager",
       "description": "Prompt Manager is a desktop application that provides a menu bar interface for managing prompts via MCP (Model Context Protocol).",
-      "desktop": {
-        "StartupNotify": "true"
-      },
       "artifactName": "${productName}-${version}.${ext}"
     }
   }

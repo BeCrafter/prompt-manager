@@ -52,18 +52,16 @@ class RuntimeManager {
     this.logger.info('Setting up packaged environment');
     
     const packagedRoot = path.join(process.resourcesPath, 'prompt-manager');
-    const runtimeRoot = path.join(app.getPath('userData'), 'prompt-manager');
     
-    this.logger.debug('Environment paths', { packagedRoot, runtimeRoot });
+    this.logger.debug('Packaged environment path', { packagedRoot });
     
     // 验证打包资源
     await this._validatePackagedResources(packagedRoot);
     
-    // 设置运行时目录
-    await this._setupRuntimeDirectory(packagedRoot, runtimeRoot);
-    
-    this.runtimeRoot = runtimeRoot;
-    return runtimeRoot;
+    // 在打包环境中，直接使用打包的资源路径，而不是复制到用户目录
+    // 这样可以保留 pnpm 的符号链接结构，避免依赖加载问题
+    this.runtimeRoot = packagedRoot;
+    return packagedRoot;
   }
 
   async _validateDevelopmentEnvironment(devRoot) {
@@ -92,33 +90,7 @@ class RuntimeManager {
     }
   }
 
-  async _setupRuntimeDirectory(packagedRoot, runtimeRoot) {
-    try {
-      await fs.promises.access(runtimeRoot, fs.constants.F_OK);
-      this.logger.debug('Runtime root already exists');
-    } catch (error) {
-      this.logger.info('Creating runtime directory', { path: runtimeRoot });
-      await fs.promises.mkdir(runtimeRoot, { recursive: true });
-      
-      this.logger.info('Copying packaged resources to runtime directory');
-      await fs.promises.cp(packagedRoot, runtimeRoot, { recursive: true });
-    }
-  }
-
-  async _installDependencies(runtimeRoot) {
-    this.logger.info('Installing dependencies in runtime directory');
-    
-    const ModuleLoader = require('./module-loader');
-    const moduleLoader = new ModuleLoader(this.logger, this.errorHandler);
-    
-    try {
-      await moduleLoader.installDependencies(runtimeRoot);
-      this.logger.info('Dependencies installed successfully');
-    } catch (error) {
-      this.logger.error('Failed to install dependencies', error);
-      throw error;
-    }
-  }
+  
 
   getServerRoot() {
     if (!this.runtimeRoot) {

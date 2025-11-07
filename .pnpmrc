@@ -1,0 +1,17 @@
+# pnpm configuration for optimal performance
+
+# Use symlinked node_modules for compatibility
+node-linker=hoisted
+
+# Enable strict peer dependencies
+strict-peer-dependencies=false
+
+# Use frozen lockfile for consistent installs
+prefer-frozen-lockfile=true
+
+# Enable shamefully-hoist to handle common dependency issues
+# Only enable if needed for compatibility
+# shamefully-hoist=true
+
+# Set the store directory
+store-dir=~/Library/pnpm/store
