@@ -69,6 +69,14 @@ class ElectronRuntimeProvider {
       if (!utilityProcess) {
         throw new Error('UtilityProcess is not available in this Electron version');
       }
+      
+      // 验证运行时需求
+      if (this.config.runtimeRequirements) {
+        const result = this.securityValidator.validateRuntimeRequirements(this.config.runtimeRequirements);
+        if (!result.valid) {
+          throw new Error(`Runtime requirements validation failed: ${result.errors.join(', ')}`);
+        }
+      }
     } catch (error) {
       throw new Error(`Electron environment validation failed: ${error.message}`);
     }
@@ -269,6 +277,97 @@ class ElectronRuntimeProvider {
   }
   
   /**
+   * 检查依赖状态
+   * @param {string} targetDir - 目标目录
+   * @returns {Promise<DependencyStatus>} 依赖状态
+   */
+  async checkDependencies(targetDir) {
+    try {
+      // 检查 node_modules 目录是否存在
+      const fs = require('fs').promises;
+      const nodeModulesPath = `${targetDir}/node_modules`;
+      
+      let installed = {};
+      let missing = [];
+      let outdated = [];
+      
+      try {
+        await fs.access(nodeModulesPath);
+        
+        // 尝试读取 package.json 和 package-lock.json
+        const packagePath = `${targetDir}/package.json`;
+        const lockPath = `${targetDir}/package-lock.json`;
+        
+        try {
+          const packageJson = JSON.parse(await fs.readFile(packagePath, 'utf-8'));
+          const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
+          
+          // 简单的检查，实际实现可能需要更复杂的逻辑
+          for (const [name, version] of Object.entries(dependencies)) {
+            try {
+              const depPath = `${nodeModulesPath}/${name}/package.json`;
+              await fs.access(depPath);
+              installed[name] = version;
+            } catch (error) {
+              missing.push(name);
+            }
+          }
+        } catch (error) {
+          // 如果没有 package.json 或 package-lock.json，返回基本信息
+          installed = { basic: 'check completed' };
+        }
+      } catch (error) {
+        // node_modules 不存在，所有依赖都缺失
+        missing = ['all'];
+      }
+      
+      return {
+        satisfied: missing.length === 0,
+        installed,
+        missing,
+        outdated
+      };
+    } catch (error) {
+      throw new Error(`Dependency check failed: ${error.message}`);
+    }
+  }
+  
+  /**
+   * 卸载依赖
+   * @param {string[]} packages - 要卸载的包名
+   * @param {string} targetDir - 目标目录
+   * @returns {Promise<UninstallResult>} 卸载结果
+   */
+  async uninstallDependencies(packages, targetDir) {
+    if (!packages || packages.length === 0) {
+      return { success: true, uninstalled: [], failed: [], duration: 0 };
+    }
+    
+    const startTime = Date.now();
+    
+    try {
+      // 构建卸载命令
+      const uninstallArgs = ['uninstall', ...packages];
+      
+      // 执行卸载
+      const result = await this.executeCommand(this.runtime.npmPath, uninstallArgs, {
+        cwd: targetDir
+      });
+      
+      const duration = Date.now() - startTime;
+      
+      return {
+        success: result.code === 0,
+        uninstalled: result.code === 0 ? packages : [],
+        failed: result.code !== 0 ? packages : [],
+        duration
+      };
+    } catch (error) {
+      throw new Error(`Dependency uninstallation failed: ${error.message}`);
+    }
+  }
+  
+  /**
    * 解析npm安装输出
    * @param {string} output - npm输出
    * @returns {string[]} 已安装的包列表
@@ -433,6 +532,19 @@ class ElectronRuntimeProvider {
     return 'https://registry.npmmirror.com';
   }
   
+  /**
+   * 验证工具运行时需求
+   * @param {object} toolRuntimeRequirements - 工具运行时需求
+   * @returns {Promise<object>} 验证结果
+   */
+  async validateToolRuntimeRequirements(toolRuntimeRequirements) {
+    if (!toolRuntimeRequirements) {
+      return { valid: true, errors: [] };
+    }
+    
+    return this.securityValidator.validateRuntimeRequirements(toolRuntimeRequirements);
+  }
+
   /**
    * 获取适配器统计信息
    * @returns {object} 统计信息

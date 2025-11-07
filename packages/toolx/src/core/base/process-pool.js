@@ -22,6 +22,9 @@ class BaseProcessPool extends EventEmitter {
     this.healthCheckInterval = options.healthCheckInterval || 30000; // 30秒
     this.recycleThreshold = options.recycleThreshold || 100;
     
+    // 调度策略
+    this.schedulingStrategy = options.schedulingStrategy || 'least-used'; // least-used, round-robin, resource-based
+    
     // 进程管理
     this.workers = new Map();
     this.availableWorkers = [];
@@ -29,6 +32,9 @@ class BaseProcessPool extends EventEmitter {
     this.usageCount = new Map();
     this.lastActivity = new Map();
     this.workerCounter = 0;
+    
+    // 资源监控
+    this.workerResources = new Map(); // 存储每个worker的资源使用情况
     
     // 状态管理
     this.isInitialized = false;
@@ -42,7 +48,15 @@ class BaseProcessPool extends EventEmitter {
       totalAcquired: 0,
       totalReleased: 0,
       averageWaitTime: 0,
-      peakWorkers: 0
+      peakWorkers: 0,
+      totalWaitTime: 0
+    };
+    
+    // 调度统计
+    this.schedulingStats = {
+      leastUsed: 0,
+      roundRobin: 0,
+      resourceBased: 0
     };
   }
   
@@ -194,9 +208,87 @@ class BaseProcessPool extends EventEmitter {
       return null;
     }
     
-    // 选择使用次数最少的进程（负载均衡）
+    // 根据调度策略选择进程
+    switch (this.schedulingStrategy) {
+      case 'round-robin':
+        this.schedulingStats.roundRobin++;
+        return this.selectWorkerRoundRobin();
+        
+      case 'resource-based':
+        this.schedulingStats.resourceBased++;
+        return this.selectWorkerResourceBased();
+        
+      case 'least-used':
+      default:
+        this.schedulingStats.leastUsed++;
+        return this.selectWorkerLeastUsed();
+    }
+  }
+  
+  /**
+   * 选择使用次数最少的进程
+   * @returns {object|null} 工作进程
+   */
+  selectWorkerLeastUsed() {
     return this.availableWorkers
       .sort((a, b) => (this.usageCount.get(a.id) || 0) - (this.usageCount.get(b.id) || 0))[0];
+  }
+  
+  /**
+   * 轮询选择进程
+   * @returns {object|null} 工作进程
+   */
+  selectWorkerRoundRobin() {
+    if (this.availableWorkers.length === 0) {
+      return null;
+    }
+    
+    // 简单的轮询实现
+    if (!this.lastSelectedIndex) {
+      this.lastSelectedIndex = 0;
+    } else {
+      this.lastSelectedIndex = (this.lastSelectedIndex + 1) % this.availableWorkers.length;
+    }
+    
+    return this.availableWorkers[this.lastSelectedIndex];
+  }
+  
+  /**
+   * 基于资源使用情况选择进程
+   * @returns {object|null} 工作进程
+   */
+  selectWorkerResourceBased() {
+    if (this.availableWorkers.length === 0) {
+      return null;
+    }
+    
+    // 选择资源使用最少的进程
+    return this.availableWorkers
+      .sort((a, b) => {
+        const resourcesA = this.workerResources.get(a.id) || { cpu: 0, memory: 0 };
+        const resourcesB = this.workerResources.get(b.id) || { cpu: 0, memory: 0 };
+        const totalA = resourcesA.cpu + resourcesA.memory;
+        const totalB = resourcesB.cpu + resourcesB.memory;
+        return totalA - totalB;
+      })[0];
+  }
+  
+  /**
+   * 更新工作进程资源使用情况
+   * @param {string} workerId - 工作进程ID
+   * @param {object} resources - 资源使用情况
+   */
+  updateWorkerResources(workerId, resources) {
+    this.workerResources.set(workerId, resources);
+  }
+  
+  /**
+   * 获取工作进程资源使用情况
+   * @param {string} workerId - 工作进程ID
+   * @returns {object} 资源使用情况
+   */
+  getWorkerResources(workerId) {
+    return this.workerResources.get(workerId) || { cpu: 0, memory: 0 };
   }
   
   /**
@@ -251,11 +343,28 @@ class BaseProcessPool extends EventEmitter {
     // 健康检查
     await this.healthCheck();
     
+    // 资源监控
+    await this.monitorWorkerResources();
+    
     // 回收空闲进程
     await this.recycleIdleWorkers();
     
     // 更新峰值统计
     this.stats.peakWorkers = Math.max(this.stats.peakWorkers, this.workers.size);
+  }
+  
+  /**
+   * 监控工作进程资源使用情况
+   * @returns {Promise<void>}
+   */
+  async monitorWorkerResources() {
+    try {
+      // 这里可以实现具体的资源监控逻辑
+      // 例如，通过子类实现的具体监控方法
+      // 暂时留空，由子类实现具体逻辑
+    } catch (error) {
+      this.emit('error', new Error(`Resource monitoring failed: ${error.message}`));
+    }
   }
   
   /**
@@ -322,9 +431,62 @@ class BaseProcessPool extends EventEmitter {
         warmupWorkers: this.warmupWorkers,
         maxIdleTime: this.maxIdleTime,
         healthCheckInterval: this.healthCheckInterval,
-        recycleThreshold: this.recycleThreshold
+        recycleThreshold: this.recycleThreshold,
+        schedulingStrategy: this.schedulingStrategy
       },
-      stats: { ...this.stats }
+      stats: { ...this.stats },
+      schedulingStats: { ...this.schedulingStats },
+      resourceStats: {
+        trackedWorkers: this.workerResources.size
+      }
+    };
+  }
+  
+  /**
+   * 调整进程池配置
+   * @param {object} newConfig - 新配置
+   * @returns {void}
+   */
+  adjustConfig(newConfig) {
+    if (newConfig.maxWorkers !== undefined) {
+      this.maxWorkers = Math.max(1, Math.min(10, newConfig.maxWorkers));
+    }
+    
+    if (newConfig.minWorkers !== undefined) {
+      this.minWorkers = Math.max(1, Math.min(this.maxWorkers, newConfig.minWorkers));
+    }
+    
+    if (newConfig.maxIdleTime !== undefined) {
+      this.maxIdleTime = newConfig.maxIdleTime;
+    }
+    
+    if (newConfig.healthCheckInterval !== undefined) {
+      this.healthCheckInterval = newConfig.healthCheckInterval;
+      // 重新设置健康检查间隔
+      this.stopMaintenanceTasks();
+      this.startMaintenanceTasks();
+    }
+    
+    if (newConfig.schedulingStrategy !== undefined) {
+      this.schedulingStrategy = newConfig.schedulingStrategy;
+    }
+    
+    this.emit('configAdjusted', { newConfig });
+  }
+  
+  /**
+   * 获取当前配置
+   * @returns {object} 当前配置
+   */
+  getConfig() {
+    return {
+      maxWorkers: this.maxWorkers,
+      minWorkers: this.minWorkers,
+      warmupWorkers: this.warmupWorkers,
+      maxIdleTime: this.maxIdleTime,
+      healthCheckInterval: this.healthCheckInterval,
+      recycleThreshold: this.recycleThreshold,
+      schedulingStrategy: this.schedulingStrategy
     };
   }
   

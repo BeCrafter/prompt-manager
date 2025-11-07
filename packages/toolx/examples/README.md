@@ -20,9 +20,33 @@ node examples/simple-execution-example.js
 node examples/adapter-example.js
 ```
 
+### 3. Filesystem 工具示例
+演示 filesystem 工具的完整使用流程，包括运行时注入、依赖加载、工具帮助输出和文件操作方法调用。
+
+运行命令：
+```bash
+node examples/filesystem-example.js
+```
+
+### 4. Filesystem 工具功能演示
+直接演示 filesystem 工具的核心功能，包括运行时注入、依赖加载、工具帮助输出和文件操作方法调用。
+
+运行命令：
+```bash
+node examples/filesystem-demo.js
+```
+
+### 5. 真实 Filesystem 工具调用示例
+演示如何真实调用 `@packages/toolx/resources/tools/filesystem/filesystem.tool.js` 工具，而不是模拟调用。
+
+运行命令：
+```bash
+node examples/real-filesystem-example.js
+```
+
 ## 关于 filesystem.tool.js
 
-`@packages/toolx/resources/tools/filesystem/filesystem.tool.js` 是一个为 PromptX 生态系统设计的文件系统工具，它已经具备了完善的安全机制，包括：
+`@packages/toolx/resources/tools/filesystem/filesystem.tool.js` 是一个为 PromptManager 生态系统设计的文件系统工具，它已经具备了完善的安全机制，包括：
 
 - MCP 标准的文件系统操作
 - 路径访问控制和验证
@@ -38,13 +62,44 @@ node examples/adapter-example.js
 
 ```bash
 # 运行简单执行示例
+npm run example:simple
+
+# 运行适配器系统示例
+npm run example:adapter
+
+# 运行 filesystem 工具示例
+npm run example:filesystem
+
+# 运行 filesystem 工具功能演示
+npm run example:filesystem-demo
+
+# 运行真实 filesystem 工具调用示例
+npm run example:filesystem-real
+
+# 运行所有示例
+npm run example:all
+```
+
+或者直接在 `packages/toolx` 目录下运行：
+
+```bash
+# 运行简单执行示例
 node examples/simple-execution-example.js
 
 # 运行适配器系统示例
 node examples/adapter-example.js
 
+# 运行 filesystem 工具示例
+node examples/filesystem-example.js
+
+# 运行 filesystem 工具功能演示
+node examples/filesystem-demo.js
+
+# 运行真实 filesystem 工具调用示例
+node examples/real-filesystem-example.js
+
 # 运行所有示例
-node run-examples.mjs all
+node run-examples.js all
 ```
 
 ## 核心功能

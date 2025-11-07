@@ -16,7 +16,8 @@ const __dirname = dirname(__filename);
 const examples = {
   'simple': 'examples/simple-execution-example.js',
   'adapter': 'examples/adapter-example.js',
-  'all': ['examples/simple-execution-example.js', 'examples/adapter-example.js']
+  'filesystem-real': 'examples/real-filesystem-example.js',
+  'all': ['examples/simple-execution-example.js', 'examples/adapter-example.js', 'examples/real-filesystem-example.js']
 };
 
 function runExample(exampleName) {

@@ -319,6 +319,153 @@ class SecurityPolicyValidator {
   }
   
   /**
+   * 验证工具运行时需求
+   * @param {object} runtimeRequirements - 运行时需求
+   * @returns {Promise<object>} 验证结果
+   */
+  async validateRuntimeRequirements(runtimeRequirements) {
+    this.stats.totalValidations++;
+    
+    const result = {
+      valid: true,
+      errors: []
+    };
+    
+    // 验证Node.js版本
+    if (runtimeRequirements.nodeVersion) {
+      const nodeVersion = process.version;
+      if (!this.satisfiesVersion(nodeVersion, runtimeRequirements.nodeVersion)) {
+        result.errors.push(`Node.js version ${nodeVersion} does not satisfy requirement ${runtimeRequirements.nodeVersion}`);
+      }
+    }
+    
+    // 验证平台
+    if (runtimeRequirements.platform && !runtimeRequirements.platform.includes(process.platform)) {
+      result.errors.push(`Platform ${process.platform} is not supported`);
+    }
+    
+    // 验证必需命令
+    if (runtimeRequirements.requiredCommands) {
+      for (const command of runtimeRequirements.requiredCommands) {
+        if (!await this.commandExists(command)) {
+          result.errors.push(`Required command '${command}' is not available`);
+        }
+      }
+    }
+    
+    if (result.errors.length > 0) {
+      result.valid = false;
+      this.stats.blockedCommands++; // 计入阻止的命令统计
+    }
+    
+    return result;
+  }
+  
+  /**
+   * 检查版本是否满足要求
+   * @param {string} currentVersion - 当前版本
+   * @param {string} requiredVersion - 要求版本（支持 >=14.0.0, >= 14.0.0, >14.0.0, > 14.0.0 等格式）
+   * @returns {boolean} 是否满足要求
+   */
+  satisfiesVersion(currentVersion, requiredVersion) {
+    // 解析当前版本
+    const current = this.parseVersion(currentVersion);
+    if (!current) return false;
+    
+    // 解析要求版本 - 处理各种格式
+    if (requiredVersion.startsWith('>= ')) {
+      const required = this.parseVersion(requiredVersion.substring(3));
+      if (!required) return false;
+      return this.compareVersions(current, required) >= 0;
+    } else if (requiredVersion.startsWith('>=')) {
+      // Handle format like '>=14.0.0' (without space)
+      const required = this.parseVersion(requiredVersion.substring(2));
+      if (!required) return false;
+      return this.compareVersions(current, required) >= 0;
+    } else if (requiredVersion.startsWith('> ')) {
+      const required = this.parseVersion(requiredVersion.substring(2));
+      if (!required) return false;
+      return this.compareVersions(current, required) > 0;
+    } else if (requiredVersion.startsWith('>')) {
+      // Handle format like '>14.0.0' (without space)
+      const required = this.parseVersion(requiredVersion.substring(1));
+      if (!required) return false;
+      return this.compareVersions(current, required) > 0;
+    } else if (requiredVersion.startsWith('<= ')) {
+      const required = this.parseVersion(requiredVersion.substring(3));
+      if (!required) return false;
+      return this.compareVersions(current, required) <= 0;
+    } else if (requiredVersion.startsWith('<=')) {
+      // Handle format like '<=14.0.0' (without space)
+      const required = this.parseVersion(requiredVersion.substring(2));
+      if (!required) return false;
+      return this.compareVersions(current, required) <= 0;
+    } else if (requiredVersion.startsWith('< ')) {
+      const required = this.parseVersion(requiredVersion.substring(2));
+      if (!required) return false;
+      return this.compareVersions(current, required) < 0;
+    } else if (requiredVersion.startsWith('<')) {
+      // Handle format like '<14.0.0' (without space)
+      const required = this.parseVersion(requiredVersion.substring(1));
+      if (!required) return false;
+      return this.compareVersions(current, required) < 0;
+    } else {
+      // Default case: check if current version is greater than or equal to required
+      const required = this.parseVersion(requiredVersion);
+      if (!required) return false;
+      return this.compareVersions(current, required) >= 0;
+    }
+  }
+  
+  /**
+   * 解析版本字符串
+   * @param {string} version - 版本字符串
+   * @returns {object|null} 解析后的版本对象，格式：{ major, minor, patch }
+   */
+  parseVersion(version) {
+    // 移除可能的前缀v
+    const cleanVersion = version.replace(/^v/, '');
+    const match = cleanVersion.match(/^(\d+)\.(\d+)\.(\d+)$/);
+    if (!match) return null;
+    
+    return {
+      major: parseInt(match[1]),
+      minor: parseInt(match[2]),
+      patch: parseInt(match[3])
+    };
+  }
+  
+  /**
+   * 比较两个版本
+   * @param {object} a - 第一个版本
+   * @param {object} b - 第二个版本
+   * @returns {number} 比较结果：1表示a>b，0表示a=b，-1表示a<b
+   */
+  compareVersions(a, b) {
+    if (a.major !== b.major) return a.major > b.major ? 1 : -1;
+    if (a.minor !== b.minor) return a.minor > b.minor ? 1 : -1;
+    if (a.patch !== b.patch) return a.patch > b.patch ? 1 : -1;
+    return 0;
+  }
+  
+  /**
+   * 检查命令是否存在
+   * @param {string} command - 命令名称
+   * @returns {boolean} 命令是否存在
+   */
+  async commandExists(command) {
+    try {
+      // Use dynamic import for ES modules compatibility
+      const child_process = await import('child_process');
+      const { spawnSync } = child_process;
+      const result = spawnSync(command, ['--version'], { stdio: 'pipe' });
+      return result.error ? false : true;
+    } catch (error) {
+      return false;
+    }
+  }
+  
+  /**
    * 获取安全统计信息
    * @returns {object} 安全统计
    */

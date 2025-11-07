@@ -134,7 +134,7 @@ class AdapterRegistry {
       // 检查方法实现
       const interfaceMethods = Object.getOwnPropertyNames(InterfaceClass.prototype);
       return interfaceMethods.every(method => {
-        if (method === 'constructor') return true;
+        if (method === 'constructor' || method === 'name' || method === 'length') return true;
         return typeof AdapterClass.prototype[method] === 'function';
       });
     });

@@ -56,6 +56,14 @@ class DockerRuntimeProvider {
       }
       
       this.dockerVersion = result.stdout.trim();
+      
+      // 验证运行时需求
+      if (this.config.runtimeRequirements) {
+        const result = this.securityValidator.validateRuntimeRequirements(this.config.runtimeRequirements);
+        if (!result.valid) {
+          throw new Error(`Runtime requirements validation failed: ${result.errors.join(', ')}`);
+        }
+      }
     } catch (error) {
       throw new Error(`Docker environment validation failed: ${error.message}`);
     }
@@ -282,6 +290,88 @@ class DockerRuntimeProvider {
   }
   
   /**
+   * 检查依赖状态
+   * @param {string} targetDir - 目标目录
+   * @returns {Promise<DependencyStatus>} 依赖状态
+   */
+  async checkDependencies(targetDir) {
+    try {
+      // 在Docker环境中检查依赖状态 - 简化版实现
+      // 执行npm ls命令检查依赖是否安装
+      const result = await this.executeCommand('npm', ['ls', '--depth=0'], {
+        cwd: targetDir
+      });
+      
+      const lines = result.stdout.split('\n');
+      const installed = {};
+      const missing = [];
+      const outdated = [];
+      
+      // 解析npm ls输出
+      for (const line of lines) {
+        if (line.includes('deduped') || line.includes('empty')) {
+          continue;
+        }
+        
+        const match = line.match(/├── ([^@]+)@(.+)/);
+        if (match) {
+          installed[match[1]] = match[2];
+        }
+      }
+      
+      return {
+        satisfied: Object.keys(installed).length > 0,
+        installed,
+        missing,
+        outdated
+      };
+    } catch (error) {
+      // 如果npm ls失败，返回基本信息
+      return {
+        satisfied: false,
+        installed: {},
+        missing: ['unknown'],
+        outdated: []
+      };
+    }
+  }
+  
+  /**
+   * 卸载依赖
+   * @param {string[]} packages - 要卸载的包名
+   * @param {string} targetDir - 目标目录
+   * @returns {Promise<UninstallResult>} 卸载结果
+   */
+  async uninstallDependencies(packages, targetDir) {
+    if (!packages || packages.length === 0) {
+      return { success: true, uninstalled: [], failed: [], duration: 0 };
+    }
+    
+    const startTime = Date.now();
+    
+    try {
+      // 构建卸载命令
+      const uninstallArgs = ['uninstall', ...packages];
+      
+      // 执行卸载
+      const result = await this.executeCommand('npm', uninstallArgs, {
+        cwd: targetDir
+      });
+      
+      const duration = Date.now() - startTime;
+      
+      return {
+        success: result.code === 0,
+        uninstalled: result.code === 0 ? packages : [],
+        failed: result.code !== 0 ? packages : [],
+        duration
+      };
+    } catch (error) {
+      throw new Error(`Dependency uninstallation failed: ${error.message}`);
+    }
+  }
+  
+  /**
    * 解析npm安装输出
    * @param {string} output - npm输出
    * @returns {string[]} 已安装的包列表
@@ -427,6 +517,19 @@ class DockerRuntimeProvider {
     return `${Math.round(size)}${units[unitIndex]}`;
   }
   
+  /**
+   * 验证工具运行时需求
+   * @param {object} toolRuntimeRequirements - 工具运行时需求
+   * @returns {Promise<object>} 验证结果
+   */
+  async validateToolRuntimeRequirements(toolRuntimeRequirements) {
+    if (!toolRuntimeRequirements) {
+      return { valid: true, errors: [] };
+    }
+    
+    return this.securityValidator.validateRuntimeRequirements(toolRuntimeRequirements);
+  }
+
   /**
    * 获取适配器统计信息
    * @returns {object} 统计信息

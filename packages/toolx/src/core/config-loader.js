@@ -5,6 +5,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
+import { validator } from './config-validator.js';
 
 class ConfigLoader {
   constructor() {
@@ -103,7 +104,7 @@ class ConfigLoader {
   }
   
   /**
-   * 简单的YAML解析器
+   * YAML解析器
    * @param {string} content - YAML内容
    * @returns {object} 解析后的对象
    */
@@ -113,28 +114,77 @@ class ConfigLoader {
       const yamlModule = await import('js-yaml');
       return yamlModule.load(content);
     } catch (error) {
-      // 简单的YAML解析实现（仅支持基本结构）
-      return this.simpleYAMLParser(content);
+      // 如果js-yaml不可用，使用增强的内置解析器
+      return this.enhancedYAMLParser(content);
     }
   }
   
   /**
-   * 简单YAML解析器实现
+   * 增强的YAML解析器实现
    * @param {string} content - YAML内容
    * @returns {object} 解析后的对象
    */
-  simpleYAMLParser(content) {
+  enhancedYAMLParser(content) {
     const lines = content.split('\n');
     const result = {};
-    const stack = [{ obj: result, indent: -1 }];
+    const stack = [{ obj: result, indent: -1, isArray: false }];
+    
+    // 辅助函数：解析值
+    const parseValue = (value) => {
+      value = value.trim();
+      
+      // 处理引号字符串
+      if ((value.startsWith('"') && value.endsWith('"')) || 
+          (value.startsWith("'") && value.endsWith("'"))) {
+        return value.slice(1, -1);
+      }
+      
+      // 处理布尔值
+      if (value === 'true') return true;
+      if (value === 'false') return false;
+      if (value === 'null') return null;
+      
+      // 处理数字
+      if (!isNaN(value) && value !== '') {
+        return Number(value);
+      }
+      
+      // 处理数组
+      if (value.startsWith('[') && value.endsWith(']')) {
+        try {
+          return JSON.parse(value);
+        } catch (e) {
+          // 如果JSON解析失败，返回原始字符串
+          return value;
+        }
+      }
+      
+      return value;
+    };
+    
+    // 辅助函数：处理数组项
+    const handleArrayItem = (line, indentLevel, parent) => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('- ')) {
+        const value = trimmed.substring(2).trim();
+        if (value) {
+          // 数组项有值
+          parent.push(parseValue(value));
+        } else {
+          // 数组项是对象
+          const newObj = {};
+          parent.push(newObj);
+          return newObj;
+        }
+      }
+      return null;
+    };
     
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith('#')) continue;
       
       const indent = line.search(/\S/);
-      const [key, ...valueParts] = trimmed.split(':');
-      const value = valueParts.join(':').trim();
       
       // 找到当前层级的父对象
       while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
@@ -142,22 +192,51 @@ class ConfigLoader {
       }
       
       const current = stack[stack.length - 1].obj;
+      const isArrayContext = stack[stack.length - 1].isArray;
       
-      if (value) {
-        // 处理值
-        if (value.startsWith('"') && value.endsWith('"')) {
-          current[key] = value.slice(1, -1);
-        } else if (value === 'true' || value === 'false') {
-          current[key] = value === 'true';
-        } else if (!isNaN(value)) {
-          current[key] = Number(value);
+      // 处理数组项
+      if (isArrayContext && trimmed.startsWith('- ')) {
+        const value = trimmed.substring(2).trim();
+        if (value) {
+          current.push(parseValue(value));
         } else {
-          current[key] = value;
+          const newObj = {};
+          current.push(newObj);
+          stack.push({ obj: newObj, indent, isArray: false });
         }
-      } else {
-        // 处理对象或数组
-        current[key] = {};
-        stack.push({ obj: current[key], indent });
+        continue;
+      }
+      
+      // 处理键值对
+      if (trimmed.includes(':')) {
+        const colonIndex = trimmed.indexOf(':');
+        const key = trimmed.substring(0, colonIndex).trim();
+        const value = trimmed.substring(colonIndex + 1).trim();
+        
+        if (value) {
+          // 有值的键值对
+          current[key] = parseValue(value);
+        } else {
+          // 没有值，可能是对象或数组
+          const nextLine = lines[lines.indexOf(line) + 1];
+          const nextIndent = nextLine ? nextLine.search(/\S/) : -1;
+          
+          if (nextIndent > indent) {
+            const nextTrimmed = nextLine.trim();
+            if (nextTrimmed.startsWith('- ')) {
+              // 数组
+              current[key] = [];
+              stack.push({ obj: current[key], indent, isArray: true });
+            } else {
+              // 对象
+              current[key] = {};
+              stack.push({ obj: current[key], indent, isArray: false });
+            }
+          } else {
+            // 空对象
+            current[key] = {};
+          }
+        }
       }
     }
     
@@ -212,69 +291,11 @@ class ConfigLoader {
    * @param {object} config - 配置对象
    */
   validateConfig(config) {
-    const required = ['runtime', 'processPool', 'security'];
-    for (const field of required) {
-      if (!config[field]) {
-        throw new Error(`Missing required config field: ${field}`);
-      }
-    }
+    const result = validator.validate(config);
     
-    // 验证runtime配置
-    this.validateRuntimeConfig(config.runtime);
-    
-    // 验证processPool配置
-    this.validateProcessPoolConfig(config.processPool);
-    
-    // 验证security配置
-    this.validateSecurityConfig(config.security);
-  }
-  
-  /**
-   * 验证runtime配置
-   * @param {object} runtime - runtime配置
-   */
-  validateRuntimeConfig(runtime) {
-    const requiredRuntime = ['nodePath', 'npmPath', 'workingDir'];
-    for (const field of requiredRuntime) {
-      if (!runtime[field]) {
-        throw new Error(`Missing required runtime field: ${field}`);
-      }
-    }
-  }
-  
-  /**
-   * 验证processPool配置
-   * @param {object} processPool - processPool配置
-   */
-  validateProcessPoolConfig(processPool) {
-    if (processPool.maxWorkers < 1 || processPool.maxWorkers > 10) {
-      throw new Error('maxWorkers must be between 1 and 10');
-    }
-    
-    if (processPool.minWorkers < 1 || processPool.minWorkers > processPool.maxWorkers) {
-      throw new Error('minWorkers must be between 1 and maxWorkers');
-    }
-    
-    if (processPool.warmupWorkers > processPool.maxWorkers) {
-      throw new Error('warmupWorkers cannot exceed maxWorkers');
-    }
-  }
-  
-  /**
-   * 验证security配置
-   * @param {object} security - security配置
-   */
-  validateSecurityConfig(security) {
-    if (security.allowedDomains && !Array.isArray(security.allowedDomains)) {
-      throw new Error('allowedDomains must be an array');
-    }
-    
-    if (security.blockedCommands && !Array.isArray(security.blockedCommands)) {
-      throw new Error('blockedCommands must be an array');
-    }
-    
-    if (security.blockedModules && !Array.isArray(security.blockedModules)) {
-      throw new Error('blockedModules must be an array');
+    if (!result.valid) {
+      const errorMessage = `Configuration validation failed:\n${result.errors.map(error => `- ${error}`).join('\n')}`;
+      throw new Error(errorMessage);
     }
   }
   

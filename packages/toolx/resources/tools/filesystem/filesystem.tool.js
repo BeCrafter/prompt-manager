@@ -1,25 +1,25 @@
 /**
- * Filesystem Tool - PromptX 体系的文件系统基础设施
+ * Filesystem Tool - PromptManager 体系的文件系统基础设施
  * 
  * 战略意义：
  * 
  * 1. 架构隔离性
- * 专为 PromptX 体系设计，通过沙箱隔离确保文件操作不会影响
- * PromptX 核心功能。即使 AI Agent 出错，也不会破坏系统稳定性。
+ * 专为 PromptManager 体系设计，通过沙箱隔离确保文件操作不会影响
+ * PromptManager 核心功能。即使 AI Agent 出错，也不会破坏系统稳定性。
  * 
  * 2. 平台独立性  
- * 虽然很多 AI 平台自带文件工具，但 PromptX 需要自己的实现来保证：
+ * 虽然很多 AI 平台自带文件工具，但 PromptManager 需要自己的实现来保证：
  * - 在无本地工具的 Web Agent 平台上也能工作
  * - 统一的操作语义，不依赖特定 AI 平台
  * - 可移植到任何支持 MCP 协议的环境
  * 
  * 3. 生态自主性
- * 作为 PromptX 工具生态的基础组件，filesystem 确保了：
+ * 作为 PromptManager 工具生态的基础组件，filesystem 确保了：
  * - 其他工具可以依赖稳定的文件操作接口
- * - 用户数据始终在 PromptX 控制范围内
+ * - 用户数据始终在 PromptManager 控制范围内
  * - 未来可扩展更多存储后端（云存储、分布式等）
  * 
- * 这不仅是一个文件操作工具，更是 PromptX 实现平台独立、
+ * 这不仅是一个文件操作工具，更是 PromptManager 实现平台独立、
  * 生态自主的关键基础设施。
  */
 
@@ -54,7 +54,7 @@ module.exports = {
         '文件读写操作',
         '目录管理和遍历',
         '文件搜索和批量处理',
-        'PromptX资源文件管理',
+        'PromptManager资源文件管理',
         '项目文件结构分析'
       ],
       limitations: [
@@ -137,6 +137,22 @@ module.exports = {
         },
         required: []
       }
+    };
+  },
+
+  /**
+   * 获取运行时需求声明
+   */
+  getRuntimeRequirements() {
+    return {
+      nodeVersion: '>=14.0.0',
+      platform: ['win32', 'darwin', 'linux'],
+      requiredCommands: ['node', 'npm'],
+      optionalCommands: ['npx'],
+      maxMemory: '512MB',
+      maxExecutionTime: 30000,
+      isolatedEnv: true,
+      allowedModules: ['fs', 'path', 'os', 'child_process', 'util']
     };
   },
 
@@ -256,10 +272,10 @@ module.exports = {
   },
 
   /**
-   * PromptX特定的路径处理
+   * PromptManager特定的路径处理
    * 将相对路径转换为绝对路径，并确保在允许的目录范围内
    */
-  resolvePromptXPath(inputPath) {
+  resolvePromptManagerPath(inputPath) {
     const { api } = this;
     
     // 获取允许的目录列表
@@ -363,19 +379,19 @@ module.exports = {
       
       // 路径参数转换
       if (params.path) {
-        mcpParams.path = this.resolvePromptXPath(params.path);
+        mcpParams.path = this.resolvePromptManagerPath(params.path);
       }
       
       if (params.paths) {
-        mcpParams.paths = params.paths.map(p => this.resolvePromptXPath(p));
+        mcpParams.paths = params.paths.map(p => this.resolvePromptManagerPath(p));
       }
       
       if (params.source) {
-        mcpParams.source = this.resolvePromptXPath(params.source);
+        mcpParams.source = this.resolvePromptManagerPath(params.source);
       }
       
       if (params.destination) {
-        mcpParams.destination = this.resolvePromptXPath(params.destination);
+        mcpParams.destination = this.resolvePromptManagerPath(params.destination);
       }
 
       // 调用对应的MCP方法
