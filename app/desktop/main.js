@@ -6,6 +6,9 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 
+// 设置Node.js环境变量以支持模块解析
+process.env.NODE_OPTIONS = '--no-warnings';
+
 // 导入管理器模块
 const AppState = require('./src/core/state-manager');
 const Logger = require('./src/core/logger');
