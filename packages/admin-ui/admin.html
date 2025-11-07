@@ -2391,7 +2391,7 @@
 </head>
 <body>
   <!-- 登录界面 -->
-  <div id="login" class="login-container">
+  <div id="login" class="login-container" style="display: none;">
     <div class="login-box">
       <h2>Prompt Manager</h2>
       <div class="input-group username">
@@ -2401,6 +2401,7 @@
         <input type="password" id="password" placeholder="密码" />
       </div>
       <button id="loginBtn" class="btn btn-primary">登&nbsp;&nbsp;&nbsp;&nbsp;录</button>
+      <div id="loginError" class="error-msg" style="display: none; margin-top: 15px;"></div>
     </div>
   </div>
 
@@ -2705,6 +2706,8 @@
     let groupManageSearchValue = ''
     let groupManageEditingPath = null
     const groupManageActionLoading = new Set()
+    // 是否需要认证（默认不需要，直到从服务器获取配置）
+    let requireAuth = false
 
     function refreshModalOpenState() {
       const hasOpenModal =
@@ -2741,14 +2744,15 @@
         ...options
       }
 
-      if (currentToken) {
+      // 如果需要认证且有token，则添加认证头
+      if (requireAuth && currentToken) {
         config.headers.Authorization = `Bearer ${currentToken}`
       }
 
       try {
         const response = await fetch(`${API_BASE}${endpoint}`, config)
         
-        if (response.status === 401) {
+        if (response.status === 401 && requireAuth) {
           // Token 过期，重新登录
           localStorage.removeItem('prompt-admin-token')
           currentToken = null
@@ -2876,6 +2880,30 @@
       }
     }
 
+    // 获取或创建令牌（在不需要认证时使用）
+    async function fetchToken() {
+      try {
+        const result = await apiCall('/login', {
+          method: 'POST',
+          body: JSON.stringify({ username: '', password: '' })
+        });
+        
+        currentToken = result.token;
+        localStorage.setItem('prompt-admin-token', currentToken);
+        showMain();
+        loadPrompts();
+        
+        // 隐藏登录界面
+        const loginElement = document.getElementById('login');
+        if (loginElement) {
+          loginElement.style.display = 'none';
+        }
+      } catch (error) {
+        console.error('获取令牌失败:', error);
+        showMessage('获取访问权限失败', 'error');
+      }
+    }
+
     // 处理登录页面的回车事件和按钮点击
     function setupLoginEvents() {
       const loginForm = document.getElementById('login')
@@ -2932,9 +2960,46 @@
       })
     }
 
+    // 检查是否需要认证
+    async function checkAuthRequirement() {
+      try {
+        // 尝试获取服务器配置来判断是否需要认证
+        const response = await fetch(`${API_BASE}/config`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const config = await response.json();
+          requireAuth = config.requireAuth !== false;
+        } else {
+          // 如果获取配置失败，默认需要认证
+          requireAuth = true;
+        }
+      } catch (error) {
+        // 如果请求失败，默认需要认证
+        console.warn('无法获取服务器配置，使用默认认证设置:', error);
+        requireAuth = true;
+      }
+      
+      // 根据认证要求设置登录界面的显示
+      updateLoginDisplay();
+    }
+
     // 页面加载完成后初始化事件
-    document.addEventListener('DOMContentLoaded', () => {
-      setupLoginEvents()
+    document.addEventListener('DOMContentLoaded', async () => {
+      await checkAuthRequirement();
+      setupLoginEvents();
+      
+      // 检查登录状态
+      if (currentToken || !requireAuth) {
+        showMain();
+        loadPrompts();
+      } else {
+        showLogin();
+      }
     })
 
     function escapeHtml(input) {
@@ -2964,8 +3029,21 @@
       showLogin()
     }
 
+    // 更新登录界面显示状态
+    function updateLoginDisplay() {
+      const loginElement = document.getElementById('login');
+      if (loginElement) {
+        loginElement.style.display = requireAuth ? 'flex' : 'none';
+      }
+    }
+
     // 显示登录界面
     function showLogin() {
+      // 如果不需要认证，直接获取令牌并显示主界面
+      if (!requireAuth) {
+        fetchToken();
+        return;
+      }
       document.getElementById('login').style.display = 'flex'
       document.getElementById('main').style.display = 'none'
     }
@@ -4937,13 +5015,8 @@
           }
         })
 
-        // 检查登录状态
-        if (currentToken) {
-          showMain()
-          loadPrompts()
-        } else {
-          showLogin()
-        }
+        // 重新加载配置后，根据认证要求设置登录界面的显示
+        updateLoginDisplay();
 
       } catch (err) {
         console.error('初始化错误:', err)
