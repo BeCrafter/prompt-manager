@@ -5,6 +5,22 @@ import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 
+// 解析路径中的环境变量和 ~
+function expandPath(inputPath) {
+  if (!inputPath) return inputPath;
+
+  // 展开 ~ 为用户主目录
+  if (inputPath.startsWith('~/')) {
+    return path.join(os.homedir(), inputPath.slice(2));
+  }
+
+  // 展开环境变量（支持 ${VAR} 和 $VAR 格式）
+  return inputPath.replace(/\$(\w+)|\$\{(\w+)\}/g, (match, varName1, varName2) => {
+    const varName = varName1 || varName2;
+    return process.env[varName] || match; // 如果环境变量不存在，保留原值
+  });
+}
+
 // 加载 .env 文件
 const configHome = path.join(os.homedir(), '.prompt-manager');
 dotenv.config({ path: path.join(configHome, '.env') });
@@ -95,8 +111,8 @@ export class Config {
     }
 
     // 确定prompts目录
-    this.promptsDir = cliArgs.promptsDir ||
-      process.env.PROMPTS_DIR ||
+    this.promptsDir = expandPath(cliArgs.promptsDir) ||
+      expandPath(process.env.PROMPTS_DIR) ||
       DEFAULT_PROMPTS_DIR;
     this.configHome = path.dirname(this.promptsDir);
 
@@ -162,7 +178,7 @@ export class Config {
     } = overrides;
 
     if (promptsDir) {
-      this.promptsDir = promptsDir;
+      this.promptsDir = expandPath(promptsDir);
       this.configHome = path.dirname(this.promptsDir);
     }
     if (port) {
