@@ -2003,6 +2003,27 @@
       accent-color: var(--primary);
     }
 
+    .form-control {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-size: 15px;
+      transition: all 0.2s ease;
+      background: white;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(57,57,57,0.08);
+    }
+
+    .form-control::placeholder {
+      color: #adb5bd;
+      opacity: 0.8;
+    }
+
     .argument-modal-footer {
       display: flex;
       justify-content: flex-end;
@@ -2406,51 +2427,58 @@
   </div>
 
   <!-- 主界面 -->
-  <!-- 类目管理弹窗 -->
-  <div id="newFolderModal" class="modal hidden">
-    <div class="modal-dialog">
-      <div class="modal-content group-modal-content">
-        <div class="modal-header">
-          <h3>类目管理</h3>
-          <button type="button" class="modal-close" onclick="toggleNewFolderModal()">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" stroke-width="1.67" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="group-modal-tabs">
-            <button type="button" class="group-modal-tab active" data-tab="create">新增类目</button>
-            <button type="button" class="group-modal-tab" data-tab="manage">管理类目</button>
+      <!-- 类目管理弹窗 -->
+    <div id="newFolderModal" class="modal hidden">
+      <div class="modal-dialog">
+        <div class="modal-content group-modal-content">
+          <div class="modal-header">
+            <h3>类目管理</h3>
+            <button type="button" class="modal-close" onclick="toggleNewFolderModal()">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" stroke-width="1.67" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
           </div>
-          <div class="group-modal-panel" data-panel="create">
-            <div class="form-group">
-              <label>目录名称</label>
-              <input type="text" id="newFolderName" placeholder="请输入目录名称" onkeydown="handleNewFolderKeydown(event)">
-              <div class="group-modal-hint">名称仅支持字母、数字、下划线、短横线和中文，长度不超过64个字符。</div>
+          <div class="modal-body">
+            <div class="group-modal-tabs">
+              <button type="button" class="group-modal-tab active" data-tab="create">新增类目</button>
+              <button type="button" class="group-modal-tab" data-tab="manage">管理类目</button>
+            </div>
+            <div class="group-modal-panel" data-panel="create">
+              <div class="form-group">
+                <label>目录名称</label>
+                <input type="text" id="newFolderName" placeholder="请输入目录名称" onkeydown="handleNewFolderKeydown(event)">
+                <div class="group-modal-hint">名称仅支持字母、数字、下划线、短横线和中文，长度不超过64个字符。</div>
+              </div>
+              <div class="form-group">
+                <label>父级目录</label>
+                <select id="newFolderParent" class="form-control">
+                  <option value="">根目录</option>
+                </select>
+                <div class="group-modal-hint">选择父级目录以创建子目录</div>
+              </div>
+            </div>
+            <div class="group-modal-panel hidden" data-panel="manage">
+              <div class="group-manage-toolbar">
+                <input type="text" id="groupManageSearch" placeholder="搜索类目..." />
+                <button type="button" class="btn btn-light btn-sm" id="groupManageRefreshBtn">刷新</button>
+              </div>
+              <div class="group-manage-list" id="groupManageList"></div>
+              <div class="group-manage-empty hidden" id="groupManageEmpty">暂无类目信息</div>
             </div>
           </div>
-          <div class="group-modal-panel hidden" data-panel="manage">
-            <div class="group-manage-toolbar">
-              <input type="text" id="groupManageSearch" placeholder="搜索类目..." />
-              <button type="button" class="btn btn-light btn-sm" id="groupManageRefreshBtn">刷新</button>
+          <div class="modal-footer">
+            <div class="group-modal-footer group-modal-footer-create" id="groupModalCreateFooter">
+              <button type="button" class="btn btn-light" onclick="toggleNewFolderModal()">取消</button>
+              <button type="button" class="btn btn-dark" onclick="createNewFolder()">创建</button>
             </div>
-            <div class="group-manage-list" id="groupManageList"></div>
-            <div class="group-manage-empty hidden" id="groupManageEmpty">暂无类目信息</div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <div class="group-modal-footer group-modal-footer-create" id="groupModalCreateFooter">
-            <button type="button" class="btn btn-light" onclick="toggleNewFolderModal()">取消</button>
-            <button type="button" class="btn btn-dark" onclick="createNewFolder()">创建</button>
-          </div>
-          <div class="group-modal-footer group-modal-footer-manage hidden" id="groupModalManageFooter">
-            <button type="button" class="btn btn-light" onclick="toggleNewFolderModal(false)">关闭</button>
+            <div class="group-modal-footer group-modal-footer-manage hidden" id="groupModalManageFooter">
+              <button type="button" class="btn btn-light" onclick="toggleNewFolderModal(false)">关闭</button>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
   <div id="main" style="display: none; height: 100vh; flex-direction: column;">
     <!-- 顶部导航 -->
@@ -3895,7 +3923,10 @@
       if (manageFooter) manageFooter.classList.toggle('hidden', nextTab !== 'manage')
       if (nextTab === 'create') {
         const input = document.getElementById('newFolderName')
-        setTimeout(() => input?.focus(), 120)
+        setTimeout(() => {
+          input?.focus()
+          populateParentFolderSelect() // 填充父级目录选择框
+        }, 120)
       } else {
         setTimeout(() => groupManageSearchInputEl?.focus(), 120)
         renderGroupManageList()
@@ -3983,6 +4014,8 @@
         await loadPrompts(searchValue)
         if (groupModalActiveTab === 'manage') {
           renderGroupManageList()
+        } else if (groupModalActiveTab === 'create') {
+          populateParentFolderSelect() // 更新父级目录选择框
         }
       } catch (error) {
         console.error('刷新类目数据失败:', error)
@@ -4746,6 +4779,7 @@
         if (input) input.value = ''
         resetGroupManageState()
         setGroupModalTab('create')
+        populateParentFolderSelect() // 填充父级目录选择框
       } else {
         document.body.style.overflow = ''
         if (input) input.value = ''
@@ -4765,21 +4799,55 @@
       }
     }
 
+    // 填充父级目录选择框
+    function populateParentFolderSelect() {
+      const select = document.getElementById('newFolderParent');
+      if (!select) return;
+      
+      // 清空现有选项
+      select.innerHTML = '<option value="">根目录</option>';
+      
+      // 添加所有现有目录作为选项
+      const flattenedGroups = flattenGroupTree(groupTreeState || []);
+      flattenedGroups.forEach(group => {
+        if (group.path !== 'default') { // 排除默认组
+          const option = document.createElement('option');
+          option.value = group.path;
+          option.textContent = group.path;
+          select.appendChild(option);
+        }
+      });
+    }
+
     // 创建新目录
     async function createNewFolder() {
-      const input = document.getElementById('newFolderName')
-      const folderName = (input?.value || '').trim()
+      const nameInput = document.getElementById('newFolderName')
+      const parentSelect = document.getElementById('newFolderParent')
+      const folderName = (nameInput?.value || '').trim()
+      const parentPath = (parentSelect?.value || '').trim()
       
       if (!folderName) {
         showMessage('请输入目录名称', 'error')
-        input?.focus()
+        nameInput?.focus()
+        return
+      }
+
+      // 验证目录名称格式
+      if (!/^[a-zA-Z0-9-_\u4e00-\u9fa5]{1,64}$/.test(folderName)) {
+        showMessage('目录名称格式无效，只能包含字母、数字、中划线、下划线和中文', 'error')
+        nameInput?.focus()
         return
       }
 
       try {
+        const requestData = { name: folderName };
+        if (parentPath) {
+          requestData.parent = parentPath;
+        }
+        
         await apiCall('/groups', {
           method: 'POST',
-          body: JSON.stringify({ name: folderName })
+          body: JSON.stringify(requestData)
         })
         
         showMessage('类目创建成功')

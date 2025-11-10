@@ -211,7 +211,7 @@ router.post('/prompts', adminAuthMiddleware, (req, res) => {
 // 创建新分组目录
 router.post('/groups', adminAuthMiddleware, (req, res) => {
     try {
-        const { name } = req.body;
+        const { name, parent } = req.body;
 
         if (!name) {
             return res.status(400).json({ error: '分组名称是必需的' });
@@ -222,15 +222,26 @@ router.post('/groups', adminAuthMiddleware, (req, res) => {
             return res.status(400).json({ error: '名称格式无效，只能包含字母、数字、中划线、下划线和中文' });
         }
 
-        const groupDir = path.join(promptsDir, name);
+        // 构建目标目录路径
+        let targetPath;
+        if (parent) {
+            // 验证父级目录路径
+            const resolvedParent = util.resolveGroupDir(parent);
+            if (!resolvedParent) {
+                return res.status(400).json({ error: '无效的父级目录路径' });
+            }
+            targetPath = path.join(resolvedParent.dir, name);
+        } else {
+            targetPath = path.join(promptsDir, name);
+        }
 
         // 检查目录是否已存在
-        if (fs.existsSync(groupDir)) {
+        if (fs.existsSync(targetPath)) {
             return res.status(400).json({ error: '分组已存在' });
         }
 
         // 创建目录
-        fs.mkdirSync(groupDir, { recursive: true });
+        fs.mkdirSync(targetPath, { recursive: true });
 
         res.json({ message: '分组创建成功' });
     } catch (error) {
