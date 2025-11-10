@@ -36,7 +36,7 @@ async function runRealFilesystemExample() {
       console.log('   ⚠ 工具目录设置出错 (备用路径):', error2.message);
       // 最后的尝试：使用绝对路径
       try {
-        const toolsDir = '/Users/wangming/code/Github/BeCrafter/prompt-server/packages/toolx/resources/tools';
+        const toolsDir = '~/code/Github/BeCrafter/prompt-server/packages/toolx/resources/tools';
         toolx.setToolsDirectory(toolsDir);
         console.log('   ✓ 工具目录设置完成 (绝对路径):', toolsDir);
       } catch (error3) {
