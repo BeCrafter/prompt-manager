@@ -305,6 +305,18 @@ function updateLoginDisplay() {
   if (loginElement) {
     loginElement.style.display = requireAuth ? 'flex' : 'none';
   }
+  
+  // 更新头像的状态
+  const avatarBtn = document.getElementById('avatarBtn');
+  if (avatarBtn) {
+    if (requireAuth) {
+      avatarBtn.classList.remove('no-auth');
+      avatarBtn.setAttribute('aria-haspopup', 'true');
+    } else {
+      avatarBtn.classList.add('no-auth');
+      avatarBtn.setAttribute('aria-haspopup', 'false');
+    }
+  }
 }
 
 // 显示登录界面
@@ -384,24 +396,39 @@ function setupUserMenu() {
   const avatarBtn = document.getElementById('avatarBtn');
   const userMenu = document.getElementById('userMenu');
   
-  // 点击头像显示/隐藏下拉菜单
+  // 根据是否需要认证设置头像的可点击状态
+  if (avatarBtn) {
+    if (requireAuth) {
+      avatarBtn.classList.remove('no-auth');
+      avatarBtn.setAttribute('aria-haspopup', 'true');
+    } else {
+      avatarBtn.classList.add('no-auth');
+      avatarBtn.setAttribute('aria-haspopup', 'false');
+    }
+  }
+  
+  // 点击头像显示/隐藏下拉菜单，但仅在需要认证时才生效
   avatarBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    userMenu.classList.toggle('show');
-    avatarBtn.setAttribute('aria-expanded', userMenu.classList.contains('show'));
+    // 如果需要认证，则显示下拉菜单
+    if (requireAuth) {
+      e.stopPropagation();
+      userMenu.classList.toggle('show');
+      avatarBtn.setAttribute('aria-expanded', userMenu.classList.contains('show'));
+    }
+    // 如果不需要认证，则不执行任何操作
   });
   
-  // 点击页面其他地方关闭下拉菜单
+  // 点击页面其他地方关闭下拉菜单（仅在需要认证时才生效）
   document.addEventListener('click', (e) => {
-    if (!userMenu.contains(e.target) && !avatarBtn.contains(e.target)) {
+    if (requireAuth && !userMenu.contains(e.target) && !avatarBtn.contains(e.target)) {
       userMenu.classList.remove('show');
       avatarBtn.setAttribute('aria-expanded', 'false');
     }
   });
   
-  // ESC 键关闭下拉菜单
+  // ESC 键关闭下拉菜单（仅在需要认证时才生效）
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && userMenu.classList.contains('show')) {
+    if (requireAuth && e.key === 'Escape' && userMenu.classList.contains('show')) {
       userMenu.classList.remove('show');
       avatarBtn.setAttribute('aria-expanded', 'false');
     }

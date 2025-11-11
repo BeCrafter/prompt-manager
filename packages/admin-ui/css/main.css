@@ -97,6 +97,17 @@ header {
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
+/* 当不需要认证时，头像显示为不可点击状态 */
+.avatar-btn.no-auth {
+  cursor: default;
+}
+
+.avatar-btn.no-auth:hover {
+  transform: none;
+  background: rgba(0,0,0,0.02);
+  box-shadow: none;
+}
+
 .avatar-img {
   width: 26px;
   height: 26px;
@@ -1914,19 +1925,19 @@ aside {
 }
 
 .argument-modal-body {
-  padding: 20px 24px 8px;
+  padding: 24px 28px 12px;
 }
 
 .argument-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px 18px;
+  gap: 20px 20px;
 }
 
 .form-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .form-field.full-width {
@@ -1943,8 +1954,9 @@ aside {
 
 .argument-modal label {
   font-size: 13px;
-  color: var(--gray);
+  color: #4a5568;
   font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 .argument-modal .required {
@@ -1953,26 +1965,49 @@ aside {
   font-size: 12px;
 }
 
+/* 为必填项的输入框增加更一致的样式 */
+.argument-modal .form-field.required-field input,
+.argument-modal .form-field.required-field textarea {
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+  background-color: #fefefe;
+}
+
+.argument-modal .form-field.required-field input:focus,
+.argument-modal .form-field.required-field textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(57,57,57,0.08), inset 0 1px 2px rgba(0,0,0,0.03);
+}
+
+.argument-modal .form-field.required-field input::placeholder {
+  color: #a0aec0;
+  opacity: 0.8;
+}
+
 .argument-modal input[type="text"],
 .argument-modal textarea {
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 10px 12px;
+  border-radius: 8px;
+  padding: 12px 14px;
   font-size: 14px;
-  background: white;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background: #fafafa;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
 }
 
 .argument-modal input[type="text"]:focus,
 .argument-modal textarea:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(57,57,57,0.08);
+  background: white;
+  box-shadow: 0 0 0 3px rgba(57,57,57,0.08), inset 0 1px 2px rgba(0,0,0,0.03);
 }
 
 .argument-modal textarea {
   resize: vertical;
-  min-height: 96px;
+  min-height: 100px;
+  line-height: 1.5;
 }
 
 .checkbox-field {
@@ -1981,13 +2016,16 @@ aside {
   gap: 8px;
   font-size: 13px;
   color: var(--dark);
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  padding: 6px 0;
+  border: none;
+  border-radius: 0;
 }
 
 .checkbox-field input {
   accent-color: var(--primary);
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
 }
 
 .form-control {
