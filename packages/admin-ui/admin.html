@@ -133,77 +133,85 @@
 
       <!-- 右侧编辑器 -->
       <div class="editor-container">
-        <div class="editor-header">
-          <div class="editor-header-top">
-            <input type="text" id="promptName" name="promptName" placeholder="Prompt 名称" />
-            <div class="group-selector">
-              <button type="button" id="promptGroupBtn" class="group-selector-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="promptGroupDropdown">
-                <span class="group-selector-label" style="display: none;">关联类目</span>
-                <span class="group-selector-value" id="promptGroupLabel">default</span>
-                <span class="group-selector-icon" aria-hidden="true">
-                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-                    <path d="M5 8L10 13L15 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                </span>
-              </button>
-              <select id="promptGroup" class="group-selector-input" aria-hidden="true" tabindex="-1">
-                <option value="default">default</option>
-                <option value="developer">developer</option>
-                <option value="generator">generator</option>
-                <option value="operation">operation</option>
-              </select>
-              <div class="group-dropdown" id="promptGroupDropdown" role="dialog" aria-modal="false">
-                <div class="group-dropdown-search">
-                  <input type="text" id="promptGroupSearch" placeholder="搜索类目..." autocomplete="off" />
-                </div>
-                <div class="group-dropdown-body">
-                  <div class="group-cascader" id="promptGroupCascader"></div>
-                  <div class="group-search-results" id="promptGroupSearchResults"></div>
-                  <div class="group-dropdown-empty hidden" id="promptGroupEmpty">暂无匹配的类目</div>
-                </div>
-              </div>
-            </div>
-            <div class="editor-controls">
-              <div class="mode-toggle">
-                <button id="editModeBtn" class="mode-btn active" data-mode="edit">编辑</button>
-                <button id="previewModeBtn" class="mode-btn" data-mode="preview">预览</button>
-              </div>
-              <button id="saveBtn" class="btn btn-primary btn-sm">
-                保存
-              </button>
-            </div>
+        <!-- 自定义空白内容区域 -->
+        <div class="custom-blank-content" id="customBlankContent" style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; color: #9ca3af; font-size: 16px;">
+          <div style="text-align: center; padding: 20px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
+            <p>请选择左侧的 Prompt 或点击"新建 Prompt"开始编辑</p>
           </div>
-          <textarea id="promptDescription" class="prompt-description" placeholder="Prompt 描述"></textarea>
         </div>
-
-        <div class="editor-content">
-          <section class="arguments-section" id="argumentsSection">
-            <div class="arguments-header">
-              <div class="arguments-title">
-                <span>参数配置</span>
+        
+        <!-- Prompt 编辑区域（默认隐藏） -->
+        <div id="promptEditorArea" style="display: none; flex-direction: column; height: 100%;">
+          <div class="editor-header">
+            <div class="editor-header-top">
+              <input type="text" id="promptName" name="promptName" placeholder="Prompt 名称" />
+              <div class="group-selector">
+                <button type="button" id="promptGroupBtn" class="group-selector-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="promptGroupDropdown">
+                  <span class="group-selector-label" style="display: none;">关联类目</span>
+                  <span class="group-selector-value" id="promptGroupLabel">default</span>
+                  <span class="group-selector-icon" aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                      <path d="M5 8L10 13L15 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </span>
+                </button>
+                <select id="promptGroup" class="group-selector-input" aria-hidden="true" tabindex="-1">
+                  <!-- 选项将通过后端接口动态加载 -->
+                </select>
+                <div class="group-dropdown" id="promptGroupDropdown" role="dialog" aria-modal="false">
+                  <div class="group-dropdown-search">
+                    <input type="text" id="promptGroupSearch" placeholder="搜索类目..." autocomplete="off" />
+                  </div>
+                  <div class="group-dropdown-body">
+                    <div class="group-cascader" id="promptGroupCascader"></div>
+                    <div class="group-search-results" id="promptGroupSearchResults"></div>
+                    <div class="group-dropdown-empty hidden" id="promptGroupEmpty">暂无匹配的类目</div>
+                  </div>
+                </div>
               </div>
-              <div class="arguments-actions">
-                <button id="addArgumentBtn" class="btn btn-outline btn-sm" type="button">
-                  新增
+              <div class="editor-controls">
+                <div class="mode-toggle">
+                  <button id="editModeBtn" class="mode-btn active" data-mode="edit">编辑</button>
+                  <button id="previewModeBtn" class="mode-btn" data-mode="preview">预览</button>
+                </div>
+                <button id="saveBtn" class="btn btn-primary btn-sm">
+                  保存
                 </button>
               </div>
             </div>
-            <div class="arguments-list" id="argumentsList">
-              <div class="arguments-empty">暂无参数，点击"新增"开始配置</div>
-            </div>
-          </section>
-          <div class="editor-body" id="editorWorkspace">
-            <div class="workspace-pane" id="editorPane">
-              <div class="pane-header">编辑器</div>
-              <div class="pane-content">
-                <textarea id="editor"></textarea>
+            <textarea id="promptDescription" class="prompt-description" placeholder="Prompt 描述"></textarea>
+          </div>
+
+          <div class="editor-content">
+            <section class="arguments-section" id="argumentsSection">
+              <div class="arguments-header">
+                <div class="arguments-title">
+                  <span>参数配置</span>
+                </div>
+                <div class="arguments-actions">
+                  <button id="addArgumentBtn" class="btn btn-outline btn-sm" type="button">
+                    新增
+                  </button>
+                </div>
               </div>
-            </div>
-            <div class="workspace-pane hidden" id="previewPane">
-              <div class="pane-header">实时预览</div>
-              <div class="pane-content preview">
-                <div class="preview-content" id="previewContent">
-                  <p>选择或创建prompt开始编辑</p>
+              <div class="arguments-list" id="argumentsList">
+                <div class="arguments-empty">暂无参数，点击"新增"开始配置</div>
+              </div>
+            </section>
+            <div class="editor-body" id="editorWorkspace">
+              <div class="workspace-pane" id="editorPane">
+                <div class="pane-header">编辑器</div>
+                <div class="pane-content">
+                  <textarea id="editor"></textarea>
+                </div>
+              </div>
+              <div class="workspace-pane hidden" id="previewPane">
+                <div class="pane-header">实时预览</div>
+                <div class="pane-content preview">
+                  <div class="preview-content" id="previewContent">
+                    <p>选择或创建prompt开始编辑</p>
+                  </div>
                 </div>
               </div>
             </div>

@@ -1689,6 +1689,9 @@ async function deletePrompt(promptName, relativePath) {
 // 选择prompt
 async function selectPrompt(prompt, triggerEvent) {
   try {
+    // 显示prompt编辑区域
+    showPromptEditorArea();
+    
     const query = prompt.relativePath ? `?path=${encodeURIComponent(prompt.relativePath)}` : '';
     const promptData = await apiCall(`/prompts/${encodeURIComponent(prompt.name)}${query}`);
     currentPrompt = {
@@ -1777,7 +1780,7 @@ async function selectPrompt(prompt, triggerEvent) {
     
     // 如果还是空，提供默认提示
     if (!messageText) {
-      messageText = '请选择或创建prompt开始编辑';
+      messageText = '';
     }
     
     if (editor) {
@@ -1814,6 +1817,9 @@ async function selectPrompt(prompt, triggerEvent) {
 
 // 切换工作区模式
 function setWorkspaceMode(mode) {
+  // 确保编辑区域是可见的
+  showPromptEditorArea();
+  
   const isPreview = mode === 'preview';
   const editorPane = document.getElementById('editorPane');
   const previewPane = document.getElementById('previewPane');
@@ -2031,6 +2037,9 @@ function resetEditor() {
 
 // 新建prompt
 function newPrompt() {
+  // 显示prompt编辑区域
+  showPromptEditorArea();
+  
   currentPrompt = null;
   currentPromptObject = createDefaultPromptObject();
 
@@ -2375,24 +2384,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       showMain();
       loadPrompts(); // 先加载提示词列表
       await initApp(); // 然后初始化应用
-      // 页面加载后不自动选择任何prompt，保持编辑器空白
-      // 清空编辑器内容，确保显示空白状态
-      if (editor) {
-        editor.setValue('');
-      }
-      // 清空其他编辑区域
-      const nameInput = document.getElementById('promptName');
-      if (nameInput) nameInput.value = '';
-      if (descriptionInputEl) {
-        descriptionInputEl.value = '';
-        adjustDescriptionHeight();
-      }
-      // 清除所有选中的prompt状态
-      document.querySelectorAll('.prompt-item').forEach(el => el.classList.remove('active'));
-      // 重置当前prompt状态
-      currentPrompt = null;
-      currentPromptObject = null;
-      setArgumentsState([]);
+      // 页面加载后显示自定义的空白内容区域，不显示编辑器
+      showCustomBlankContent();
     } else {
       showLogin();
     }
@@ -2409,6 +2402,52 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 });
+
+// 显示自定义空白内容区域
+function showCustomBlankContent() {
+  const customBlankContent = document.getElementById('customBlankContent');
+  const promptEditorArea = document.getElementById('promptEditorArea');
+  
+  if (customBlankContent) {
+    customBlankContent.style.display = 'flex';
+  }
+  
+  if (promptEditorArea) {
+    promptEditorArea.style.display = 'none';
+  }
+  
+  // 清空编辑器内容
+  if (editor) {
+    editor.setValue('');
+  }
+  // 清空其他编辑区域
+  const nameInput = document.getElementById('promptName');
+  if (nameInput) nameInput.value = '';
+  if (descriptionInputEl) {
+    descriptionInputEl.value = '';
+    adjustDescriptionHeight();
+  }
+  // 清除所有选中的prompt状态
+  document.querySelectorAll('.prompt-item').forEach(el => el.classList.remove('active'));
+  // 重置当前prompt状态
+  currentPrompt = null;
+  currentPromptObject = null;
+  setArgumentsState([]);
+}
+
+// 显示prompt编辑区域
+function showPromptEditorArea() {
+  const customBlankContent = document.getElementById('customBlankContent');
+  const promptEditorArea = document.getElementById('promptEditorArea');
+  
+  if (customBlankContent) {
+    customBlankContent.style.display = 'none';
+  }
+  
+  if (promptEditorArea) {
+    promptEditorArea.style.display = 'flex';
+  }
+}
 
 // 处理登录页面的回车事件和按钮点击
 function setupLoginEvents() {
