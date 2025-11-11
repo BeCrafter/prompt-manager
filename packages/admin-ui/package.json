@@ -1,0 +1,37 @@
+{
+  "name": "@becrafter/admin-ui",
+  "version": "0.0.1",
+  "description": "Admin UI for Prompt Manager",
+  "scripts": {
+    "dev": "webpack serve --mode development",
+    "build": "webpack --mode production",
+    "build:dev": "webpack --mode development"
+  },
+  "keywords": [
+    "admin",
+    "ui",
+    "prompt-manager"
+  ],
+  "author": "BeCrafter",
+  "license": "MIT",
+  "devDependencies": {
+    "@babel/core": "^7.28.5",
+    "@babel/preset-env": "^7.28.5",
+    "babel-loader": "^10.0.0",
+    "copy-webpack-plugin": "^11.0.0",
+    "css-loader": "^6.8.0",
+    "file-loader": "^6.2.0",
+    "html-webpack-plugin": "^5.5.0",
+    "mini-css-extract-plugin": "^2.9.4",
+    "source-map-loader": "^5.0.0",
+    "style-loader": "^3.3.0",
+    "terser-webpack-plugin": "^5.3.0",
+    "webpack": "^5.88.0",
+    "webpack-cli": "^5.1.0",
+    "webpack-dev-server": "^4.15.0"
+  },
+  "dependencies": {
+    "codemirror": "5.65.2",
+    "js-yaml": "^4.1.0"
+  }
+}
