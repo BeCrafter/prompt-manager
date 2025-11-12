@@ -40,9 +40,8 @@
         "from": "../../",
         "to": "prompt-manager",
         "filter": [
-          "package.json",
-          "packages/**/*",
-          "examples/**/*",
+          "packages/web/**/*",
+          "packages/server/**/*",
           "node_modules/**/*",
           "!node_modules/7zip-bin/mac/**/*",
           "!node_modules/@img/sharp-darwin-x64/**/*",

@@ -14,7 +14,7 @@ import { InMemoryEventStore } from '@modelcontextprotocol/sdk/examples/shared/in
 
 
 const app = express();
-const adminUiRoot = util.getAdminUiRoot();
+const adminUiRoot = util.getWebUiRoot();
 
 // 全局中间件
 app.use(cors());
@@ -23,16 +23,16 @@ app.use(express.urlencoded({ extended: true }));
 
 
 // 为管理员界面提供静态文件服务 - 根路径
-app.use(config.adminPath, express.static(path.join(adminUiRoot, 'dist')));
+app.use(config.adminPath, express.static(adminUiRoot));
 
-// 为管理员界面提供根路径访问（当用户访问 /admin 时显示 admin.html）
+// 为管理员界面提供根路径访问（当用户访问 /admin 时显示 index.html）
 app.get(config.adminPath, (req, res) => {
-  res.sendFile(path.join(adminUiRoot, 'dist', 'admin.html'));
+  res.sendFile(path.join(adminUiRoot,  'index.html'));
 });
 
-// 为管理员界面提供根路径访问（当用户访问 /admin/ 时显示 admin.html）
+// 为管理员界面提供根路径访问（当用户访问 /admin/ 时显示 index.html）
 app.get(config.adminPath + '/', (req, res) => {
-  res.sendFile(path.join(adminUiRoot, 'dist', 'admin.html'));
+  res.sendFile(path.join(adminUiRoot,  'index.html'));
 });
 
 

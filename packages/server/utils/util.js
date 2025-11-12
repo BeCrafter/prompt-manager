@@ -335,13 +335,13 @@ export class Util {
     }
 
     /**
-     * 获取admin-ui目录的绝对路径
-     * @returns {string} admin-ui目录的绝对路径
+     * 获取web-ui目录的绝对路径
+     * @returns {string} web-ui目录的绝对路径
      */
-    getAdminUiRoot() {
+    getWebUiRoot() {
         const __filename = fileURLToPath(import.meta.url);
         const __dirname = path.dirname(path.dirname(__filename));
-        return path.join(__dirname, '..', 'admin-ui');
+        return path.join(__dirname, '..', 'web');
     };
 
     async getPromptManager() {
