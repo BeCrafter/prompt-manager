@@ -1,0 +1,48 @@
+{
+  "name": "@becrafter/prompt-manager-core",
+  "version": "0.0.19",
+  "description": "Core library for managing prompts with MCP protocol",
+  "main": "dist/index.js",
+  "module": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild ./index.js --bundle --outdir=dist --format=esm --platform=node --target=node18",
+    "dev": "node --watch ./server.js",
+    "start": "node ./server.js",
+    "example": "node ./example.js",
+    "test": "node ./test.js"
+  },
+  "keywords": [
+    "mcp",
+    "prompt",
+    "prompt-mcp",
+    "prompt-manager",
+    "library"
+  ],
+  "author": "BeCrafter",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "fs-extra": "^11.2.0",
+    "js-yaml": "^4.1.0",
+    "yaml": "^2.4.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BeCrafter/prompt-manager.git"
+  },
+  "homepage": "https://github.com/BeCrafter/prompt-manager#readme",
+  "bugs": {
+    "url": "https://github.com/BeCrafter/prompt-manager/issues"
+  }
+}

@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const { spawn } = require('child_process');
+const { constants } = require('fs');
 
 class ModuleLoader {
   constructor(logger, errorHandler) {
@@ -50,13 +51,27 @@ class ModuleLoader {
   async _loadModuleInternal(serverRoot) {
     this.logger.info('Loading server module', { serverRoot });
     
-    const serverEntry = path.join(serverRoot, 'packages', 'server', 'server.js');
+    let entryUrl;
     
-    // 验证入口文件存在
-    await this._validateServerEntry(serverEntry);
+    // 尝试从 node_modules 加载 @becrafter/prompt-manager-core
+    const coreLibPath = path.join(serverRoot, 'node_modules', '@becrafter', 'prompt-manager-core', 'index.js');
     
-    // 生成带版本号的URL
-    const entryUrl = pathToFileURL(serverEntry);
+    if (await this._pathExists(coreLibPath)) {
+      // 生成带版本号的URL
+      entryUrl = pathToFileURL(coreLibPath);
+      this.logger.debug('Using core library from node_modules', { coreLibPath });
+    } else {
+      // 如果 node_modules 中没有找到库，则从本地 packages/server 加载
+      const localServerPath = path.join(serverRoot, 'packages', 'server', 'index.js');
+      
+      if (await this._pathExists(localServerPath)) {
+        entryUrl = pathToFileURL(localServerPath);
+        this.logger.debug('Using local server from packages/server', { localServerPath });
+      } else {
+        throw new Error(`Neither core library nor local server found in ${serverRoot}`);
+      }
+    }
+    
     entryUrl.searchParams.set('v', Date.now().toString());
     
     this.logger.debug('Importing server module', { entryUrl: entryUrl.href });
@@ -75,13 +90,24 @@ class ModuleLoader {
     }
   }
 
+  async _pathExists(targetPath) {
+    try {
+      await fs.promises.access(targetPath, constants.F_OK);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
   async _validateServerEntry(serverEntry) {
     try {
-      await fs.promises.access(serverEntry, fs.constants.F_OK);
-      this.logger.debug('Server entry file exists', { serverEntry });
+      // 验证库的 package.json 存在
+      const packageJsonPath = path.join(serverEntry, 'package.json');
+      await fs.promises.access(packageJsonPath, fs.constants.F_OK);
+      this.logger.debug('Server module package.json exists', { serverEntry });
     } catch (error) {
-      this.logger.error('Server entry file does not exist', error);
-      throw new Error(`Server entry file not found: ${serverEntry}`);
+      this.logger.error('Server module not found', error);
+      throw new Error(`Server module not found: ${serverEntry}`);
     }
   }
 
@@ -168,6 +194,13 @@ class ModuleLoader {
       const pkg = JSON.parse(pkgContent);
       
       pkg.dependencies = pkg.dependencies || {};
+      
+      // 确保 @becrafter/prompt-manager-core 依赖存在
+      if (!pkg.dependencies['@becrafter/prompt-manager-core']) {
+        pkg.dependencies['@becrafter/prompt-manager-core'] = '^0.0.19';
+        await fs.promises.writeFile(pkgPath, JSON.stringify(pkg, null, 2), 'utf8');
+        this.logger.info('Added @becrafter/prompt-manager-core to dependencies');
+      }
       
       // 检查并添加 @modelcontextprotocol/sdk
       if (!pkg.dependencies['@modelcontextprotocol/sdk']) {

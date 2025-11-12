@@ -133,3 +133,17 @@ if (isDirectRun) {
     process.exit(1);
   });
 }
+
+// 导出当前模块作为默认导出，包含所有公共API
+export default {
+  startServer,
+  stopServer,
+  getServerState,
+  getServerAddress,
+  isServerRunning,
+  app,
+  config,
+  logger,
+  util,
+  promptManager
+};

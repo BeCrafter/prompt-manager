@@ -68,8 +68,7 @@ class RuntimeManager {
 
   async _validateDevelopmentEnvironment(devRoot) {
     const requiredPaths = [
-      path.join(devRoot, 'package.json'),
-      path.join(devRoot, 'packages', 'server', 'server.js')
+      path.join(devRoot, 'package.json')
     ];
 
     for (const requiredPath of requiredPaths) {
@@ -77,6 +76,21 @@ class RuntimeManager {
         await fs.promises.access(requiredPath, fs.constants.F_OK);
       } catch (error) {
         throw new Error(`Development environment validation failed: ${requiredPath} not found`);
+      }
+    }
+    
+    // 检查 @becrafter/prompt-manager-core 在 node_modules 中是否存在
+    const coreLibPath = path.join(devRoot, 'node_modules', '@becrafter', 'prompt-manager-core', 'index.js');
+    try {
+      await fs.promises.access(coreLibPath, fs.constants.F_OK);
+    } catch (error) {
+      this.logger.debug('Core library not found in node_modules, checking for local packages/server');
+      // 如果 node_modules 中不存在，检查 local packages/server 目录
+      const localServerPath = path.join(devRoot, 'packages', 'server', 'server.js');
+      try {
+        await fs.promises.access(localServerPath, fs.constants.F_OK);
+      } catch (localError) {
+        throw new Error(`Development environment validation failed: neither core library nor local server found (${coreLibPath}, ${localServerPath})`);
       }
     }
     

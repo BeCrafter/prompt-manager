@@ -6,7 +6,7 @@
     "access": "public"
   },
   "type": "module",
-  "main": "packages/server/server.js",
+  "main": "packages/server/index.js",
   "bin": {
     "prompt-manager": "app/cli/cli.js"
   },
@@ -34,7 +34,8 @@
     "desktop:build:mac": "npm run admin:build && npm run build --prefix app/desktop -- --mac",
     "desktop:build:win": "npm run admin:build && npm run build --prefix app/desktop -- --win",
     "desktop:build:linux": "npm run admin:build && npm run build --prefix app/desktop -- --linux",
-    "postinstall": "node ./scripts/postinstall.js"
+    "postinstall": "node ./scripts/postinstall.js",
+    "build:core": "npm run build --prefix packages/server"
   },
   "keywords": [
     "mcp",

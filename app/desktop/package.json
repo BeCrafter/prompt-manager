@@ -17,6 +17,7 @@
     "electron-builder": "^24.13.3"
   },
   "dependencies": {
+    "@becrafter/prompt-manager-core": "^0.0.19",
     "@modelcontextprotocol/sdk": "^1.20.2",
     "tar": "^7.5.2"
   },
@@ -36,30 +37,6 @@
       "buildResources": "assets"
     },
     "extraResources": [
-      {
-        "from": "../../",
-        "to": "prompt-manager",
-        "filter": [
-          "packages/web/**/*",
-          "packages/server/**/*",
-          "node_modules/**/*",
-          "!node_modules/7zip-bin/mac/**/*",
-          "!node_modules/@img/sharp-darwin-x64/**/*",
-          "!node_modules/@img/sharp-darwin-arm64/**/*",
-          "!node_modules/@img/sharp-libvips-darwin-x64/**/*",
-          "!node_modules/@img/sharp-libvips-darwin-arm64/**/*",
-          "!node_modules/app-builder-bin/mac/**/*",
-          "!dist",
-          "!docs",
-          "!app/desktop",
-          "!scripts",
-          "!*.md",
-          "!*.lock",
-          "!*.log",
-          "!*.gitignore",
-          "!*.npmignore"
-        ]
-      }
     ],
     "mac": {
       "category": "public.app-category.productivity",
