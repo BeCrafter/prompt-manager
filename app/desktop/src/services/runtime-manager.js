@@ -51,7 +51,8 @@ class RuntimeManager {
   async _setupPackagedEnvironment() {
     this.logger.info('Setting up packaged environment');
     
-    const packagedRoot = path.join(process.resourcesPath, 'prompt-manager');
+    // 在打包的 Electron 应用中，资源文件位于 app 目录下
+    const packagedRoot = path.join(process.resourcesPath, 'app');
     const runtimeRoot = path.join(app.getPath('userData'), 'prompt-manager');
     
     this.logger.debug('Environment paths', { packagedRoot, runtimeRoot });

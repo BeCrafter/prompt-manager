@@ -3,7 +3,17 @@ import { pathToFileURL } from 'url';
 import { config } from './utils/config.js';
 import { logger } from './utils/logger.js';
 import { util } from './utils/util.js';
-import { promptManager } from './services/manager.js';
+
+// 动态导入 promptManager，以处理 Electron 打包后的路径问题
+let promptManager;
+try {
+  const managerModule = await import('./services/manager.js');
+  promptManager = managerModule.promptManager;
+} catch (error) {
+  logger.error('Failed to import promptManager:', error.message);
+  // 如果直接导入失败，尝试使用 util.getPromptManager()
+  promptManager = await util.getPromptManager();
+}
 
 // 获取prompts目录路径（在启动时可能被覆盖）
 let promptsDir = config.getPromptsDir();

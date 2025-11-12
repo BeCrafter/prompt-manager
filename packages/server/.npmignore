@@ -10,3 +10,7 @@ node_modules
 docs/
 .github/
 *.bak
+ENCAPSULATION.md
+package-lock.json
+test.js
+example.js

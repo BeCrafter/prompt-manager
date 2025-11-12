@@ -1871,13 +1871,14 @@ aside {
 .argument-modal {
   position: fixed;
   inset: 0;
-  background: rgba(17, 17, 17, 0.35);
+  background: rgba(17, 17, 17, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1200;
   padding: 24px;
-  transition: opacity 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(4px);
 }
 
 .argument-modal.hidden {
@@ -1885,59 +1886,73 @@ aside {
   pointer-events: none;
 }
 
+.argument-modal.hidden .argument-modal-dialog {
+  transform: scale(0.95) translateY(10px);
+}
+
 .argument-modal-dialog {
   width: min(520px, 100%);
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.08);
+  transform: scale(1) translateY(0);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .argument-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 18px 24px;
+  padding: 20px 24px;
   border-bottom: 1px solid var(--border);
+  background: linear-gradient(to bottom, rgba(255,255,255,1), rgba(255,255,255,0.95));
 }
 
 .argument-modal-header h3 {
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 580;
   color: var(--dark);
+  letter-spacing: -0.01em;
+  margin: 0;
 }
 
 .argument-modal-close {
+  width: 32px;
+  height: 32px;
   border: none;
   background: transparent;
-  font-size: 24px;
-  line-height: 1;
+  border-radius: 8px;
   color: var(--gray);
   cursor: pointer;
-  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  padding: 0;
 }
 
 .argument-modal-close:hover {
+  background: rgba(0,0,0,0.04);
   color: var(--dark);
 }
 
 .argument-modal-body {
-  padding: 24px 28px 12px;
+  padding: 24px;
 }
 
 .argument-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px 20px;
+  gap: 20px;
 }
 
 .form-field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 
 .form-field.full-width {
@@ -1954,9 +1969,10 @@ aside {
 
 .argument-modal label {
   font-size: 13px;
-  color: #4a5568;
+  color: var(--dark);
   font-weight: 500;
   letter-spacing: 0.01em;
+  margin-bottom: 6px;
 }
 
 .argument-modal .required {
@@ -1965,43 +1981,46 @@ aside {
   font-size: 12px;
 }
 
-/* 为必填项的输入框增加更一致的样式 */
-.argument-modal .form-field.required-field input,
-.argument-modal .form-field.required-field textarea {
-  border: 1px solid #e2e8f0;
+/* 统一表单字段样式 */
+.argument-modal .form-field input,
+.argument-modal .form-field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
   transition: all 0.2s ease;
-  background-color: #fefefe;
+  background: white;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+  color: var(--dark);
 }
 
-.argument-modal .form-field.required-field input:focus,
-.argument-modal .form-field.required-field textarea:focus {
+.argument-modal .form-field input:focus,
+.argument-modal .form-field textarea:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(57,57,57,0.08), inset 0 1px 2px rgba(0,0,0,0.03);
+  box-shadow: 0 0 0 3px rgba(57,57,57,0.1), 0 1px 2px rgba(0,0,0,0.05);
+  background: white;
 }
 
-.argument-modal .form-field.required-field input::placeholder {
+.argument-modal .form-field input::placeholder,
+.argument-modal .form-field textarea::placeholder {
   color: #a0aec0;
   opacity: 0.8;
 }
 
-.argument-modal input[type="text"],
-.argument-modal textarea {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px 14px;
-  font-size: 14px;
+/* 必填字段的特殊样式 */
+.argument-modal .form-field.required-field input,
+.argument-modal .form-field.required-field textarea {
+  border: 1px solid #cbd5e0;
   background: #fafafa;
-  transition: all 0.2s ease;
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
 }
 
-.argument-modal input[type="text"]:focus,
-.argument-modal textarea:focus {
-  outline: none;
+.argument-modal .form-field.required-field input:focus,
+.argument-modal .form-field.required-field textarea:focus {
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(57,57,57,0.1), 0 1px 2px rgba(0,0,0,0.05);
   background: white;
-  box-shadow: 0 0 0 3px rgba(57,57,57,0.08), inset 0 1px 2px rgba(0,0,0,0.03);
 }
 
 .argument-modal textarea {
@@ -2010,22 +2029,57 @@ aside {
   line-height: 1.5;
 }
 
+/* 现代化复选框样式 */
 .checkbox-field {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
   color: var(--dark);
+  cursor: pointer;
   padding: 6px 0;
   border: none;
   border-radius: 0;
 }
 
-.checkbox-field input {
-  accent-color: var(--primary);
-  width: 16px;
-  height: 16px;
+.checkbox-field:hover {
+  /* background-color: rgba(0,0,0,0.03); */
+}
+
+.checkbox-field input[type="checkbox"] {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  appearance: none;
+  background: white;
+  border: 1px solid #cbd5e0;
   border-radius: 4px;
+  cursor: pointer;
+  padding: 10px 10px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+
+.checkbox-field input[type="checkbox"]:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.checkbox-field input[type="checkbox"]:checked::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.checkbox-field input[type="checkbox"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(57,57,57,0.1), 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .form-control {
@@ -2053,7 +2107,7 @@ aside {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  padding: 16px 24px 20px;
+  padding: 16px 24px;
   border-top: 1px solid var(--border);
   background: rgba(248,249,250,0.65);
 }

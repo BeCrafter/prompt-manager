@@ -334,10 +334,6 @@ export class Util {
       return content.trim();
     }
 
-    /**
-     * 获取web-ui目录的绝对路径
-     * @returns {string} web-ui目录的绝对路径
-     */
     getWebUiRoot() {
         const __filename = fileURLToPath(import.meta.url);
         const __dirname = path.dirname(path.dirname(__filename));
@@ -346,8 +342,26 @@ export class Util {
 
     async getPromptManager() {
     if (!_promptManager) {
-        const serviceModule = await import('../services/manager.js');
-        _promptManager = serviceModule.promptManager;
+        try {
+            // 首先尝试相对路径导入
+            const serviceModule = await import('../services/manager.js');
+            _promptManager = serviceModule.promptManager;
+        } catch (error) {
+            // 如果相对路径导入失败，尝试使用绝对路径
+            try {
+                const path = await import('path');
+                const { fileURLToPath } = await import('url');
+                const __filename = fileURLToPath(import.meta.url);
+                const __dirname = path.dirname(__filename);
+                const managerPath = path.join(__dirname, '..', 'services', 'manager.js');
+                const serviceModule = await import(managerPath);
+                _promptManager = serviceModule.promptManager;
+            } catch (absolutePathError) {
+                // 如果绝对路径也失败，记录错误并重新抛出
+                console.error('Failed to import promptManager with both relative and absolute paths:', absolutePathError);
+                throw absolutePathError;
+            }
+        }
     }
     return _promptManager;
     }

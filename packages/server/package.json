@@ -1,6 +1,6 @@
 {
   "name": "@becrafter/prompt-manager-core",
-  "version": "0.0.19",
+  "version": "0.0.17",
   "description": "Core library for managing prompts with MCP protocol",
   "main": "dist/index.js",
   "module": "index.js",
@@ -32,7 +32,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "esbuild": "^0.20.2"
+    "esbuild": "^0.27.0"
   },
   "publishConfig": {
     "access": "public"
