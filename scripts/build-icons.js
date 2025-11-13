@@ -36,14 +36,8 @@ console.log('Found source icons:');
 console.log(`  - App icon: ${appSourceIcon}`);
 console.log(`  - Tray icon: ${traySourceIcon}`);
 
-// 托盘图标尺寸
-const traySizes = [16, 18, 24];
-
 // macOS 图标尺寸
 const macSizes = [16, 32, 64, 128, 256, 512, 1024];
-
-// Windows 图标尺寸
-const winSizes = [16, 24, 32, 48, 64, 96, 128, 256];
 
 // 创建托盘图标 (24x24)
 console.log('Creating tray icon...');

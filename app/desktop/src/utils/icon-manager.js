@@ -102,6 +102,7 @@ class IconManager {
     // macOS 特殊处理
     if (platform === 'darwin' && icon) {
       try {
+        icon = icon.resize({ width: 18, height: 18 });
         icon.setTemplateImage(true);
       } catch (error) {
         console.warn('Failed to resize icon for macOS:', error);
