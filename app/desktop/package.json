@@ -49,7 +49,7 @@
     ],
     "mac": {
       "category": "public.app-category.productivity",
-      "icon": "assets/icon.icns",
+      "icon": "assets/icons/icon.icns",
       "target": [
         {
           "target": "dmg",
@@ -71,7 +71,7 @@
           ]
         }
       ],
-      "icon": "assets/icon.ico"
+      "icon": "assets/icons/icon.ico"
     },
     "linux": {
       "target": [
