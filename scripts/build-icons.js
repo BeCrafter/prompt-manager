@@ -11,8 +11,9 @@ import toIco from 'to-ico';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 图标文件路径
-const sourceIcon = path.join(__dirname, '..', 'app', 'desktop', 'assets', 'icons', 'icon.png');
+// 图标源文件路径
+const appSourceIcon = path.join(__dirname, '..', 'app', 'desktop', 'assets', 'app.png');
+const traySourceIcon = path.join(__dirname, '..', 'app', 'desktop', 'assets', 'tray.png');
 const assetsDir = path.join(__dirname, '..', 'app', 'desktop', 'assets', 'icons');
 
 // 确保 assets 目录存在
@@ -20,15 +21,43 @@ if (!fs.existsSync(assetsDir)) {
   fs.mkdirSync(assetsDir, { recursive: true });
 }
 
+// 检查源文件是否存在
+if (!fs.existsSync(appSourceIcon)) {
+  console.error(`Error: App source icon not found at ${appSourceIcon}`);
+  process.exit(1);
+}
+
+if (!fs.existsSync(traySourceIcon)) {
+  console.error(`Error: Tray source icon not found at ${traySourceIcon}`);
+  process.exit(1);
+}
+
+console.log('Found source icons:');
+console.log(`  - App icon: ${appSourceIcon}`);
+console.log(`  - Tray icon: ${traySourceIcon}`);
+
 // macOS 图标尺寸
 const macSizes = [16, 32, 64, 128, 256, 512, 1024];
 
-// Windows 图标尺寸
-const winSizes = [16, 24, 32, 48, 64, 96, 128, 256];
+// 创建托盘图标 (24x24)
+console.log('Creating tray icon...');
+const filename = `tray.png`;
+const trayIconPath = path.join(assetsDir, filename);
+console.log(`  - ${filename}`);
+await sharp(traySourceIcon).resize(24, 24).toFile(trayIconPath);
 
-// 为 macOS 创建不同尺寸的图标
-console.log('Creating macOS icons...');
-const macIconDir = path.join(assetsDir, 'icon.iconset');
+
+// 创建 PNG 图⌚️
+console.log('Creating PNG file for default...');
+const iconFilename = `icon.png`;
+const appIconPath = path.join(assetsDir, iconFilename);
+console.log(`  - ${filename}`);
+await sharp(appSourceIcon).resize(512, 512).toFile(appIconPath);
+
+
+// 为 macOS 创建不同尺寸的应用图标
+console.log('Creating macOS app icons...');
+const macIconDir = path.join(assetsDir, 'app.iconset');
 if (!fs.existsSync(macIconDir)) {
   fs.mkdirSync(macIconDir, { recursive: true });
 }
@@ -39,27 +68,7 @@ for (const size of macSizes) {
   console.log(`  - ${filename}`);
   // 对于 512x512@2x 实际上是 1024x1024
   const actualSize = size === 512 ? 1024 : size;
-  await sharp(sourceIcon).resize(actualSize, actualSize).toFile(filepath);
-}
-
-// 为 Windows 创建不同尺寸的图标
-console.log('Creating Windows icons...');
-const winIconBuffers = [];
-for (const size of winSizes) {
-  const filename = `icon_${size}x${size}.png`;
-  const filepath = path.join(assetsDir, filename);
-  console.log(`  - ${filename}`);
-  const buffer = await sharp(sourceIcon).resize(size, size).png({ compressionLevel: 9 }).toBuffer();
-  fs.writeFileSync(filepath, buffer);
-  // 保存前几个尺寸用于创建 ICO 文件，现在包括 256x256
-  if (size == 256) {
-    // 确保 buffer 是有效的 Buffer 对象
-    if (Buffer.isBuffer(buffer) && buffer.length > 0) {
-      winIconBuffers.push(buffer);
-    } else {
-      console.log(`  - Skipping invalid buffer for size ${size}`);
-    }
-  }
+  await sharp(appSourceIcon).resize(actualSize, actualSize).toFile(filepath);
 }
 
 // 创建 ICNS 文件 (macOS) - 使用 iconutil 工具
@@ -83,23 +92,20 @@ try {
   console.log('  - Failed to create ICNS file:', error.message, error.stack);
 }
 
+
 // 创建 ICO 文件 (Windows)
 console.log('Creating ICO file for Windows...');
-try {
-  // 确保 winIconBuffers 不为空并且包含有效的缓冲区
-  if (winIconBuffers.length > 0) {
-    // 验证所有缓冲区都是有效的
-    const validBuffers = winIconBuffers.filter(buffer => Buffer.isBuffer(buffer) && buffer.length > 0);
-    if (validBuffers.length > 0) {
-      const icoBuffer = await toIco(validBuffers);
-      const icoPath = path.join(assetsDir, 'icon.ico');
-      fs.writeFileSync(icoPath, icoBuffer);
-    } else {
-      console.log('  - No valid buffers for ICO creation');
-    }
-  }
-} catch (error) {
-  console.log('  - Failed to create ICO file:', error.message, error.stack);
+console.log('Creating Windows app icons...');
+const winIconBuffers = await sharp(appSourceIcon).resize(256, 256).png({ compressionLevel: 9 }).toBuffer();
+const validBuffers = winIconBuffers.filter(buffer => Buffer.isBuffer(buffer) && buffer.length > 0);
+if (validBuffers.length > 0) {
+  console.log('  - icon.ico');
+  const icoBuffer = await toIco(validBuffers);
+  const icoPath = path.join(assetsDir, 'icon.ico');
+  fs.writeFileSync(icoPath, icoBuffer);
+} else {
+  console.log('  - No valid buffers for ICO creation');
 }
+
 
 console.log('Icon preparation completed.');

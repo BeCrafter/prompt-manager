@@ -17,6 +17,7 @@ const TrayManager = require('./src/ui/tray-manager');
 const UpdateManager = require('./src/services/update-manager');
 const AboutDialogManager = require('./src/ui/about-dialog-manager');
 const IconManager = require('./src/utils/icon-manager');
+const EnvSync = require('./src/utils/env-sync');
 
 class PromptManagerApp {
   constructor() {
@@ -39,6 +40,9 @@ class PromptManagerApp {
 
     try {
       this.logger.info('Initializing Prompt Manager Desktop Application');
+      
+      // 同步环境配置
+      await EnvSync.syncEnvConfig();
       
       // 初始化日志系统
       await this.logger.initialize();

@@ -33,6 +33,7 @@ body {
   flex-direction: column;
   letter-spacing: -0.01em;
   font-weight: 420;
+  overflow-y: hidden;
 }
 
 header {
