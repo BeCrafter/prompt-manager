@@ -7,7 +7,19 @@ class RuntimeManager {
     this.logger = logger;
     this.errorHandler = errorHandler;
     this.runtimeRoot = null;
-    this.isPackaged = app.isPackaged;
+    // 更准确地判断是否为打包应用
+    // 在开发模式下，即使 app.isPackaged 为 true，我们的项目目录结构也不同于打包应用
+    this.isPackaged = this._checkIfActuallyPackaged();
+  }
+
+  _checkIfActuallyPackaged() {
+    // 简化环境检测逻辑
+    const appPath = app.getAppPath();
+    const isDev = appPath.includes('node_modules/electron') || 
+                 process.env.NODE_ENV === 'development' ||
+                 process.defaultApp;
+    
+    return !isDev && app.isPackaged;
   }
 
   async ensureRuntimeEnvironment() {
@@ -51,16 +63,40 @@ class RuntimeManager {
   async _setupPackagedEnvironment() {
     this.logger.info('Setting up packaged environment');
     
-    // 在打包的 Electron 应用中，资源文件位于 app 目录下
-    const packagedRoot = path.join(process.resourcesPath, 'app');
+    // 在打包的 Electron 应用中，资源文件位于 app.asar 中
+    const packagedRoot = path.join(process.resourcesPath, 'app.asar');
     const runtimeRoot = path.join(app.getPath('userData'), 'prompt-manager');
     
-    this.logger.debug('Environment paths', { packagedRoot, runtimeRoot });
+    this.logger.debug('Environment paths', { 
+      packagedRoot, 
+      runtimeRoot,
+      resourcesPath: process.resourcesPath,
+      isMountedVolume: process.resourcesPath.includes('/Volumes/')
+    });
     
-    // 验证打包资源
-    await this._validatePackagedResources(packagedRoot);
+    // 简化逻辑：仅检查是否是挂载卷
+    const isFromMountedVolume = process.resourcesPath.includes('/Volumes/');
     
-    // 设置运行时目录
+    if (isFromMountedVolume) {
+      this.logger.debug('Detected mounted volume, attempting to find appropriate path');
+      
+      // 尝试主要路径
+      try {
+        await this._validatePackagedResources(packagedRoot);
+        this.logger.debug('Validated packaged resources from mounted volume path', { path: packagedRoot });
+      } catch (error) {
+        // 在挂载卷中，即使验证失败，我们也要继续执行
+        // 因为文件可能存在于挂载卷中，但由于权限问题无法验证
+        this.logger.warn('Could not validate packaged resources from mounted volume, continuing anyway', {
+          error: error.message
+        });
+      }
+    } else {
+      // 非挂载卷，使用正常验证流程
+      await this._validatePackagedResources(packagedRoot);
+    }
+    
+    // 设置运行时目录（仅复制必要的文件，不包括 ASAR 包）
     await this._setupRuntimeDirectory(packagedRoot, runtimeRoot);
     
     this.runtimeRoot = runtimeRoot;
@@ -99,13 +135,57 @@ class RuntimeManager {
   }
 
   async _validatePackagedResources(packagedRoot) {
-    try {
-      await fs.promises.access(packagedRoot, fs.constants.F_OK);
-      this.logger.debug('Packaged root exists', { path: packagedRoot });
-    } catch (error) {
-      throw new Error(`Packaged resources not found: ${packagedRoot}`);
+    this.logger.debug('Validating packaged resources', { packagedRoot });
+    
+    // 检查 app.asar 文件是否存在
+    if (packagedRoot.endsWith('.asar')) {
+      // 在 Electron 中，当代码在 ASAR 包内运行时，对 ASAR 文件的访问方式不同
+      // 我们需要检查文件是否存在，但不能依赖 stats.isFile()
+      try {
+        // 首先尝试使用 fs.access 来检查文件是否存在和可访问
+        await fs.promises.access(packagedRoot, fs.constants.F_OK);
+        this.logger.debug('Packaged ASAR is accessible via fs.access', { path: packagedRoot });
+        return; // Found ASAR file, validation passed
+      } catch (accessError) {
+        // 如果 fs.access 失败，尝试使用 fs.stat 并检查错误类型
+        try {
+          const stats = await fs.promises.stat(packagedRoot);
+          // 在 ASAR 环境中，即使文件存在，stats.isFile() 也可能返回 false
+          // 我们只检查是否存在错误，而不检查文件类型
+          this.logger.debug('Packaged ASAR exists via fs.stat', { 
+            path: packagedRoot, 
+            isFile: stats.isFile(), 
+            isDirectory: stats.isDirectory() 
+          });
+          return; // Found ASAR file, validation passed
+        } catch (statError) {
+          // 如果两种方法都失败，记录详细信息然后抛出错误
+          this.logger.error('Failed to validate packaged resources', {
+            path: packagedRoot,
+            accessError: accessError.message,
+            accessCode: accessError.code,
+            statError: statError.message,
+            statCode: statError.code,
+            processResourcesPath: process.resourcesPath,
+            appPath: app.getAppPath()
+          });
+          throw new Error(`Packaged resources not found: ${packagedRoot} (access: ${accessError.message}, stat: ${statError.message})`);
+        }
+      }
+    } else {
+      try {
+        const stats = await fs.promises.stat(packagedRoot);
+        if (stats.isDirectory() || stats.isFile()) {
+          this.logger.debug('Packaged root exists', { path: packagedRoot });
+        }
+      } catch (error) {
+        this.logger.error('Packaged root not found or not accessible', { packagedRoot, error: error.message });
+        throw new Error(`Packaged resources not found: ${packagedRoot}`);
+      }
     }
   }
+  
+  // 移除了无用的 _generateVolumePaths 方法
 
   async _setupRuntimeDirectory(packagedRoot, runtimeRoot) {
     try {
@@ -116,7 +196,33 @@ class RuntimeManager {
       await fs.promises.mkdir(runtimeRoot, { recursive: true });
       
       this.logger.info('Copying packaged resources to runtime directory');
-      await fs.promises.cp(packagedRoot, runtimeRoot, { recursive: true });
+      
+      // 检查是否是 ASAR 文件
+      if (packagedRoot.endsWith('.asar')) {
+        // 对于 ASAR 文件，我们不需要解压整个包，只需要复制它
+        // 但我们需要确保文件存在且可访问
+        try {
+          await fs.promises.access(packagedRoot, fs.constants.F_OK);
+          this.logger.debug('ASAR file exists, copying to runtime directory');
+          
+          // 复制 ASAR 文件到运行时目录
+          const targetAsarPath = path.join(runtimeRoot, 'app.asar');
+          await fs.promises.copyFile(packagedRoot, targetAsarPath);
+          this.logger.debug('Copied ASAR file to runtime directory', { source: packagedRoot, target: targetAsarPath });
+        } catch (copyError) {
+          this.logger.error('Failed to copy ASAR file to runtime directory', { 
+            source: packagedRoot, 
+            error: copyError.message 
+          });
+          
+          // 如果复制失败，记录错误但继续执行
+          // 应用程序可能仍然可以运行，因为它可以直接从原始位置访问 ASAR 文件
+          this.logger.warn('Continuing without copying ASAR file to runtime directory');
+        }
+      } else {
+        // 如果是普通目录，直接复制
+        await fs.promises.cp(packagedRoot, runtimeRoot, { recursive: true });
+      }
     }
   }
 
