@@ -116,8 +116,9 @@ class IconManager {
    */
   getAboutDialogIcon() {
     // 优先使用应用图标，如果没有则使用较大的托盘图标
-    const appIcon = this.getAppIcon();
-    return appIcon.resize({ width: 64, height: 64 });
+    const iconPath = this.iconPaths['png'];
+    let icon = nativeImage.createFromPath(iconPath)
+    return icon.resize({ width: 64, height: 64 });
   }
 
   /**
