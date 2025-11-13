@@ -9,3 +9,4 @@
 **/dist/
 **/node_modules/
 web/
+packages/server/package-lock.json

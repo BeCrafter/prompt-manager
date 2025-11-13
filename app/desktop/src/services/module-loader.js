@@ -51,43 +51,31 @@ class ModuleLoader {
   async _loadModuleInternal(serverRoot) {
     this.logger.info('Loading server module', { serverRoot });
     
-    let entryUrl;
+    // 简化路径查找逻辑，优先查找 app.asar 包中的核心库
+    const pathsToCheck = [
+      // 1. 优先从 app.asar 包中的 node_modules 加载（打包应用中）
+      path.join(process.resourcesPath, 'app.asar', 'node_modules', '@becrafter', 'prompt-manager-core', 'index.js'),
+      // 2. 尝试从 serverRoot 的 packages/server 加载（开发环境）
+      path.join(serverRoot, 'packages', 'server', 'index.js'),
+      // 3. 尝试从 serverRoot 的 node_modules 加载
+      path.join(serverRoot, 'node_modules', '@becrafter', 'prompt-manager-core', 'index.js'),
+    ];
     
-    // 尝试从 node_modules 加载 @becrafter/prompt-manager-core
-    const coreLibPath = path.join(serverRoot, 'node_modules', '@becrafter', 'prompt-manager-core', 'index.js');
-    
-    if (await this._pathExists(coreLibPath)) {
-      // 生成带版本号的URL
-      entryUrl = pathToFileURL(coreLibPath);
-      this.logger.debug('Using core library from node_modules', { coreLibPath });
-    } else {
-      // 如果 node_modules 中没有找到库，则从本地 packages/server 加载
-      const localServerPath = path.join(serverRoot, 'packages', 'server', 'index.js');
-      
-      if (await this._pathExists(localServerPath)) {
-        entryUrl = pathToFileURL(localServerPath);
-        this.logger.debug('Using local server from packages/server', { localServerPath });
-      } else {
-        throw new Error(`Neither core library nor local server found in ${serverRoot}`);
+    for (const libPath of pathsToCheck) {
+      if (await this._pathExists(libPath)) {
+        const entryUrl = pathToFileURL(libPath);
+        // 添加版本参数以防止缓存
+        entryUrl.searchParams.set('v', Date.now().toString());
+        
+        const module = await import(entryUrl.href);
+        this._validateServerModule(module);
+        this.logger.info('Server module loaded successfully');
+        return module;
       }
     }
     
-    entryUrl.searchParams.set('v', Date.now().toString());
-    
-    this.logger.debug('Importing server module', { entryUrl: entryUrl.href });
-    
-    try {
-      const module = await import(entryUrl.href);
-      
-      // 验证模块结构
-      this._validateServerModule(module);
-      
-      this.logger.info('Server module loaded successfully');
-      return module;
-    } catch (error) {
-      this.logger.error('Failed to import server module', error);
-      throw new Error(`Failed to load server module: ${error.message}`);
-    }
+    // 如果所有路径都没有找到，抛出错误
+    throw new Error(`Could not find core library in any of the expected paths: ${pathsToCheck.join(', ')}`);
   }
 
   async _pathExists(targetPath) {

@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import { randomUUID } from 'node:crypto';
 import { util } from './utils/util.js';
 import { config } from './utils/config.js';
@@ -16,6 +17,59 @@ import { InMemoryEventStore } from '@modelcontextprotocol/sdk/examples/shared/in
 const app = express();
 const adminUiRoot = util.getWebUiRoot();
 
+// 自定义中间件，用于处理 ASAR 包中的静态文件
+function serveAsarStatic(root) {
+  return async (req, res, next) => {
+    // 检查 root 是否是 ASAR 包中的路径
+    if (root.includes('.asar')) {
+      try {
+        // 动态导入 asar 模块（在 ES 模块环境中）
+        const { default: asar } = await import('@electron/asar');
+        
+        // 从 root 中提取 asar 文件路径和相对路径
+        const asarPathMatch = root.match(/^(.*?\.asar)(\/.*)?$/);
+        const asarFilePath = asarPathMatch ? asarPathMatch[1] : root.replace(/\/.*$/, '.asar');
+        const relativePathInAsar = asarPathMatch && asarPathMatch[2] ? asarPathMatch[2].substring(1) : 'web';
+        
+        const filePath = path.posix.join(relativePathInAsar, req.path).replace(/^\//, '');
+        const stat = asar.statFile(asarFilePath, filePath);
+        
+        if (stat) {
+          const fileContent = asar.extractFile(asarFilePath, filePath);
+          
+          // 设置适当的 Content-Type
+          const ext = path.extname(filePath).toLowerCase();
+          const mimeTypes = {
+            '.html': 'text/html',
+            '.js': 'application/javascript',
+            '.css': 'text/css',
+            '.json': 'application/json',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.gif': 'image/gif',
+            '.svg': 'image/svg+xml',
+            '.ico': 'image/x-icon'
+          };
+          
+          if (mimeTypes[ext]) {
+            res.setHeader('Content-Type', mimeTypes[ext]);
+          }
+          
+          res.send(fileContent);
+        } else {
+          next();
+        }
+      } catch (error) {
+        // 文件不存在或 asar 模块无法导入，继续到下一个中间件
+        next();
+      }
+    } else {
+      // 不是 ASAR 包中的路径，使用默认的静态文件服务
+      express.static(root)(req, res, next);
+    }
+  };
+}
+
 // 全局中间件
 app.use(cors());
 app.use(express.json({ limit: '8mb' }));
@@ -23,17 +77,50 @@ app.use(express.urlencoded({ extended: true }));
 
 
 // 为管理员界面提供静态文件服务 - 根路径
-app.use(config.adminPath, express.static(adminUiRoot));
+// 检查是否需要使用 ASAR 处理（需要验证 .asar 文件实际上存在）
+const isAsarPath = adminUiRoot.includes('.asar') && fs.existsSync(adminUiRoot.replace(/\/.*$/, '.asar'));
+if (isAsarPath) {
+  app.use(config.adminPath, serveAsarStatic(adminUiRoot));
+} else {
+  app.use(config.adminPath, express.static(adminUiRoot));
+}
+
+// 统一处理 index.html 请求的辅助函数
+async function sendIndexHtml(req, res) {
+  if (isAsarPath) {
+    try {
+      // 动态导入 asar 模块（在 ES 模块环境中）
+      const { default: asar } = await import('@electron/asar');
+      
+      // 从 adminUiRoot 中提取 asar 文件路径和相对路径
+      const asarPathMatch = adminUiRoot.match(/^(.*?\.asar)(\/.*)?$/);
+      const asarFilePath = asarPathMatch ? asarPathMatch[1] : adminUiRoot.replace(/\/.*$/, '.asar');
+      const relativePathInAsar = asarPathMatch && asarPathMatch[2] ? asarPathMatch[2].substring(1) : 'web';
+      const indexPath = path.posix.join(relativePathInAsar, 'index.html');
+      
+      // 检查文件是否存在
+      const stat = asar.statFile(asarFilePath, indexPath);
+      if (stat) {
+        // 读取 index.html 文件内容
+        const fileContent = asar.extractFile(asarFilePath, indexPath);
+        res.setHeader('Content-Type', 'text/html');
+        res.send(fileContent);
+      } else {
+        res.status(500).send('Internal Server Error');
+      }
+    } catch (error) {
+      res.status(500).send('Internal Server Error');
+    }
+  } else {
+    res.sendFile(path.join(adminUiRoot, 'index.html'));
+  }
+}
 
 // 为管理员界面提供根路径访问（当用户访问 /admin 时显示 index.html）
-app.get(config.adminPath, (req, res) => {
-  res.sendFile(path.join(adminUiRoot,  'index.html'));
-});
+app.get(config.adminPath, sendIndexHtml);
 
 // 为管理员界面提供根路径访问（当用户访问 /admin/ 时显示 index.html）
-app.get(config.adminPath + '/', (req, res) => {
-  res.sendFile(path.join(adminUiRoot,  'index.html'));
-});
+app.get(config.adminPath + '/', sendIndexHtml);
 
 
 // 注册后台API

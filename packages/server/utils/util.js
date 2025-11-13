@@ -335,9 +335,48 @@ export class Util {
     }
 
     getWebUiRoot() {
+        // 检查是否在 Electron 环境中运行
+        const isElectron = typeof process !== 'undefined' && 
+                          process.versions && 
+                          process.versions.electron;
+        
+        // 检查是否是打包应用
+        if (isElectron && process.resourcesPath) {
+            // 检查是否在打包模式（在我们的应用目录下有 app.asar）
+            const ourAppAsar = path.join(process.resourcesPath, 'app.asar');
+            if (fs.existsSync(ourAppAsar)) {
+                // 在打包的 Electron 应用中，web UI 位于 app.asar 内
+                return path.join(process.resourcesPath, 'app.asar', 'web');
+            }
+        }
+        
+        // 在开发环境中，web UI 位于项目目录中的 packages/web
         const __filename = fileURLToPath(import.meta.url);
-        const __dirname = path.dirname(path.dirname(__filename));
-        return path.join(__dirname, '..', 'web');
+        const __dirname = path.dirname(__filename);
+        const devWebPath = path.join(__dirname, '..', 'web');
+        
+        if (this._pathExistsSync(devWebPath)) {
+            return devWebPath;
+        }
+        
+        // 如果上面的路径不存在，尝试从项目根目录查找
+        const projectRoot = path.resolve(__dirname, '../../..');
+        const altWebPath = path.join(projectRoot, 'packages', 'web');
+        if (this._pathExistsSync(altWebPath)) {
+            return altWebPath;
+        }
+        
+        // 返回默认路径
+        return devWebPath;
+    };
+    
+    _pathExistsSync(filePath) {
+        try {
+            fs.accessSync(filePath, fs.constants.F_OK);
+            return true;
+        } catch (error) {
+            return false;
+        }
     };
 
     async getPromptManager() {

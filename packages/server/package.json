@@ -1,6 +1,6 @@
 {
   "name": "@becrafter/prompt-manager-core",
-  "version": "0.0.17",
+  "version": "0.0.20",
   "description": "Core library for managing prompts with MCP protocol",
   "main": "dist/index.js",
   "module": "index.js",
@@ -22,6 +22,7 @@
   "author": "BeCrafter",
   "license": "MIT",
   "dependencies": {
+    "@electron/asar": "^4.0.1",
     "@modelcontextprotocol/sdk": "^1.20.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",

@@ -17,7 +17,7 @@
     "electron-builder": "^24.13.3"
   },
   "dependencies": {
-    "@becrafter/prompt-manager-core": "^0.0.17",
+    "@becrafter/prompt-manager-core": "^0.0.20",
     "@modelcontextprotocol/sdk": "^1.20.2",
     "tar": "^7.5.2"
   },
@@ -28,37 +28,24 @@
     "files": [
       "**/*",
       "assets/**/*",
+      "!docs",
+      "!.npmignore",
       "!node_modules/**/test/**",
       "!node_modules/**/example/**",
-      "!docs"
+      "!node_modules/**/*.md",
+      "!node_modules/**/LICENSE",
+       {
+        "from": "../../packages/web/",
+        "to": "web/",
+        "filter": ["**/*"]
+      }
     ],
     "directories": {
       "output": "../../dist",
       "buildResources": "assets"
     },
     "extraResources": [
-      {
-        "from": "../../packages/server/",
-        "to": "app/packages/server/",
-        "filter": [
-          "**/*",
-          "!*.bak",
-          "!*.json",
-          "!*.md",
-          "!test.js",
-          "!example.js",
-          "!.npmignore",
-          "!node_modules/**/test/**",
-          "!node_modules/**/example/**",
-          "!node_modules/**/*.md",
-          "!node_modules/**/LICENSE"
-        ]
-      },
-      {
-        "from": "../../packages/web/",
-        "to": "app/packages/web/",
-        "filter": ["**/*"]
-      }
+
     ],
     "mac": {
       "category": "public.app-category.productivity",
