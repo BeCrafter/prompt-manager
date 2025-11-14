@@ -17,7 +17,7 @@
     "electron-builder": "^24.13.3"
   },
   "dependencies": {
-    "@becrafter/prompt-manager-core": "^0.0.20",
+    "@becrafter/prompt-manager-core": "^0.0.21",
     "@modelcontextprotocol/sdk": "^1.20.2",
     "tar": "^7.5.2"
   },

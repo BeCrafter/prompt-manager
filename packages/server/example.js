@@ -9,7 +9,9 @@ import {
   config,
   logger,
   promptManager
-} from '@becrafter/prompt-manager-core';
+} from './index.js'; // 开发环境中使用
+// } from '@becrafter/prompt-manager-core'; // 发布环境中使用
+
 
 // 方法2：CommonJS 导入（如果需要）
 // const { startServer, stopServer, getServerAddress, getServerState, config, logger, promptManager } = require('@becrafter/prompt-manager-core');

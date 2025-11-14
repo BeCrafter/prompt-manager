@@ -8,6 +8,7 @@ import { config } from './utils/config.js';
 import { logger } from './utils/logger.js';
 import { adminRouter } from './api/admin.routes.js';
 import { openRouter } from './api/open.routes.js';
+import { surgeRouter } from './api/surge.routes.js';
 import { getMcpServer } from './mcp/mcp.server.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -128,6 +129,9 @@ app.use('/adminapi', adminRouter);
 
 // 注册开放API
 app.use('/openapi', openRouter);
+
+// 注册 Surge 静态资源代理 API
+app.use('/surge', surgeRouter);
 
 
 const transports = {};

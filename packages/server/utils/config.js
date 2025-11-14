@@ -126,6 +126,9 @@ export class Config {
     this.maxPrompts = parseInt(process.env.MAX_PROMPTS) || 1000;
     this.recursiveScan = process.env.RECURSIVE_SCAN !== 'false'; // 默认启用递归扫描
 
+    // Surge 静态资源代理配置
+    this.surgeTarget = process.env.SURGE_TARGET || 'https://becrafter.surge.sh';
+
     // 管理员配置
     this.adminEnable = process.env.ADMIN_ENABLE !== 'false'; // 默认启用管理员功能
     this.adminPath = process.env.ADMIN_PATH || '/admin';
@@ -174,7 +177,8 @@ export class Config {
       adminPath,
       adminRequireAuth,
       admins,
-      exportToken
+      exportToken,
+      surgeTarget
     } = overrides;
 
     if (promptsDir) {
@@ -213,6 +217,9 @@ export class Config {
     }
     if (exportToken) {
       this.exportToken = exportToken;
+    }
+    if (surgeTarget) {
+      this.surgeTarget = surgeTarget;
     }
   }
 
@@ -312,6 +319,7 @@ export class Config {
     if (this.adminEnable) {
       process.stderr.write(`   登录认证: ${this.adminRequireAuth ? '需要' : '不需要'}\n`);
     }
+    process.stderr.write(`   Surge代理目标: ${this.surgeTarget}\n`);
     process.stderr.write('======================================================================================\n\n');
   }
 }

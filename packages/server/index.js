@@ -30,6 +30,7 @@ export {
 // Export API routes
 export { adminRouter } from './api/admin.routes.js';
 export { openRouter } from './api/open.routes.js';
+export { surgeRouter } from './api/surge.routes.js';
 
 // Export middlewares
 export { adminAuthMiddleware } from './middlewares/auth.middleware.js';
