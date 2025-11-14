@@ -1,0 +1,20 @@
+{
+  "name": "prompts-surge-sync",
+  "version": "1.0.0",
+  "description": "Sync prompt files to Surge.sh for Prompt Manager",
+  "main": "sync-to-surge.js",
+  "scripts": {
+    "build": "rm -rf dist && node sync-to-surge.js",
+    "deploy": "node sync-to-surge.js --deploy",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "keywords": [
+    "prompt-manager",
+    "surge"
+  ],
+  "author": "Prompt Manager Team",
+  "license": "MIT"
+}
