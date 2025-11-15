@@ -2,6 +2,7 @@
 
 // 导入样式
 import '../css/main.css';
+import '../css/recommended-prompts.css';
 
 // 导入 CodeMirror 相关功能
 import { initCodeMirror } from './codemirror';
@@ -58,8 +59,11 @@ const groupManageActionLoading = new Set();
 // 是否需要认证（默认不需要，直到从服务器获取配置）
 let requireAuth = false;
 
+const API_HOST = 'http://localhost:5621';
+
 // API 基础配置
-const API_BASE = 'http://localhost:5621/adminapi';
+const API_BASE = `${API_HOST}/adminapi`;
+const API_SURGE = `${API_HOST}/surge/`;
 
 // 提示组件
 function showMessage(message, type = 'success', options = {}) {
@@ -2396,8 +2400,19 @@ async function initApp() {
 
     document.getElementById('logoutBtn').addEventListener('click', logout);
     document.getElementById('newPromptBtn').addEventListener('click', newPrompt);
+    document.getElementById('newPromptBtnInBlankArea').addEventListener('click', newPrompt);
     document.getElementById('newGroupBtn').addEventListener('click', () => toggleNewFolderModal(true));
     document.getElementById('saveBtn').addEventListener('click', savePrompt);
+    
+    // 返回列表按钮事件处理
+    const backToListBtn = document.getElementById('backToListBtn');
+    if (backToListBtn) {
+      backToListBtn.addEventListener('click', () => {
+        showCustomBlankContent();
+        currentPrompt = null;
+        currentPromptObject = null;
+      });
+    }
 
     // 搜索功能
     const searchInput = document.getElementById('searchInput');
@@ -2459,6 +2474,606 @@ document.addEventListener('DOMContentLoaded', async () => {
       await initApp(); // 然后初始化应用
       // 页面加载后显示自定义的空白内容区域，不显示编辑器
       showCustomBlankContent();
+            // 初始化推荐词功能（内联函数定义）
+      let recommendedPrompts = [];
+      let currentRecommendedPromptIndex = 0;
+      let recommendedPromptsPerPage = 4;
+      let currentCardWidth = '25%';
+      
+      // 根据容器宽度动态计算每页显示的卡片数量和宽度
+      function calculatePromptsLayout() {
+        const container = document.getElementById('recommendedPromptsList');
+        if (!container) return { count: 4, cardWidth: '25%' };
+        
+        const containerWidth = container.offsetWidth;
+        const minCardWidth = 240; // 卡片最小宽度
+        const maxCardWidth = 320; // 卡片最大宽度
+        const gap = 12; // 卡片间隙
+        
+        // 计算可以显示的卡片数量（最小2列，最大4列）
+        let count = Math.floor((containerWidth + gap) / (minCardWidth + gap));
+        count = Math.max(2, Math.min(4, count));
+        
+        // 计算卡片宽度，确保均匀分布
+        const totalGap = gap * (count - 1);
+        const cardWidth = (containerWidth - totalGap) / count;
+        
+        // 确保卡片宽度在最小和最大值之间
+        const clampedCardWidth = Math.max(minCardWidth, Math.min(maxCardWidth, cardWidth));
+        
+        // 如果卡片宽度被限制，重新计算实际能显示的卡片数量
+        if (clampedCardWidth !== cardWidth) {
+          const actualCount = Math.floor((containerWidth + gap) / (clampedCardWidth + gap));
+          return { count: Math.max(2, Math.min(4, actualCount)), cardWidth: `${clampedCardWidth}px` };
+        }
+        
+        // 返回百分比宽度以实现均匀分布
+        return { count, cardWidth: `${100 / count * (1 - gap / containerWidth * (count - 1))}%` };
+      }
+      
+      // 加载推荐词数据
+      async function loadRecommendedPrompts() {
+        try {
+          // 尝试从API端点获取推荐词数据
+          let data = null;
+          let apiUrl = null;
+          
+          // 使用单个API端点 - 使用API_BASE确保请求发送到正确的后端服务器
+          const endpoint = '/prompts.json';
+          
+          try {
+            console.log(`尝试从 ${API_SURGE}${endpoint} 加载推荐词数据...`);
+            const response = await fetch(`${API_SURGE}${endpoint}`);
+            if (response.ok) {
+              data = await response.json();
+              apiUrl = endpoint;
+              console.log(`成功从 ${API_SURGE}${endpoint} 获取数据`);
+            }
+          } catch (e) {
+            console.log(`从 ${API_SURGE}${endpoint} 获取数据失败:`, e.message);
+          }
+          
+          if (data === null) {
+            throw new Error('无法从任何API端点获取推荐词数据');
+          }
+          
+          // 确保返回的数据是数组
+          if (!Array.isArray(data)) {
+            // 如果返回的是对象（如包含prompts数组的对象），尝试提取
+            if (data.prompts && Array.isArray(data.prompts)) {
+              data = data.prompts;
+            } else {
+              throw new Error('API返回的数据格式不正确');
+            }
+          }
+          
+          // 转换数据格式以匹配现有结构
+          // API返回的数据格式: {name, description, tags, path}
+          recommendedPrompts = data.map(prompt => ({
+            name: prompt.name || prompt.title || '未命名提示词',
+            description: prompt.description || prompt.desc || '暂无描述',
+            content: prompt.content || '', // 如果没有content字段，后续可以动态加载
+            tags: Array.isArray(prompt.tags) ? prompt.tags : (typeof prompt.tags === 'string' ? [prompt.tags] : []),
+            group: prompt.group || prompt.category || 'default',
+            path: prompt.path // 保留路径信息，用于后续加载完整内容
+          }));
+          
+          console.log('成功加载推荐词数据:', recommendedPrompts);
+          const layout = calculatePromptsLayout();
+          recommendedPromptsPerPage = layout.count;
+          currentCardWidth = layout.cardWidth;
+          renderRecommendedPrompts();
+          updateRecommendedPromptsNavigation();
+        } catch (error) {
+          console.error('加载推荐词失败:', error);
+          // 如果API调用失败，将推荐提示词数据置空
+          recommendedPrompts = [];
+          
+          // 不展示推荐区域
+          const section = document.getElementById('recommendedPromptsSection');
+          const blankContent = document.getElementById('customBlankContent');
+          if (section) {
+            section.classList.add('hidden');
+          }
+          if (blankContent) {
+            blankContent.classList.add('no-recommendation');
+          }
+        }
+      }
+
+      // 渲染推荐词卡片
+      function renderRecommendedPrompts() {
+        const container = document.getElementById('recommendedPromptsList');
+        const section = document.getElementById('recommendedPromptsSection');
+        const blankContent = document.getElementById('customBlankContent');
+        if (!container) return;
+        
+        const hasData = recommendedPrompts.length > 0;
+        
+        if (section) {
+          section.classList.toggle('hidden', !hasData);
+        }
+        if (blankContent) {
+          blankContent.classList.toggle('no-recommendation', !hasData);
+        }
+        
+        // 清空容器
+        container.innerHTML = '';
+        
+        if (!hasData) {
+          return;
+        }
+        
+        // 根据容器宽度动态计算每页显示的卡片数量和宽度
+        const layout = calculatePromptsLayout();
+        recommendedPromptsPerPage = layout.count;
+        currentCardWidth = layout.cardWidth;
+        
+        // 确保当前页索引有效
+        const maxIndex = Math.max(Math.ceil(recommendedPrompts.length / recommendedPromptsPerPage) - 1, 0);
+        if (currentRecommendedPromptIndex > maxIndex) {
+          currentRecommendedPromptIndex = 0;
+        }
+        
+        // 计算当前页的推荐词
+        const startIndex = currentRecommendedPromptIndex * recommendedPromptsPerPage;
+        const endIndex = Math.min(startIndex + recommendedPromptsPerPage, recommendedPrompts.length);
+        const currentPrompts = recommendedPrompts.slice(startIndex, endIndex);
+        
+        // 创建卡片元素
+        currentPrompts.forEach((prompt, index) => {
+          const card = document.createElement('div');
+          card.className = 'recommended-prompt-card';
+          card.style.width = currentCardWidth;
+          card.style.marginRight = '12px';
+          if (index === currentPrompts.length - 1) {
+            card.style.marginRight = '0';
+          }
+          
+          const hasTags = Array.isArray(prompt.tags) && prompt.tags.length > 0;
+          const tagsHtml = hasTags
+            ? `
+            <div class="card-tags">
+              ${prompt.tags.map(tag => `<span class="card-tag">${escapeHtml(tag)}</span>`).join('')}
+            </div>
+          `
+            : '';
+          card.innerHTML = `
+            <div class="card-header">
+              <div class="card-title">${escapeHtml(prompt.name)}</div>
+            </div>
+            <div class="card-description">${escapeHtml(prompt.description)}</div>
+            ${tagsHtml}
+          `;
+          
+          // 添加点击事件
+          card.addEventListener('click', () => {
+            console.log('Card clicked:', prompt);
+            showRecommendedPromptDetail(prompt);
+          });
+          
+          container.appendChild(card);
+        });
+      }
+
+      // 更新推荐词导航按钮状态
+      function updateRecommendedPromptsNavigation() {
+        const leftBtn = document.getElementById('recommendedPromptsLeft');
+        const rightBtn = document.getElementById('recommendedPromptsRight');
+        
+        if (leftBtn) {
+          leftBtn.classList.toggle('disabled', currentRecommendedPromptIndex <= 0);
+        }
+        
+        if (rightBtn) {
+          const maxIndex = Math.ceil(recommendedPrompts.length / recommendedPromptsPerPage) - 1;
+          rightBtn.classList.toggle('disabled', currentRecommendedPromptIndex >= maxIndex);
+        }
+      }
+
+      // 推荐词导航事件
+      function navigateRecommendedPrompts(direction) {
+        const maxIndex = Math.ceil(recommendedPrompts.length / recommendedPromptsPerPage) - 1;
+        
+        if (direction === 'left' && currentRecommendedPromptIndex > 0) {
+          currentRecommendedPromptIndex--;
+        } else if (direction === 'right' && currentRecommendedPromptIndex < maxIndex) {
+          currentRecommendedPromptIndex++;
+        }
+        
+        // 添加滑动动画
+        const container = document.getElementById('recommendedPromptsList');
+        if (container) {
+          container.classList.add('sliding');
+          setTimeout(() => {
+            renderRecommendedPrompts();
+            updateRecommendedPromptsNavigation();
+            container.classList.remove('sliding');
+          }, 10);
+        } else {
+          renderRecommendedPrompts();
+          updateRecommendedPromptsNavigation();
+        }
+      }
+
+      // 显示推荐词详情
+      async function showRecommendedPromptDetail(prompt) {
+        console.log('Showing recommended prompt detail:', prompt);
+        // 保存当前推荐提示词数据，供同步弹窗使用
+        window.currentRecommendedPromptData = prompt;
+        
+        const modal = document.getElementById('recommendedPromptModal');
+        const titleEl = document.getElementById('recommendedPromptTitle');
+        const descEl = document.getElementById('recommendedPromptDescription');
+        const contentEl = document.getElementById('recommendedPromptContent');
+        
+        if (modal) {
+          console.log('Modal element found, showing modal');
+          modal.classList.add('active');
+          document.body.style.overflow = 'hidden';
+        } else {
+          console.error('Modal element not found');
+          return;
+        }
+        
+        // 更新标题文本
+        const titleTextEl = titleEl?.querySelector('.modal-title-text');
+        if (titleTextEl) {
+          console.log('Updating title text to:', prompt.name);
+          titleTextEl.textContent = prompt.name;
+        } else {
+          console.warn('Title text element not found');
+        }
+        
+        if (descEl) {
+          console.log('Updating description to:', prompt.description);
+          descEl.textContent = prompt.description;
+        } else {
+          console.warn('Description element not found');
+        }
+        
+        // 如果prompt有完整内容，则直接显示
+        if (prompt.content && prompt.content.trim() !== '') {
+          if (contentEl) {
+            console.log('Displaying direct content');
+            contentEl.textContent = prompt.content;
+          }
+        } else {
+          // 如果没有完整内容，则尝试从API动态加载
+          if (contentEl) {
+            console.log('Loading content from API');
+            contentEl.textContent = '正在加载内容...';
+            
+            try {
+              // 如果prompt有路径信息，尝试从surge端点加载完整内容
+              if (prompt.path) {
+                // 尝试从surge端点获取完整提示词内容
+                console.log('Fetching content from surge endpoint:', `${API_SURGE}/${prompt.path}`);
+                const surgeResponse = await fetch(`${API_SURGE}/${prompt.path}`);
+                if (surgeResponse.ok) {
+                  const fullPrompt = await surgeResponse.json();
+                  console.log('Received full prompt from surge:', fullPrompt);
+                  if (fullPrompt && fullPrompt.messages && Array.isArray(fullPrompt.messages)) {
+                    // 获取所有消息内容，不区分role
+                    const allContent = fullPrompt.messages.map(msg => {
+                      if (typeof msg.content === 'string') {
+                        return msg.content;
+                      } else if (msg.content?.text) {
+                        return msg.content.text;
+                      } else {
+                        return JSON.stringify(msg.content, null, 2);
+                      }
+                    }).join('\n\n---\n\n'); // 用分隔符连接不同消息
+                    
+                    contentEl.textContent = allContent;
+                  }
+                }
+              } else {
+                contentEl.textContent = '暂无详细内容';
+              }
+            } catch (error) {
+              console.error('加载提示词内容失败:', error);
+              contentEl.textContent = '加载内容失败: ' + error.message;
+            }
+          }
+        }
+        
+        console.log('Finished showing recommended prompt detail');
+      }
+
+      // 隐藏推荐词详情
+      function hideRecommendedPromptDetail() {
+        console.log('Hiding recommended prompt detail');
+        const modal = document.getElementById('recommendedPromptModal');
+        if (modal) {
+          console.log('Modal element found, hiding modal');
+          modal.classList.remove('active');
+          document.body.style.overflow = '';
+        } else {
+          console.error('Modal element not found when trying to hide');
+        }
+      }
+
+      // 显示同步到我的提示词弹窗
+      function showSyncPromptModal() {
+        const modal = document.getElementById('syncPromptModal');
+        const groupSelect = document.getElementById('syncPromptGroup');
+        const nameInput = document.getElementById('syncPromptName');
+        
+        if (nameInput && window.currentRecommendedPromptData) {
+          // 设置默认名称为推荐提示词的名称
+          nameInput.value = window.currentRecommendedPromptData.name || '';
+        }
+        
+        if (groupSelect) {
+          // 清空现有选项
+          groupSelect.innerHTML = '<option value="">请选择目录</option>';
+          
+          // 获取现有目录并填充选项
+          const flattenedGroups = flattenGroupTree(groupTreeState || []);
+          flattenedGroups.forEach(group => {
+            if (group.path !== 'default') { // 排除默认组，因为默认组可以作为目标
+              const option = document.createElement('option');
+              option.value = group.path;
+              option.textContent = group.path;
+              groupSelect.appendChild(option);
+            }
+          });
+          
+          // 添加默认选项
+          const defaultOption = document.createElement('option');
+          defaultOption.value = 'default';
+          defaultOption.textContent = 'default';
+          groupSelect.insertBefore(defaultOption, groupSelect.firstChild);
+          
+          // 默认选中 default 目录
+          groupSelect.value = 'default';
+        }
+        
+        if (modal) {
+          modal.classList.add('active');
+          document.body.style.overflow = 'hidden';
+        }
+      }
+
+      // 隐藏同步到我的提示词弹窗
+      function hideSyncPromptModal() {
+        const modal = document.getElementById('syncPromptModal');
+        if (modal) {
+          modal.classList.remove('active');
+          document.body.style.overflow = '';
+        }
+      }
+
+      // 同步推荐词到我的提示词
+      async function syncRecommendedPrompt() {
+        const groupSelect = document.getElementById('syncPromptGroup');
+        const nameInput = document.getElementById('syncPromptName');
+        const selectedGroup = groupSelect ? groupSelect.value : '';
+        const customName = nameInput ? nameInput.value.trim() : '';
+        
+        if (!customName) {
+          showMessage('请输入提示词名称', 'error');
+          return;
+        }
+        
+        if (!selectedGroup) {
+          showMessage('请选择目录', 'error');
+          return;
+        }
+        
+        const promptData = window.currentRecommendedPromptData;
+        if (!promptData) {
+          showMessage('没有选择要同步的提示词', 'error');
+          return;
+        }
+        
+        try {
+          // 显示加载中效果
+          showLoading();
+          
+          // 获取完整的提示词数据
+          let fullPromptData = null;
+          
+          // 如果有路径信息，从surge端点获取完整数据
+          if (promptData.path) {
+            try {
+              const surgeResponse = await fetch(`${API_SURGE}/${promptData.path}`);
+              if (surgeResponse.ok) {
+                fullPromptData = await surgeResponse.json();
+              }
+            } catch (error) {
+              console.warn('从surge端点获取完整数据失败:', error);
+            }
+          }
+          
+          // 如果没有从surge获取到数据，尝试从本地API获取
+          if (!fullPromptData) {
+            try {
+              const localResponse = await apiCall(`/prompts/${encodeURIComponent(promptData.name)}`);
+              if (localResponse && localResponse.yaml) {
+                fullPromptData = window.jsyaml.load(localResponse.yaml);
+              }
+            } catch (error) {
+              console.warn('从本地API获取完整数据失败:', error);
+            }
+          }
+          
+          // 如果仍然没有获取到完整数据，则使用推荐词数据作为基础
+          if (!fullPromptData) {
+            fullPromptData = {
+              name: promptData.name,
+              description: promptData.description || '',
+              enabled: true,
+              messages: [
+                {
+                  role: 'user',
+                  content: {
+                    text: promptData.content || promptData.description || ''
+                  }
+                }
+              ],
+              arguments: promptData.arguments || []
+            };
+          }
+          
+          // 使用用户自定义的名称和目录覆盖原数据
+          fullPromptData.name = customName;
+          
+          // 创建包含所有必要信息的提示词对象
+          const promptObject = {
+            name: customName,
+            description: fullPromptData.description || '',
+            enabled: fullPromptData.enabled !== false, // 默认启用
+            messages: fullPromptData.messages || [],
+            arguments: fullPromptData.arguments || []
+          };
+          
+          // 转换为YAML格式
+          let yaml;
+          try {
+            yaml = window.jsyaml.dump(promptObject);
+          } catch (error) {
+            console.error('生成YAML失败:', error);
+            showMessage('生成提示词数据失败', 'error');
+            return;
+          }
+          
+          // 调用API保存提示词
+          const result = await apiCall('/prompts', {
+            method: 'POST',
+            body: JSON.stringify({
+              name: customName,
+              group: selectedGroup,
+              yaml: yaml
+            })
+          });
+          
+          showMessage('同步成功');
+          
+          // 隐藏弹窗
+          hideSyncPromptModal();
+          hideRecommendedPromptDetail();
+          
+          // 重新加载提示词列表以显示新添加的提示词
+          const searchInput = document.getElementById('searchInput');
+          const searchValue = searchInput ? searchInput.value : '';
+          await loadPrompts(searchValue);
+        } catch (error) {
+          console.error('同步推荐词失败:', error);
+          showMessage('同步失败: ' + (error?.message || '未知错误'), 'error');
+        } finally {
+          // 隐藏加载中效果
+          hideLoading();
+        }
+      }
+
+      // 绑定推荐词相关事件
+      function bindRecommendedPromptsEvents() {
+        // 左右导航按钮事件
+        const leftBtn = document.getElementById('recommendedPromptsLeft');
+        const rightBtn = document.getElementById('recommendedPromptsRight');
+        
+        if (leftBtn) {
+          leftBtn.addEventListener('click', () => {
+            if (!leftBtn.classList.contains('disabled')) {
+              navigateRecommendedPrompts('left');
+            }
+          });
+        }
+        
+        if (rightBtn) {
+          rightBtn.addEventListener('click', () => {
+            if (!rightBtn.classList.contains('disabled')) {
+              navigateRecommendedPrompts('right');
+            }
+          });
+        }
+        
+        // 推荐词详情弹窗关闭事件
+        const detailCloseBtn = document.getElementById('recommendedPromptClose');
+        if (detailCloseBtn) {
+          detailCloseBtn.addEventListener('click', hideRecommendedPromptDetail);
+        }
+        
+        // 推荐词详情弹窗背景点击关闭
+        const detailModal = document.getElementById('recommendedPromptModal');
+        if (detailModal) {
+          detailModal.addEventListener('click', (e) => {
+            if (e.target === detailModal) {
+              hideRecommendedPromptDetail();
+            }
+          });
+        }
+        
+        // 同步到我的提示词按钮
+        const syncBtn = document.getElementById('syncToMyPromptsBtn');
+        if (syncBtn) {
+          syncBtn.addEventListener('click', showSyncPromptModal);
+        }
+        
+        // 同步弹窗关闭事件
+        const syncCloseBtn = document.getElementById('syncPromptClose');
+        const syncCancelBtn = document.getElementById('syncPromptCancel');
+        
+        if (syncCloseBtn) {
+          syncCloseBtn.addEventListener('click', hideSyncPromptModal);
+        }
+        
+        if (syncCancelBtn) {
+          syncCancelBtn.addEventListener('click', hideSyncPromptModal);
+        }
+        
+        // 同步弹窗背景点击关闭
+        const syncModal = document.getElementById('syncPromptModal');
+        if (syncModal) {
+          syncModal.addEventListener('click', (e) => {
+            if (e.target === syncModal) {
+              hideSyncPromptModal();
+            }
+          });
+        }
+        
+        // 确认同步按钮
+        const syncConfirmBtn = document.getElementById('syncPromptConfirm');
+        if (syncConfirmBtn) {
+          syncConfirmBtn.addEventListener('click', syncRecommendedPrompt);
+        }
+        
+        // ESC键关闭弹窗
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            if (detailModal && detailModal.classList.contains('active')) {
+              hideRecommendedPromptDetail();
+            } else if (syncModal && syncModal.classList.contains('active')) {
+              hideSyncPromptModal();
+            }
+          }
+        });
+        
+        // 窗口大小改变时重新计算每页显示的卡片数量
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+          clearTimeout(resizeTimeout);
+          resizeTimeout = setTimeout(() => {
+            const layout = calculatePromptsLayout();
+            recommendedPromptsPerPage = layout.count;
+            currentCardWidth = layout.cardWidth;
+            // 确保当前页索引有效
+            const maxIndex = Math.max(Math.ceil(recommendedPrompts.length / recommendedPromptsPerPage) - 1, 0);
+            if (currentRecommendedPromptIndex > maxIndex) {
+              currentRecommendedPromptIndex = maxIndex;
+            }
+            renderRecommendedPrompts();
+            updateRecommendedPromptsNavigation();
+          }, 300);
+        });
+      }
+      
+      // 获取推荐词数据
+      loadRecommendedPrompts();
+      // 绑定推荐词相关事件
+      bindRecommendedPromptsEvents();
     } else {
       showLogin();
     }
@@ -2567,17 +3182,6 @@ function setupLoginEvents() {
         usernameInput.focus();
       } else {
         passwordInput.focus();
-      }
-    }
-  });
-
-  passwordInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      if (!passwordInput.value) {
-        passwordInput.focus();
-      } else {
-        handleLogin();
       }
     }
   });
