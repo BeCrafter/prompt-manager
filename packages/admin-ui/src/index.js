@@ -341,9 +341,28 @@ function showMain() {
   document.getElementById('main').style.display = 'block';
 }
 
+// 显示加载中效果
+function showLoading() {
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  if (loadingOverlay) {
+    loadingOverlay.classList.remove('hidden');
+  }
+}
+
+// 隐藏加载中效果
+function hideLoading() {
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  if (loadingOverlay) {
+    loadingOverlay.classList.add('hidden');
+  }
+}
+
 // 加载prompt列表
 async function loadPrompts(search = '', enabledOnly = false, group = null) {
   try {
+    // 显示加载中效果
+    showLoading();
+    
     const queryParams = new URLSearchParams();
     if (search) queryParams.append('search', search);
     if (enabledOnly) queryParams.append('enabled', 'true');
@@ -354,6 +373,9 @@ async function loadPrompts(search = '', enabledOnly = false, group = null) {
     await renderGroupList(prompts);
   } catch (error) {
     console.error('加载prompt列表失败:', error);
+  } finally {
+    // 隐藏加载中效果
+    hideLoading();
   }
 }
 
@@ -1285,6 +1307,9 @@ function renderGroupManageList() {
 
 async function refreshGroupData() {
   try {
+    // 显示加载中效果
+    showLoading();
+    
     const searchInput = document.getElementById('searchInput');
     const searchValue = searchInput ? searchInput.value : '';
     await loadPrompts(searchValue);
@@ -1295,6 +1320,9 @@ async function refreshGroupData() {
     }
   } catch (error) {
     console.error('刷新类目数据失败:', error);
+  } finally {
+    // 隐藏加载中效果
+    hideLoading();
   }
 }
 
@@ -1716,6 +1744,9 @@ async function deletePrompt(promptName, relativePath) {
 // 选择prompt
 async function selectPrompt(prompt, triggerEvent) {
   try {
+    // 显示加载中效果
+    showLoading();
+    
     // 显示prompt编辑区域
     showPromptEditorArea();
     
@@ -1839,6 +1870,9 @@ async function selectPrompt(prompt, triggerEvent) {
     updatePreview(true);
   } catch (error) {
     console.error('加载prompt详情失败:', error);
+  } finally {
+    // 隐藏加载中效果
+    hideLoading();
   }
 }
 
@@ -1998,6 +2032,9 @@ async function savePrompt() {
   }
   
   try {
+    // 显示加载中效果
+    showLoading();
+
     const result = await apiCall('/prompts', {
       method: 'POST',
       body: JSON.stringify({
@@ -2035,6 +2072,8 @@ async function savePrompt() {
       saveBtn.classList.remove('loading');
       saveBtn.textContent = originalText;
     }
+    // 隐藏加载中效果
+    hideLoading();
   }
 }
 
@@ -2064,6 +2103,9 @@ function resetEditor() {
 
 // 新建prompt
 function newPrompt() {
+  // 显示加载中效果
+  showLoading();
+  
   // 显示prompt编辑区域
   showPromptEditorArea();
   
@@ -2099,6 +2141,9 @@ function newPrompt() {
 
   document.querySelectorAll('.prompt-item').forEach(el => el.classList.remove('active'));
   updatePreview(true);
+  
+  // 隐藏加载中效果
+  hideLoading();
 }
 
 // 打开/关闭新建目录弹窗
@@ -2409,6 +2454,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 检查登录状态
     if (currentToken || !requireAuth) {
       showMain();
+      showLoading(); // 显示加载中效果
       loadPrompts(); // 先加载提示词列表
       await initApp(); // 然后初始化应用
       // 页面加载后显示自定义的空白内容区域，不显示编辑器
@@ -2427,6 +2473,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('login').style.display = 'none';
       document.getElementById('main').style.display = 'block';
     }
+  } finally {
+    // 隐藏加载中效果
+    hideLoading();
   }
 });
 
