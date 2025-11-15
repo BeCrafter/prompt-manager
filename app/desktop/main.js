@@ -16,6 +16,7 @@ const ServiceManager = require('./src/services/service-manager');
 const TrayManager = require('./src/ui/tray-manager');
 const UpdateManager = require('./src/services/update-manager');
 const AboutDialogManager = require('./src/ui/about-dialog-manager');
+const SplashManager = require('./src/ui/splash-manager');
 const IconManager = require('./src/utils/icon-manager');
 const EnvSync = require('./src/utils/env-sync');
 
@@ -31,6 +32,7 @@ class PromptManagerApp {
     this.updateManager = new UpdateManager(this.logger, this.errorHandler, this.runtimeManager);
     this.aboutDialogManager = new AboutDialogManager(this.logger, this.runtimeManager, this.iconManager);
     this.trayManager = new TrayManager(this.logger, this.errorHandler, this.iconManager);
+    this.splashManager = new SplashManager(this.logger, this.iconManager);
     
     this.isInitialized = false;
   }
@@ -41,8 +43,13 @@ class PromptManagerApp {
     try {
       this.logger.info('Initializing Prompt Manager Desktop Application');
       
+      // 显示启动画面
+      await this.splashManager.showSplash();
+      this.splashManager.updateStatus('正在初始化...', 20);
+      
       // 同步环境配置
       await EnvSync.syncEnvConfig();
+      this.splashManager.updateStatus('正在加载配置...', 40);
       
       // 初始化日志系统
       await this.logger.initialize();
@@ -51,23 +58,36 @@ class PromptManagerApp {
       this.setupApplicationMenu();
       
       // 初始化系统托盘
+      this.splashManager.updateStatus('正在启动托盘服务...', 60);
       await this.trayManager.initialize(this.stateManager);
       
       // 设置事件监听
       this.setupEventListeners();
       
       // 确保运行时环境
+      this.splashManager.updateStatus('正在准备运行时环境...', 70);
       const serverRoot = await this.runtimeManager.ensureRuntimeEnvironment();
       this.stateManager.set('runtimeRoot', serverRoot);
       
       // 启动服务
+      this.splashManager.updateStatus('正在启动核心服务...', 80);
       await this.startService();
       
       this.isInitialized = true;
       this.logger.info('Application initialized successfully');
       
+      // 关闭启动画面
+      this.splashManager.updateStatus('准备就绪...', 100);
+      setTimeout(() => {
+        this.splashManager.closeSplash();
+      }, 500); // 短暂延迟以显示完成状态
+      
     } catch (error) {
       this.logger.error('Application initialization failed', error);
+      
+      // 关闭启动画面
+      this.splashManager.closeSplash();
+      
       this.errorHandler.handleError('APP_INIT_FAILED', error, {
         logFilePath: this.logger.getLogFilePath()
       });
@@ -170,6 +190,9 @@ class PromptManagerApp {
     
     try {
       this.stateManager.set('isQuitting', true);
+      
+      // 关闭启动画面
+      await this.splashManager.closeSplash();
       
       // 停止服务
       await this.stopService();
