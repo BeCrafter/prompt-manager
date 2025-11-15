@@ -4,8 +4,7 @@
   "description": "Admin UI for Prompt Manager",
   "scripts": {
     "dev": "npx webpack serve --mode development",
-    "build": "npx webpack --mode production",
-    "build:dev": "npx webpack --mode development"
+    "build": "npx webpack --mode production"
   },
   "keywords": [
     "admin",
