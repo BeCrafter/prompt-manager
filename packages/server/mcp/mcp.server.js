@@ -6,7 +6,7 @@ import {
     handleSearchPrompts,
     handleReloadPrompts
 } from './mcp.handler.js';
-import { handleToolX } from './toolx.handler.js';
+import { handleToolM } from '../toolm/index.js';
 
 class Server {
     constructor() {
@@ -60,112 +60,149 @@ export const getMcpServer = () => {
             }
         },
         {
-            name: 'toolx',
-            description: `ToolX is the Prompt Manager tool runtime for loading and executing various tools.
+            name: 'toolm',
+            description: `ToolM 是 Prompt Manager 新一代工具系统运行时，提供统一的工具管理和执行能力。
 
-## Why ToolX Exists
+## 核心特性
 
-ToolX is your gateway to the Prompt Manager tool ecosystem. Think of it as:
-- A **universal remote control** for all Prompt Manager tools
-- Your **interface** to specialized capabilities (file operations, etc.)
-- The **bridge** between you (AI agent) and powerful system tools
+ToolM 作为统一工具管理器，提供：
+- **智能工具加载** - 自动扫描并加载所有可用工具
+- **四种运行模式** - manual（手册）、execute（执行）、configure（配置）、log（日志）
+- **依赖管理** - 自动处理工具依赖和安装
+- **错误智能处理** - 业务错误识别和解决方案提示
+- **统一接口** - 所有工具遵循标准接口规范
 
-Without ToolX, you cannot access any Prompt Manager ecosystem tools.
+## 何时使用 ToolM
 
-## When to Use ToolX
+### 常见场景（IF-THEN 规则）：
+- IF 需要文件操作 → 使用 tool://filesystem 通过 toolm
+- IF 看到 tool:// 格式 → 使用 toolm 调用
+- IF 不确定工具用法 → 先用 manual 模式查看手册
 
-### Common Scenarios (IF-THEN rules):
-- IF user needs file operations → USE tool://filesystem via toolx
-- IF you see tool:// in any context → USE toolx to call it
+### 首次使用任何工具
+⚠️ **必须先运行 mode: manual** 阅读工具文档
+⚠️ 示例：toolm with mode: manual for tool://filesystem
 
-### First Time Using Any Tool
-⚠️ **MUST run mode: manual first** to read the tool's documentation
-⚠️ Example: toolx with mode: manual for tool://filesystem
+## 如何使用 ToolM（复制这些模式）
 
-## How to Use ToolX (Copy These Patterns)
+### 模式 1：查看工具手册（首次使用）
 
-### Pattern 1: Read Tool Manual (First Time)
-
-**Exact code to use:**
+**使用代码：**
 \`\`\`javascript
-// Call the toolx function with this exact structure:
-toolx({
-  yaml: \`tool: tool://filesystem\nmode: manual\`
+mcp__promptmanager__toolm({
+  yaml: \`tool: tool://filesystem
+mode: manual\`
 })
 \`\`\`
 
-**What this does:** Shows you how to use the filesystem tool
+**作用：** 显示 filesystem 工具的完整使用手册
 
-### Pattern 2: Execute Tool with Parameters
+### 模式 2：执行工具操作
 
-**Exact code to use:**
+**使用代码：**
 \`\`\`javascript
-toolx({
-  yaml: \`tool: tool://filesystem\nmode: execute\nparameters:\n  path: /path/to/file.txt\n  action: read\`
+// 写入文件
+mcp__promptmanager__toolm({
+  yaml: \`tool: tool://filesystem
+mode: execute
+parameters:
+  method: write_file
+  path: ~/.prompt-manager/test.txt
+  content: |
+    Hello World
+    这是测试内容\`
+})
+
+// 读取文件
+mcp__promptmanager__toolm({
+  yaml: \`tool: tool://filesystem
+mode: execute
+parameters:
+  method: read_text_file
+  path: ~/.prompt-manager/test.txt\`
 })
 \`\`\`
 
-**What this does:** Reads a file at the specified path
+**作用：** 读取指定路径的文件内容
 
-### Pattern 3: Configure Tool Environment
+### 模式 3：配置工具环境
 
-**Exact code to use:**
+**使用代码：**
 \`\`\`javascript
-toolx({
-  yaml: \`tool: tool://my-tool\nmode: configure\nparameters:\n  API_KEY: sk-xxx123\n  TIMEOUT: 30000\`
+mcp__promptmanager__toolm({
+  yaml: \`tool: tool://filesystem
+mode: configure
+parameters:
+  ALLOWED_DIRECTORIES: '["~/.prompt-manager", "/tmp"]'\`
 })
 \`\`\`
 
-**What this does:** Sets environment variables for the tool
+**作用：** 设置工具的环境变量
 
-## Critical Rules (Must Follow)
+### 模式 4：查看工具日志
 
-### ✅ Correct Format
-The yaml parameter MUST be a complete YAML document:
-- Start with \`tool: tool://tool-name\`
-- Add \`mode: execute\` (or manual/configure)
-- If needed, add \`parameters:\` section with proper indentation
-
-### ❌ Common Mistakes to Avoid
-- DON'T pass just "tool://filesystem" (missing YAML structure)
-- DON'T add @ prefix like "@tool://filesystem" (system handles it)
-- DON'T forget "tool://" prefix (not "tool: filesystem")
-- DON'T forget to read manual first for new tools
-
-## Available System Tools
-
-Quick reference of built-in tools:
-- **tool://filesystem** - File operations (read/write/list/delete)
-
-To see all available tools: check the tools directory
-
-## Step-by-Step Workflow
-
-### Step 1: Discover Available Tools
-Check the tools directory to see what tools exist
-
-### Step 2: Read Tool Manual
+**使用代码：**
 \`\`\`javascript
-toolx({
-  yaml: \`tool: tool://TOOLNAME\nmode: manual\`
+mcp__promptmanager__toolm({
+  yaml: \`tool: tool://filesystem
+mode: log
+parameters:
+  action: tail
+  lines: 50\`
 })
 \`\`\`
 
-### Step 3: Execute Tool
-Copy the example from manual, modify parameters for your needs
+**作用：** 查看工具最近的 50 条日志
 
-### Step 4: Handle Errors
-If execution fails, check:
-- Is the tool name correct?
-- Are parameters properly indented?
-- Did you read the manual first?
+## 关键规则（必须遵守）
 
+### ✅ 正确格式
+yaml 参数必须是完整的 YAML 文档：
+- 以 \`tool: tool://tool-name\` 开头
+- 添加 \`mode: execute\`（或 manual/configure/log）
+- 如需参数，添加 \`parameters:\` 部分并正确缩进
+
+### ❌ 常见错误避免
+- 不要只传 "tool://filesystem"（缺少 YAML 结构）
+- 不要添加 @ 前缀如 "@tool://filesystem"（系统会处理）
+- 不要忘记 "tool://" 前缀（不是 "tool: filesystem"）
+- 不要跳过手册，首次使用必须先看 manual
+
+## 系统内置工具
+
+快速参考的内置工具：
+- **tool://filesystem** - 文件系统操作（读/写/列表/搜索等）
+
+更多工具正在开发中...
+
+## 逐步工作流程
+
+### 步骤 1：查看可用工具
+使用 manual 模式了解工具能力
+
+### 步骤 2：阅读工具手册
+\`\`\`javascript
+mcp__promptmanager__toolm({
+  yaml: \`tool: tool://TOOLNAME
+mode: manual\`
+})
+\`\`\`
+
+### 步骤 3：执行工具操作
+根据手册中的示例，修改参数以满足需求
+
+### 步骤 4：处理错误
+如果执行失败，检查：
+- 工具名称是否正确？
+- 参数是否正确缩进？
+- 是否先阅读了手册？
+- 错误提示中是否有解决方案？
 `,
             inputSchema: {
                 yaml: z.string().describe('YAML 格式的工具调用配置')
             },
             handler: async (args) => {
-                return handleToolX(args);
+                return handleToolM(args);
             }
         }
         // {
