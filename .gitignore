@@ -3,6 +3,9 @@
 .vscode
 .DS_Store
 
+.cursor
+openspec
+
 # env file
 .env
 *.bak
