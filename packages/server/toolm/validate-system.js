@@ -150,7 +150,6 @@ async function validateCoreFiles() {
     { name: '工具管理处理器', path: path.join(__dirname, 'tool-manager.handler.js') },
     { name: '工具系统入口', path: path.join(__dirname, 'index.js') },
     { name: 'MCP服务器', path: path.join(__dirname, '..', 'mcp.server.js') },
-    { name: 'ToolX处理器', path: path.join(__dirname, '..', 'toolx.handler.js') },
   ];
   
   for (const file of coreFiles) {
