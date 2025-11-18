@@ -24,7 +24,7 @@
 
 # 新结构
 ~/.prompt-manager/toolbox/{toolname}/
-├── tool.js                    # 工具主文件
+├── {toolname}.tool.js        # 工具主文件
 ├── package.json              # 工具依赖配置
 ├── node_modules/             # 工具独立依赖
 ├── data/                     # 工具数据存储
@@ -39,8 +39,8 @@
 packages/resources/tools/{toolname}/{toolname}.tool.js
 
 # 同步到沙箱环境
-packages/resources/toolbox/{toolname}/
-├── tool.js                   # 从 tools/{toolname}/{toolname}.tool.js 同步
+~/.prompt-manager/toolbox/{toolname}/
+├── {toolname}.tool.js       # 工具主文件
 ├── package.json             # 工具依赖配置
 ├── node_modules/            # 工具独立依赖
 ├── data/                    # 工具数据存储
@@ -50,7 +50,7 @@ packages/resources/toolbox/{toolname}/
 ### 3.3 工具同步与沙箱执行机制
 所有工具（包括系统内置工具）都必须在沙箱环境中运行：
 
-1. **系统工具同步**：启动时将 `packages/resources/tools/` 目录下的工具同步到 `packages/resources/toolbox/` 目录
+1. **系统工具同步**：启动时将 `packages/resources/tools/` 目录下的工具同步到 `~/.prompt-manager/toolbox/` 目录
 2. **沙箱执行**：所有工具都通过沙箱执行器运行，确保隔离性
 3. **依赖管理**：每个工具独立管理其依赖，无论是否为系统内置工具
 4. **环境变量**：所有工具都支持通过 `.env` 文件配置环境变量
@@ -59,7 +59,7 @@ packages/resources/toolbox/{toolname}/
 ```javascript
 async function syncSystemTools() {
   const toolsDir = path.join(__dirname, '..', 'resources', 'tools');
-  const toolboxDir = path.join(__dirname, '..', 'resources', 'toolbox');
+  const toolboxDir = path.join(os.homedir(), '.prompt-manager', 'toolbox', toolName);
   
   if (!fs.existsSync(toolsDir)) {
     return;
@@ -74,7 +74,7 @@ async function syncSystemTools() {
     if (fs.statSync(toolDir).isDirectory() && fs.existsSync(toolFile)) {
       // 同步到 toolbox 目录
       const sandboxDir = path.join(toolboxDir, toolName);
-      const sandboxToolFile = path.join(sandboxDir, 'tool.js');
+      const sandboxToolFile = path.join(sandboxDir, `${toolName}.tool.js`);
       
       // 创建沙箱目录
       await fs.promises.mkdir(sandboxDir, { recursive: true });
@@ -92,7 +92,7 @@ async function syncSystemTools() {
           name: `@prompt-manager/${toolName}`,
           version: '1.0.0',
           description: `Prompt Manager System Tool: ${toolName}`,
-          main: 'tool.js',
+          main: `${toolName}.tool.js`,
           dependencies: dependencies,
           private: true
         };
@@ -206,7 +206,41 @@ async function installDependencies(toolDir) {
 
 ## 6. 沙箱执行机制
 
-### 6.1 工具执行器
+### 6.0 实际实现说明
+
+**实际实现：ES6 模块 + 受限执行环境**
+
+设计文档中提到的 VM 执行方案是理想方案，但实际实现采用了 ES6 模块 + 受限执行环境方案。
+
+**实现方式：**
+- 工具使用 ES6 模块格式开发
+- 通过动态 `import()` 加载工具模块
+- 通过上下文绑定和 API 层限制实现安全隔离
+
+**安全措施：**
+- 上下文绑定（this.api）- 工具只能通过受限 API 访问资源
+- 超时控制 - 防止工具无限执行
+- API 层限制 - 所有操作通过受限 API
+- 路径验证 - 防止越权访问
+- 日志隔离 - 每个工具有独立日志
+- 依赖隔离 - 每个工具有独立的 node_modules
+
+**适用场景：**
+- ✅ 系统内置工具（信任度高）
+- ✅ 用户自己开发的工具（用户负责安全）
+- ⚠️ 第三方不可信工具（未来可能需要 VM 完全隔离）
+
+**选择原因：**
+1. ES6 语法开发体验更好
+2. 避免 ES6 转 CommonJS 的转换风险
+3. 对于系统工具和用户工具，当前方案已足够安全
+4. 节省开发时间
+
+详细说明请参考 `TOOL_DEVELOPMENT_GUIDE.md`。
+
+---
+
+### 6.1 工具执行器（设计文档方案）
 ```javascript
 class ToolSandboxExecutor {
   async execute(toolName, params) {
@@ -215,7 +249,7 @@ class ToolSandboxExecutor {
     
     // 2. 创建沙箱环境
     const toolDir = path.join(os.homedir(), '.prompt-manager', 'toolbox', toolName);
-    const toolModulePath = path.join(toolDir, 'tool.js');
+    const toolModulePath = path.join(toolDir, `{toolName}.tool.js`);
     
     // 3. 创建工具 API 接口，限制权限
     const toolApi = this.createSandboxedApi(toolName, params);
@@ -370,7 +404,7 @@ class ToolSandboxExecutor {
     
     // 3. 创建沙箱环境，合并环境变量
     const toolDir = path.join(os.homedir(), '.prompt-manager', 'toolbox', toolName);
-    const toolModulePath = path.join(toolDir, 'tool.js');
+    const toolModulePath = path.join(toolDir, `{toolName}.tool.js`);
     
     // 4. 创建工具 API 接口，限制权限
     const toolApi = this.createSandboxedApi(toolName, params);
@@ -1052,7 +1086,7 @@ async function createSandboxStructure(oldToolDir, newToolDir) {
 
 在实现独立沙箱环境后，需要验证以下项目：
 
-- [ ] 工具目录结构已从 `~/.prompt-manager/tools` 变更为 `~/.prompt-manager/toolbox`
+- [ ] 验证工具目录结构 `~/.prompt-manager/toolbox`
 - [ ] 每个工具都有独立的 `package.json` 文件
 - [ ] 工具依赖在执行前自动检查和安装
 - [ ] 依赖安装超时机制正常工作

@@ -4,18 +4,62 @@
 
 Prompt Manager 的工具现在运行在独立的沙箱环境中，每个工具都有自己的依赖和运行环境，与项目主环境完全隔离。
 
-重要的是，**所有工具（包括系统内置工具和用户工具）都必须在沙箱环境中运行**。系统内置工具虽然开发时位于 `packages/resources/tools/` 目录，但在运行时会通过同步机制复制到 `packages/resources/toolbox/` 目录并在沙箱环境中执行。
+重要的是，**所有工具（包括系统内置工具和用户工具）都必须在沙箱环境中运行**。系统内置工具虽然开发时位于 `packages/resources/tools/` 目录，但在运行时会通过同步机制复制到 `～/.prompt-manager/toolbox/` 目录并在沙箱环境中执行。
+
+### 1.1 执行环境说明
+
+**实现方案：ES6 模块 + 受限执行环境**
+
+工具使用 ES6 模块格式开发，在受限的执行环境中运行。通过以下安全措施实现有效隔离：
+
+- **上下文绑定**：工具通过 `this.api` 访问受限的 API
+- **超时控制**：工具执行有超时限制（默认 30 秒）
+- **API 层限制**：所有操作都通过受限的 API 层
+- **路径验证**：所有文件路径都经过严格验证
+- **日志隔离**：每个工具有独立的日志文件
+- **依赖隔离**：每个工具有独立的 `node_modules`
+
+**适用场景：** 系统内置工具、用户自己开发的工具（信任度高）
+
+**选择原因：** ES6 语法开发体验好，避免转换风险，当前需求已足够安全
 
 ## 2. 模块结构规范
 
+### 2.1 ES6 模块格式
+
+工具必须使用 ES6 模块格式开发：
+
 ```javascript
 // 使用 ES6 模块导出
-import { /* 必要的内置模块 */ } from 'node:module';
+import path from 'path';
+import os from 'os';
 
 export default {
   // 工具实现方法
+  getDependencies() { ... },
+  getMetadata() { ... },
+  getSchema() { ... },
+  async execute(params) {
+    // 通过 this.api 访问受限的 API
+    const { api } = this;
+    api?.logger?.info('执行开始');
+    // ...
+  }
 };
 ```
+
+### 2.2 上下文访问
+
+工具执行时，可以通过 `this` 访问以下上下文：
+
+- `this.api` - 受限的 API 对象，包含：
+  - `api.logger` - 日志记录器（info, warn, error, debug）
+  - `api.storage` - 存储服务（getItem, setItem）
+  - `api.environment` - 环境变量访问（get, set）
+- `this.__toolDir` - 工具目录路径
+- `this.__toolName` - 工具名称
+
+**注意：** 工具代码中的 `this` 会被自动绑定到包含 `api` 的上下文对象，确保工具可以正确访问 `this.api`。
 
 ## 3. 必需接口方法
 
@@ -171,6 +215,9 @@ resolveSecurePath(inputPath) {
 
 ### 4.2 环境变量配置
 ```javascript
+import path from 'path';
+import os from 'os';
+
 getAllowedDirectories() {
   const { api } = this;
   
@@ -188,6 +235,7 @@ getAllowedDirectories() {
       }
     } catch (error) {
       // 解析失败时使用默认值
+      api?.logger?.warn('Failed to parse ALLOWED_DIRECTORIES', { error: error.message });
     }
   }
   
@@ -199,7 +247,28 @@ getAllowedDirectories() {
 }
 ```
 
-## 5. 日志记录规范
+## 5. 执行环境说明
+
+### 5.1 执行方式
+
+工具使用 ES6 模块格式，通过动态 `import()` 加载，然后在受限的执行环境中运行：
+
+1. **模块加载**：使用 `import()` 动态导入工具模块
+2. **上下文绑定**：将工具方法绑定到包含 `api` 的上下文对象
+3. **受限执行**：工具只能通过 `this.api` 访问受限的 API
+4. **超时控制**：工具执行有超时限制（默认 30 秒，可通过 `getRuntimeConfig()` 自定义）
+
+### 5.2 安全措施
+
+通过以下措施实现安全隔离：
+
+- **API 层限制**：所有操作都通过受限的 API 层，工具无法直接访问主进程对象
+- **路径验证**：所有文件路径都经过严格验证，防止越权访问
+- **超时控制**：防止工具无限执行或阻塞
+- **日志隔离**：每个工具有独立的日志文件
+- **依赖隔离**：每个工具有独立的 `node_modules`
+
+## 6. 日志记录规范
 
 所有工具的输入和输出日志都应输出到 `~/.prompt-manager/toolbox/{toolname}/run.log` 文件中。
 
@@ -212,7 +281,7 @@ api?.logger?.info('执行开始', {
 api?.logger?.warn('警告信息', { context });
 api?.logger?.error('错误信息', { error: error.message });
 
-// 在沙箱环境中，console 输出会自动重定向到 run.log 文件
+// 在受限执行环境中，console 输出会自动重定向到 run.log 文件
 console.log('这将被记录到 run.log 文件中');
 console.info('这将被记录到 run.log 文件中');
 console.warn('这将被记录到 run.log 文件中');
@@ -558,26 +627,26 @@ async function validateSandboxEnvironment(tool) {
 
 ##### 系统内置工具
 - 原始位置：`packages/resources/tools/{tool-name}/{tool-name}.tool.js`（开发时）
-- 同步到：`packages/resources/toolbox/{tool-name}/tool.js`（运行时）
+- 同步到：`~/.prompt-manager/toolbox/{tool-name}/{tool-name}.tool.js`（运行时）
 
-系统工具在开发时位于 `packages/resources/tools/` 目录，但在运行时会通过同步机制复制到 `packages/resources/toolbox/` 目录并在沙箱环境中执行。
+系统工具在开发时位于 `packages/resources/tools/` 目录，但在运行时会通过同步机制复制到 `~/.prompt-manager/toolbox/` 目录并在沙箱环境中执行。
 
 ##### 用户工具
-- 用户工具：`~/.prompt-manager/toolbox/{tool-name}/tool.js`
+- 用户工具：`~/.prompt-manager/toolbox/{tool-name}/{tool-name}.tool.js`
 
-例如，filesystem 工具的路径为：`packages/resources/toolbox/filesystem/tool.js`
+例如，filesystem 工具的路径为：`packages/resources/toolbox/filesystem/filesystem.tool.js`
 
 新工具目录结构：
 ```
 ~/.prompt-manager/toolbox/{tool-name}/
-├── tool.js                    # 工具主文件
+├── {tool-name}.tool.js       # 工具主文件
 ├── package.json              # 工具依赖配置
 ├── node_modules/             # 工具独立依赖（自动生成）
 ├── data/                     # 工具数据存储（可选）
 └── logs/                     # 工具运行日志（可选）
 ```
 
-所有工具，无论系统内置还是用户创建，都必须在沙箱环境中运行。系统工具在启动时会自动从 `packages/resources/tools/` 同步到 `packages/resources/toolbox/` 目录，然后在沙箱环境中执行。
+所有工具，无论系统内置还是用户创建，都必须在沙箱环境中运行。系统工具在启动时会自动从 `packages/resources/tools/` 同步到 `~/.prompt-manager/toolbox/` 目录，然后在沙箱环境中执行。
 
 #### 9.6.2 工具加载机制
 ToolLoaderService 会自动扫描上述目录中的工具，遵循以下规则：
@@ -684,7 +753,7 @@ parameters:
 - [ ] 更新了系统内置工具列表，包含新工具的名称和功能描述
 - [ ] 添加了新工具的使用场景到 MCP 服务器的描述中
 - [ ] 工具在沙箱环境中运行（权限受限）
-- [ ] 系统内置工具会从 packages/resources/tools/ 同步到 packages/resources/toolbox/ 目录
+- [ ] 系统内置工具会从 packages/resources/tools/ 同步到 ~/.prompt-manager/toolbox/ 目录
 - [ ] 工具定义了适当的运行时配置（可选的 getRuntimeConfig 方法）
 - [ ] 工具依赖声明正确，不会与系统环境冲突
 
