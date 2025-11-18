@@ -14,6 +14,7 @@ import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
+import { pathExists } from './tool-utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,12 +24,10 @@ class ToolLoaderService {
     // 工具缓存：toolName -> toolModule
     this.toolCache = new Map();
     
-    // 工具目录列表
+    // 工具目录列表（所有工具都在沙箱环境中）
     this.toolDirectories = [
-      // 系统内置工具目录
-      path.join(__dirname, '..', '..', 'resources', 'tools'),
-      // 用户工具目录
-      path.join(os.homedir(), '.prompt-manager', 'tools')
+      // 沙箱工具目录（系统工具和用户工具都在这里）
+      path.join(os.homedir(), '.prompt-manager', 'toolbox')
     ];
     
     // 已初始化标志
@@ -46,9 +45,9 @@ class ToolLoaderService {
 
     logger.info('初始化工具加载器...');
     
-    // 确保用户工具目录存在
-    const userToolsDir = path.join(os.homedir(), '.prompt-manager', 'tools');
-    await fs.ensureDir(userToolsDir);
+    // 确保工具箱目录存在
+    const toolboxDir = path.join(os.homedir(), '.prompt-manager', 'toolbox');
+    await fs.ensureDir(toolboxDir);
     
     // 扫描并加载所有工具
     await this.scanAndLoadTools();
@@ -62,7 +61,7 @@ class ToolLoaderService {
    */
   async scanAndLoadTools() {
     for (const toolsDir of this.toolDirectories) {
-      if (!await fs.pathExists(toolsDir)) {
+      if (!await pathExists(toolsDir)) {
         logger.debug(`工具目录不存在，跳过: ${toolsDir}`);
         continue;
       }
@@ -79,7 +78,7 @@ class ToolLoaderService {
           const toolDir = path.join(toolsDir, toolName);
           const toolFile = path.join(toolDir, `${toolName}.tool.js`);
           
-          if (await fs.pathExists(toolFile)) {
+          if (await pathExists(toolFile)) {
             try {
               await this.loadTool(toolName, toolFile);
             } catch (error) {

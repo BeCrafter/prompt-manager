@@ -338,7 +338,71 @@ export default {
       const fs = await import('fs');
       const fsPromises = fs.promises;
       const crypto = await import('crypto');
-      const { default: pdfParse } = await import('pdf-parse');
+      
+      // 使用工具上下文的模块导入函数，从工具的 node_modules 导入
+      let PDFParse;
+      try {
+        if (this.importToolModule) {
+          // 使用工具上下文提供的导入函数
+          const pdfParseModule = await this.importToolModule('pdf-parse');
+          api?.logger?.debug('pdf-parse 模块导入结果', { 
+            hasDefault: !!pdfParseModule.default,
+            type: typeof pdfParseModule.default,
+            keys: Object.keys(pdfParseModule)
+          });
+          
+          // pdf-parse v2.x 导出 PDFParse 类
+          // 首先尝试从模块中获取 PDFParse 类
+          if (pdfParseModule.PDFParse && typeof pdfParseModule.PDFParse === 'function') {
+            PDFParse = pdfParseModule.PDFParse;
+          } else if (pdfParseModule.default && typeof pdfParseModule.default === 'function') {
+            // 检查 default 是否是类
+            const defaultExport = pdfParseModule.default;
+            if (defaultExport.toString().startsWith('class') || defaultExport.prototype) {
+              PDFParse = defaultExport;
+            } else {
+              // 可能是旧版本的函数导出
+              PDFParse = defaultExport;
+            }
+          } else if (typeof pdfParseModule === 'function') {
+            // 直接是函数（旧版本）
+            PDFParse = pdfParseModule;
+          } else {
+            // 尝试从对象中查找 PDFParse
+            PDFParse = pdfParseModule.PDFParse || pdfParseModule.default || pdfParseModule;
+          }
+        } else if (this.requireToolModule) {
+          // 降级方案：使用 require
+          const pdfParseModule = this.requireToolModule('pdf-parse');
+          // pdf-parse v2.x 导出对象，包含 PDFParse 类
+          PDFParse = pdfParseModule.PDFParse || pdfParseModule.default || pdfParseModule;
+        } else {
+          // 最后尝试：直接导入
+          const pdfParseModule = await import('pdf-parse');
+          PDFParse = pdfParseModule.PDFParse || pdfParseModule.default || pdfParseModule;
+        }
+        
+        // 验证 PDFParse 是否存在
+        if (!PDFParse || (typeof PDFParse !== 'function' && typeof PDFParse !== 'object')) {
+          api?.logger?.error('pdf-parse 模块格式错误', {
+            type: typeof PDFParse,
+            isObject: typeof PDFParse === 'object',
+            keys: PDFParse && typeof PDFParse === 'object' ? Object.keys(PDFParse).slice(0, 10) : []
+          });
+          throw new Error(`pdf-parse 模块格式错误：无法找到 PDFParse 类或函数。请检查模块导出格式。`);
+        }
+        
+        api?.logger?.info('pdf-parse 模块加载成功', { 
+          type: typeof PDFParse,
+          isClass: typeof PDFParse === 'function' && PDFParse.toString().startsWith('class')
+        });
+      } catch (error) {
+        api?.logger?.error('加载 pdf-parse 模块失败', { 
+          error: error.message,
+          stack: error.stack
+        });
+        throw new Error(`无法加载 pdf-parse 模块：${error.message}。请确保依赖已正确安装到工具的 node_modules 目录。`);
+      }
 
       api.logger.info('开始处理 PDF', { pdfPath: resolvedPdfPath, pages, extractImages, forceRefresh });
 
@@ -375,7 +439,32 @@ export default {
       if (!pdfMetadata || forceRefresh) {
         // 首次处理此 PDF，解析基本信息
         api.logger.info('首次处理此 PDF，解析元信息');
-        const pdfData = await pdfParse(pdfBuffer);
+        
+        // 使用 PDFParse 类解析 PDF
+        let pdfData;
+        let pdfParser = null;
+        try {
+          if (typeof PDFParse === 'function' && PDFParse.toString().startsWith('class')) {
+            // pdf-parse v2.x: 使用类
+            pdfParser = new PDFParse({ data: pdfBuffer });
+            const textResult = await pdfParser.getText();
+            const infoResult = await pdfParser.getInfo();
+            pdfData = {
+              text: textResult.text || '',
+              info: infoResult.info || {},
+              metadata: infoResult.metadata || {}
+            };
+          } else {
+            // 旧版本: 直接调用函数
+            pdfData = await PDFParse(pdfBuffer);
+          }
+        } finally {
+          // 清理资源
+          if (pdfParser && typeof pdfParser.destroy === 'function') {
+            await pdfParser.destroy();
+          }
+        }
+        
         const lines = pdfData.text.split('\n');
         const totalPages = (pdfData.info && pdfData.info.Pages) || this.estimatePages(lines);
 
@@ -435,7 +524,26 @@ export default {
       let cacheMisses = 0;
 
       // 解析整个 PDF 以获取内容
-      const pdfData = await pdfParse(pdfBuffer);
+      let pdfData;
+      let pdfParser = null;
+      try {
+        if (typeof PDFParse === 'function' && PDFParse.toString().startsWith('class')) {
+          // pdf-parse v2.x: 使用类
+          pdfParser = new PDFParse({ data: pdfBuffer });
+          const textResult = await pdfParser.getText();
+          pdfData = {
+            text: textResult.text || ''
+          };
+        } else {
+          // 旧版本: 直接调用函数
+          pdfData = await PDFParse(pdfBuffer);
+        }
+      } finally {
+        // 清理资源
+        if (pdfParser && typeof pdfParser.destroy === 'function') {
+          await pdfParser.destroy();
+        }
+      }
       const allText = pdfData.text;
       const textByPage = this.splitTextByPages(allText, totalPages);
 

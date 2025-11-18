@@ -14,6 +14,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
+import { pathExists } from './tool-utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -129,7 +130,7 @@ async function validateDirectoryStructure() {
   
   for (const [name, dirPath] of Object.entries(paths)) {
     await asyncCheck(`${name} 存在: ${dirPath}`, async () => {
-      const exists = await fs.pathExists(dirPath);
+      const exists = await pathExists(dirPath);
       if (!exists && name === '用户工具目录') {
         // 用户工具目录不存在时创建
         await fs.ensureDir(dirPath);
@@ -154,7 +155,7 @@ async function validateCoreFiles() {
   
   for (const file of coreFiles) {
     await asyncCheck(`${file.name} 文件存在`, async () => {
-      return await fs.pathExists(file.path);
+      return await pathExists(file.path);
     });
     
     await asyncCheck(`${file.name} 可读`, async () => {
@@ -175,7 +176,7 @@ async function validateToolFiles() {
   const rootDir = path.join(__dirname, '..', '..', '..', '..');
   const toolsDir = path.join(rootDir, 'packages', 'resources', 'tools');
   
-  if (!await fs.pathExists(toolsDir)) {
+  if (!await pathExists(toolsDir)) {
     error(`工具目录不存在: ${toolsDir}`);
     return;
   }
@@ -191,7 +192,7 @@ async function validateToolFiles() {
     
     const toolFile = path.join(toolPath, `${toolDir}.tool.js`);
     await asyncCheck(`工具 '${toolDir}' 文件存在`, async () => {
-      return await fs.pathExists(toolFile);
+      return await pathExists(toolFile);
     });
   }
 }
@@ -226,7 +227,7 @@ async function validateToolInterfaces() {
   const rootDir = path.join(__dirname, '..', '..', '..', '..');
   const toolsDir = path.join(rootDir, 'packages', 'resources', 'tools');
   
-  if (!await fs.pathExists(toolsDir)) {
+  if (!await pathExists(toolsDir)) {
     warning('工具目录不存在，跳过接口验证');
     return;
   }
@@ -241,7 +242,7 @@ async function validateToolInterfaces() {
     
     const toolFile = path.join(toolPath, `${toolDir}.tool.js`);
     
-    if (!await fs.pathExists(toolFile)) continue;
+    if (!await pathExists(toolFile)) continue;
     
     await asyncCheck(`工具 '${toolDir}' 符合接口规范`, async () => {
       const toolModule = await import(toolFile);

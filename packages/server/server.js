@@ -3,6 +3,8 @@ import { pathToFileURL } from 'url';
 import { config } from './utils/config.js';
 import { logger } from './utils/logger.js';
 import { util } from './utils/util.js';
+import { syncSystemTools } from './toolm/tool-sync.service.js';
+import { startLogCleanupTask } from './toolm/tool-logger.service.js';
 
 // 动态导入 promptManager，以处理 Electron 打包后的路径问题
 let promptManager;
@@ -50,6 +52,16 @@ export async function startServer(options = {}) {
     try {
       await _handleConfig(options);
       await promptManager.loadPrompts();
+      
+      // 同步系统工具到沙箱环境
+      try {
+        await syncSystemTools();
+      } catch (error) {
+        logger.error('同步系统工具失败，继续启动服务', { error: error.message });
+      }
+      
+      // 启动日志清理任务
+      startLogCleanupTask();
 
       return await new Promise((resolve, reject) => {
         const server = app.listen(config.getPort(), () => {
