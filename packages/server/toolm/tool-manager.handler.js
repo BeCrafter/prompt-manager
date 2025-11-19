@@ -155,8 +155,8 @@ async function handleExecuteMode(toolName, parameters) {
     const toolModule = tool.module;
     const toolDir = path.join(os.homedir(), '.prompt-manager', 'toolbox', toolName);
 
-    // 1. 确保依赖已安装
-    await ensureToolDependencies(toolName);
+    // 1. 确保工具运行环境已初始化（创建 package.json 并安装依赖）
+    await ensureToolDependencies(toolName, toolModule);
 
     // 2. 加载工具环境变量
     const toolEnvVars = await loadToolEnvironment(toolName);

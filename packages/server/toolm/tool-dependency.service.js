@@ -20,15 +20,17 @@ const execAsync = promisify(exec);
 /**
  * 确保工具依赖已安装
  * @param {string} toolName - 工具名称
+ * @param {object} toolModule - 工具模块（可选，用于自动创建 package.json）
  */
-export async function ensureToolDependencies(toolName) {
+export async function ensureToolDependencies(toolName, toolModule = null) {
   const toolDir = path.join(os.homedir(), '.prompt-manager', 'toolbox', toolName);
   const packageJsonPath = path.join(toolDir, 'package.json');
   const nodeModulesPath = path.join(toolDir, 'node_modules');
   
-  // 检查 package.json 是否存在
+  // 检查 package.json 是否存在，如果不存在则自动创建
   if (!await pathExists(packageJsonPath)) {
-    throw new Error(`工具 ${toolName} 缺少 package.json 文件`);
+    logger.info(`工具 ${toolName} 缺少 package.json，正在自动创建...`);
+    await createPackageJson(toolName, toolDir, toolModule);
   }
   
   const packageJson = await fs.readJson(packageJsonPath);
@@ -50,6 +52,55 @@ export async function ensureToolDependencies(toolName) {
   // 检查依赖是否需要更新（简化版本：检查 package.json 是否更新）
   // 这里可以进一步优化，检查 package.json 的修改时间
   logger.debug(`工具 ${toolName} 依赖已存在`);
+}
+
+/**
+ * 自动创建 package.json 文件
+ * @param {string} toolName - 工具名称
+ * @param {string} toolDir - 工具目录
+ * @param {object} toolModule - 工具模块（可选）
+ */
+async function createPackageJson(toolName, toolDir, toolModule) {
+  // 确保工具目录存在
+  await fs.ensureDir(toolDir);
+  
+  // 获取工具依赖（如果工具模块提供了 getDependencies 方法）
+  let dependencies = {};
+  if (toolModule && typeof toolModule.getDependencies === 'function') {
+    try {
+      dependencies = toolModule.getDependencies() || {};
+    } catch (error) {
+      logger.warn(`获取工具 ${toolName} 依赖失败:`, error.message);
+    }
+  }
+  
+  // 获取工具元数据（用于 package.json 的基本信息）
+  let metadata = { name: toolName, version: '1.0.0' };
+  if (toolModule && typeof toolModule.getMetadata === 'function') {
+    try {
+      metadata = toolModule.getMetadata() || metadata;
+    } catch (error) {
+      logger.warn(`获取工具 ${toolName} 元数据失败:`, error.message);
+    }
+  }
+  
+  // 创建 package.json
+  const packageJson = {
+    name: `@prompt-manager/tool-${toolName}`,
+    version: metadata.version || '1.0.0',
+    description: metadata.description || `Prompt Manager tool: ${toolName}`,
+    main: `${toolName}.tool.js`,
+    type: 'module',
+    dependencies: dependencies
+  };
+  
+  // 写入 package.json
+  const packageJsonPath = path.join(toolDir, 'package.json');
+  await fs.writeJson(packageJsonPath, packageJson, { spaces: 2 });
+  
+  logger.info(`已为工具 ${toolName} 创建 package.json`, { 
+    dependencies: Object.keys(dependencies).length 
+  });
 }
 
 /**
