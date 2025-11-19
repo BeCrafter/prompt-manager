@@ -156,150 +156,11 @@ export default {
   },
 
   /**
-   * 获取允许的目录列表
+   * 执行工具
+   * 
+   * 注意：文件系统基础能力（getAllowedDirectories、initializeFilesystem、resolvePromptManagerPath）
+   * 已由框架层提供，工具可直接通过 this 调用这些方法
    */
-  getAllowedDirectories() {
-    const { api } = this;
-
-    // Try to get configuration from environment variable
-    let allowedDirs = ['~/.prompt-manager'];  // Default value
-
-    if (api && api.environment) {
-      try {
-        let configStr = api.environment.get('ALLOWED_DIRECTORIES');
-        
-        // 如果直接获取失败，尝试使用工具特定的环境变量名
-        if (!configStr) {
-          // 从 process.env 直接获取（可能是通过 configure 模式设置的）
-          // 在 configure 模式中，键被设置为 ${toolName.toUpperCase()}_${key}
-          // 工具名 'pdf-reader' 转换为 'PDF-READER'
-          const toolSpecificKey = 'PDF-READER_ALLOWED_DIRECTORIES';
-          configStr = process.env[toolSpecificKey];
-        }
-        
-        if (configStr) {
-          try {
-            // 首先尝试作为 JSON 字符串解析（适用于通过 configure 模式设置的值）
-            // Handle escaped quotes from .env file parsing
-            // The ToolEnvironment escapes backslashes and quotes when saving to .env
-            // We need to unescape them before parsing JSON
-            let unescapedConfigStr = configStr.replace(/"/g, '"').replace(/\\/g, '\\');
-            
-            console.log('JSON.parse ALLOWED_DIRECTORIES config:', unescapedConfigStr);
-
-            const parsed = JSON.parse(unescapedConfigStr);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              allowedDirs = parsed;
-            }
-          } catch (jsonError) {
-            // 如果 JSON 解析失败，可能是一个简单的路径字符串（如 "/Users/mark"）
-            // 在这种情况下，将字符串按逗号分割并处理为路径数组
-            if (typeof configStr === 'string') {
-              // 尝试简单地将字符串作为单个路径处理
-              // 检查是否是 JSON 数组格式的字符串（带方括号）
-              if (configStr.startsWith('[') && configStr.endsWith(']')) {
-                // 这应该是一个 JSON 数组，但解析失败，可能是格式问题
-                // 重新尝试修复格式
-                let fixedConfigStr = configStr.replace(/'/g, '"'); // 将单引号替换为双引号
-                try {
-                  const parsed = JSON.parse(fixedConfigStr);
-                  if (Array.isArray(parsed) && parsed.length > 0) {
-                    allowedDirs = parsed;
-                  }
-                } catch {
-                  // 如果仍然失败，将原始字符串作为单个路径
-                  allowedDirs = [configStr];
-                }
-              } else {
-                // 直接将字符串作为单个路径
-                allowedDirs = [configStr];
-              }
-            }
-          }
-        }
-      } catch (error) {
-        // Fall back to default value if parsing fails
-        api?.logger?.warn('Failed to parse ALLOWED_DIRECTORIES', { error: error.message });
-      }
-    }
-
-    // Expand ~ to home directory and normalize paths
-    return allowedDirs.map(dir => {
-      const expanded = dir.replace(/^~/, os.homedir());
-      return path.resolve(expanded);
-    });
-  },
-
-  /**
-   * 初始化文件系统
-   */
-  async initializeFilesystem() {
-    if (!this._initialized) {
-      // 获取允许的目录列表
-      const allowedDirectories = this.getAllowedDirectories();
-      this._allowedDirectories = allowedDirectories;
-      this._initialized = true;
-      
-      // 记录日志
-      const { api } = this;
-      api?.logger?.info('PDF Reader filesystem initialized', { 
-        allowedDirectories: this._allowedDirectories 
-      });
-    }
-  },
-
-  /**
-   * PromptManager特定的路径处理
-   * 将相对路径转换为绝对路径，并确保在允许的目录范围内
-   */
-  resolvePromptManagerPath(inputPath) {
-    const { api } = this;
-    
-    // 获取允许的目录列表
-    const allowedDirs = this._allowedDirectories || this.getAllowedDirectories();
-    
-    if (!inputPath) {
-      // 没有路径时返回第一个允许的目录
-      return allowedDirs[0];
-    }
-    
-    // 处理 ~ 开头的路径
-    const expandedPath = inputPath.replace(/^~/, os.homedir());
-    
-    // 如果是绝对路径
-    if (path.isAbsolute(expandedPath)) {
-      const resolved = path.resolve(expandedPath);
-      
-      // 检查是否在任何允许的目录内
-      const isAllowed = allowedDirs.some(dir => resolved.startsWith(dir));
-      
-      if (!isAllowed) {
-        const dirsStr = allowedDirs.join(', ');
-        api?.logger?.warn('Path access denied', { path: resolved, allowedDirs });
-        throw new Error(`路径越权: ${inputPath} 不在允许的目录范围内 [${dirsStr}]`);
-      }
-      
-      return resolved;
-    }
-    
-    // 相对路径，尝试在每个允许的目录中解析
-    // 优先使用第一个允许的目录（通常是 ~/.prompt-manager）
-    const baseDir = allowedDirs[0];
-    const fullPath = path.join(baseDir, expandedPath);
-    const resolved = path.resolve(fullPath);
-    
-    // 安全检查：确保解析后的路径在允许的目录内
-    const isAllowed = allowedDirs.some(dir => resolved.startsWith(dir));
-    
-    if (!isAllowed) {
-      const dirsStr = allowedDirs.join(', ');
-      api?.logger?.warn('Path resolution failed', { path: inputPath, resolved, allowedDirs });
-      throw new Error(`路径越权: ${inputPath} 解析后超出允许的目录范围 [${dirsStr}]`);
-    }
-    
-    return resolved;
-  },
-
   async execute(params) {
     const { api } = this;
     
@@ -416,7 +277,8 @@ export default {
       const pdfHash = hash.digest('hex');
 
       // 3. 构建 PDF 数据目录，使用安全路径
-      const allowedDirs = this._allowedDirectories || this.getAllowedDirectories();
+      // 使用已初始化的目录列表，如果未初始化则获取
+      const allowedDirs = this._allowedDirectories ?? this.getAllowedDirectories();
       const baseDir = allowedDirs[0];
       const pdfDir = path.join(baseDir, '.prompt-manager', 'pdf-cache', pdfHash);
 

@@ -190,113 +190,10 @@ export default {
   },
 
   /**
-   * 获取允许的目录列表
-   */
-  getAllowedDirectories() {
-    const { api } = this;
-
-    // Try to get configuration from environment variable
-    let allowedDirs = ['~/.prompt-manager'];  // Default value
-
-    if (api && api.environment) {
-      try {
-        let configStr = api.environment.get('ALLOWED_DIRECTORIES');
-        if (configStr) {
-          // Handle escaped quotes from .env file parsing
-          // The ToolEnvironment escapes backslashes and quotes when saving to .env
-          // We need to unescape them before parsing JSON
-          configStr = configStr.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-
-          const parsed = JSON.parse(configStr);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            allowedDirs = parsed;
-          }
-        }
-      } catch (error) {
-        // Fall back to default value if parsing fails
-        api?.logger?.warn('Failed to parse ALLOWED_DIRECTORIES', { error: error.message });
-      }
-    }
-
-    // Expand ~ to home directory and normalize paths
-    return allowedDirs.map(dir => {
-      const expanded = dir.replace(/^~/, os.homedir());
-      return path.resolve(expanded);
-    });
-  },
-
-  /**
-   * 初始化文件系统（使用 Node.js 内置模块）
-   */
-  async initializeFilesystem() {
-    if (!this._initialized) {
-      // 获取允许的目录列表
-      const allowedDirectories = this.getAllowedDirectories();
-      this._allowedDirectories = allowedDirectories;
-      this._initialized = true;
-      
-      // 记录日志
-      const { api } = this;
-      api?.logger?.info('Filesystem initialized', { 
-        allowedDirectories: this._allowedDirectories 
-      });
-    }
-  },
-
-  /**
-   * PromptManager特定的路径处理
-   * 将相对路径转换为绝对路径，并确保在允许的目录范围内
-   */
-  resolvePromptManagerPath(inputPath) {
-    const { api } = this;
-    
-    // 获取允许的目录列表
-    const allowedDirs = this._allowedDirectories || this.getAllowedDirectories();
-    
-    if (!inputPath) {
-      // 没有路径时返回第一个允许的目录
-      return allowedDirs[0];
-    }
-    
-    // 处理 ~ 开头的路径
-    const expandedPath = inputPath.replace(/^~/, os.homedir());
-    
-    // 如果是绝对路径
-    if (path.isAbsolute(expandedPath)) {
-      const resolved = path.resolve(expandedPath);
-      
-      // 检查是否在任何允许的目录内
-      const isAllowed = allowedDirs.some(dir => resolved.startsWith(dir));
-      
-      if (!isAllowed) {
-        const dirsStr = allowedDirs.join(', ');
-        api?.logger?.warn('Path access denied', { path: resolved, allowedDirs });
-        throw new Error(`路径越权: ${inputPath} 不在允许的目录范围内 [${dirsStr}]`);
-      }
-      
-      return resolved;
-    }
-    
-    // 相对路径，尝试在每个允许的目录中解析
-    // 优先使用第一个允许的目录（通常是 ~/.prompt-manager）
-    const baseDir = allowedDirs[0];
-    const fullPath = path.join(baseDir, expandedPath);
-    const resolved = path.resolve(fullPath);
-    
-    // 安全检查：确保解析后的路径在允许的目录内
-    const isAllowed = allowedDirs.some(dir => resolved.startsWith(dir));
-    
-    if (!isAllowed) {
-      const dirsStr = allowedDirs.join(', ');
-      api?.logger?.warn('Path resolution failed', { path: inputPath, resolved, allowedDirs });
-      throw new Error(`路径越权: ${inputPath} 解析后超出允许的目录范围 [${dirsStr}]`);
-    }
-    
-    return resolved;
-  },
-
-  /**
    * 执行工具 - 包装MCP实现
+   * 
+   * 注意：文件系统基础能力（getAllowedDirectories、initializeFilesystem、resolvePromptManagerPath）
+   * 已由框架层提供，工具可直接通过 this 调用这些方法
    */
   async execute(params) {
     const { api } = this;
@@ -345,7 +242,8 @@ export default {
       
       // 特殊处理list_allowed_directories
       if (params.method === 'list_allowed_directories') {
-        const dirs = this._allowedDirectories || this.getAllowedDirectories();
+        // 使用已初始化的目录列表，如果未初始化则获取
+        const dirs = this._allowedDirectories ?? this.getAllowedDirectories();
         api?.logger?.info('Returning allowed directories', { directories: dirs });
         return dirs;
       }
@@ -596,7 +494,8 @@ export default {
           const foundFiles = await searchFiles(mcpParams.path, params.pattern);
           
           // 转换为相对路径（相对于第一个允许的目录）
-          const baseDir = this._allowedDirectories?.[0] || this.getAllowedDirectories()[0];
+          const allowedDirs = this._allowedDirectories ?? this.getAllowedDirectories();
+          const baseDir = allowedDirs[0];
           result = foundFiles.map(file => path.relative(baseDir, file));
           break;
         }

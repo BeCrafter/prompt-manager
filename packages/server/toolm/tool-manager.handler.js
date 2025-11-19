@@ -205,6 +205,199 @@ async function handleExecuteMode(toolName, parameters) {
       api: apiContext,
       __toolDir: toolDir,
       __toolName: toolName,
+      // 文件系统初始化状态（框架管理）
+      _filesystemInitialized: false,
+      _allowedDirectories: null,
+      
+      // 框架提供的文件系统基础能力
+      /**
+       * 获取允许的目录列表（框架提供）
+       * 工具可以选择覆盖此方法以实现自定义逻辑
+       */
+      getAllowedDirectories() {
+        const { api } = this;
+        
+        // 默认值
+        let allowedDirs = ['~/.prompt-manager'];
+        
+        if (api && api.environment) {
+          try {
+            let configStr = api.environment.get('ALLOWED_DIRECTORIES');
+            
+            // 如果直接获取失败，尝试使用工具特定的环境变量名
+            if (!configStr) {
+              const toolSpecificKey = `${toolName.toUpperCase().replace(/-/g, '_')}_ALLOWED_DIRECTORIES`;
+              configStr = process.env[toolSpecificKey];
+            }
+            
+            if (configStr) {
+              // 处理转义字符（从 .env 文件解析时可能需要）
+              configStr = configStr.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+              
+              // 首先尝试作为 JSON 字符串解析
+              try {
+                const parsed = JSON.parse(configStr);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  allowedDirs = parsed;
+                }
+              } catch (parseError) {
+                // 如果不是 JSON，尝试作为逗号分隔的字符串
+                if (typeof configStr === 'string' && configStr.includes(',')) {
+                  allowedDirs = configStr.split(',').map(s => s.trim()).filter(s => s);
+                } else if (configStr) {
+                  allowedDirs = [configStr];
+                }
+              }
+            }
+          } catch (error) {
+            // 回退到默认值
+            api?.logger?.warn('Failed to parse ALLOWED_DIRECTORIES', { error: error.message });
+          }
+        }
+        
+        // 展开 ~ 到主目录并规范化路径
+        return allowedDirs.map(dir => {
+          const expanded = dir.replace(/^~/, os.homedir());
+          return path.resolve(expanded);
+        });
+      },
+      
+      /**
+       * 初始化文件系统（框架提供）
+       * 工具可以选择覆盖此方法以实现自定义初始化逻辑
+       */
+      async initializeFilesystem() {
+        if (!this._filesystemInitialized) {
+          // 获取允许的目录列表
+          const allowedDirectories = this.getAllowedDirectories();
+          this._allowedDirectories = allowedDirectories;
+          this._filesystemInitialized = true;
+          
+          // 记录日志
+          const { api } = this;
+          api?.logger?.info('Filesystem initialized', { 
+            allowedDirectories: this._allowedDirectories 
+          });
+        }
+      },
+      
+      /**
+       * PromptManager特定的路径处理（框架提供）
+       * 将相对路径转换为绝对路径，并确保在允许的目录范围内
+       * 工具可以选择覆盖此方法以实现自定义路径解析逻辑
+       */
+      resolvePromptManagerPath(inputPath) {
+        const { api } = this;
+        
+        // 获取允许的目录列表
+        const allowedDirs = this._allowedDirectories || this.getAllowedDirectories();
+        
+        if (!inputPath) {
+          // 没有路径时返回第一个允许的目录
+          return allowedDirs[0];
+        }
+        
+        // 处理 ~ 开头的路径
+        const expandedPath = inputPath.replace(/^~/, os.homedir());
+        
+        // 如果是绝对路径
+        if (path.isAbsolute(expandedPath)) {
+          const resolved = path.resolve(expandedPath);
+          
+          // 规范化路径（移除末尾的斜杠，统一路径分隔符）
+          const normalizedResolved = path.normalize(resolved);
+          
+          // 检查路径是否在允许的目录列表中或其子目录中
+          // 策略：允许访问配置的目录及其所有子目录和文件
+          // 使用 path.relative 来确保路径真正在允许目录内部，防止路径遍历攻击
+          const isAllowed = allowedDirs.some(dir => {
+            const normalizedDir = path.normalize(dir);
+            
+            // 完全匹配允许的目录
+            if (normalizedResolved === normalizedDir) {
+              return true;
+            }
+            
+            // 检查是否是允许目录的子路径（包括子目录和文件）
+            // path.relative 返回相对路径：
+            // - 如果在同一目录树中，返回相对路径（如 "subdir/file.txt"）
+            // - 如果不在同一目录树中，会包含 ..（如 "../sibling/file.txt"）
+            const relativePath = path.relative(normalizedDir, normalizedResolved);
+            
+            // 如果 relativePath 以 .. 开头，说明路径不在允许目录内（可能是父目录或兄弟目录）
+            if (relativePath.startsWith('..')) {
+              return false;
+            }
+            
+            // 如果 relativePath 为空，说明是完全匹配（已在上面检查）
+            if (relativePath === '') {
+              return false;
+            }
+            
+            // 相对路径存在且不以 .. 开头，说明是允许目录的子路径
+            // 允许访问允许目录下的所有子目录和文件
+            return true;
+          });
+          
+          if (!isAllowed) {
+            const dirsStr = allowedDirs.join(', ');
+            api?.logger?.warn('Path access denied', { path: resolved, allowedDirs });
+            throw new Error(`路径越权: ${inputPath} 不在允许的目录范围内 [${dirsStr}]`);
+          }
+          
+          return resolved;
+        }
+        
+        // 相对路径，尝试在每个允许的目录中解析
+        // 优先使用第一个允许的目录（通常是 ~/.prompt-manager）
+        const baseDir = allowedDirs[0];
+        const fullPath = path.join(baseDir, expandedPath);
+        const resolved = path.resolve(fullPath);
+        
+        // 规范化路径
+        const normalizedResolved = path.normalize(resolved);
+        
+        // 安全检查：确保解析后的路径在允许的目录内或其子目录中
+        // 策略：允许访问配置的目录及其所有子目录和文件
+        // 使用 path.relative 来确保路径真正在允许目录内部，防止路径遍历攻击
+        const isAllowed = allowedDirs.some(dir => {
+          const normalizedDir = path.normalize(dir);
+          
+          // 完全匹配允许的目录
+          if (normalizedResolved === normalizedDir) {
+            return true;
+          }
+          
+          // 检查是否是允许目录的子路径（包括子目录和文件）
+          // path.relative 返回相对路径：
+          // - 如果在同一目录树中，返回相对路径（如 "subdir/file.txt"）
+          // - 如果不在同一目录树中，会包含 ..（如 "../sibling/file.txt"）
+          const relativePath = path.relative(normalizedDir, normalizedResolved);
+          
+          // 如果 relativePath 以 .. 开头，说明路径不在允许目录内（可能是父目录或兄弟目录）
+          if (relativePath.startsWith('..')) {
+            return false;
+          }
+          
+          // 如果 relativePath 为空，说明是完全匹配（已在上面检查）
+          if (relativePath === '') {
+            return false;
+          }
+          
+          // 相对路径存在且不以 .. 开头，说明是允许目录的子路径
+          // 允许访问允许目录下的所有子目录和文件
+          return true;
+        });
+        
+        if (!isAllowed) {
+          const dirsStr = allowedDirs.join(', ');
+          api?.logger?.warn('Path resolution failed', { path: inputPath, resolved, allowedDirs });
+          throw new Error(`路径越权: ${inputPath} 解析后超出允许的目录范围 [${dirsStr}]`);
+        }
+        
+        return resolved;
+      },
+      
       // 提供工具专用的模块导入函数
       requireToolModule: (moduleName) => {
         try {
