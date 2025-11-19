@@ -249,19 +249,47 @@ class RuntimeManager {
   }
 
   getPackageInfo() {
-    if (!this.runtimeRoot) {
-      throw new Error('Runtime environment not initialized');
-    }
+    // 优先从 app.asar 压缩包中读取 package.json
+    const asarPackagePath = path.join(process.resourcesPath, 'app.asar', 'package.json');
     
-    const packagePath = path.join(this.runtimeRoot, 'package.json');
-    
+    // 尝试从 app.asar 中读取
     try {
-      const packageContent = fs.readFileSync(packagePath, 'utf8');
+      const packageContent = fs.readFileSync(asarPackagePath, 'utf8');
+      this.logger.debug('Read package.json from app.asar', { path: asarPackagePath });
       return JSON.parse(packageContent);
-    } catch (error) {
-      this.logger.error('Failed to read package info', error);
-      return { version: 'unknown' };
+    } catch (asarError) {
+      // 如果从 app.asar 读取失败，尝试从 app.getAppPath() 读取（开发环境或备用方案）
+      try {
+        const appPathPackagePath = path.join(app.getAppPath(), 'package.json');
+        const packageContent = fs.readFileSync(appPathPackagePath, 'utf8');
+        this.logger.debug('Read package.json from app path', { path: appPathPackagePath });
+        return JSON.parse(packageContent);
+      } catch (appPathError) {
+        // 最后尝试从 runtimeRoot 读取（向后兼容）
+        if (this.runtimeRoot) {
+          try {
+            const runtimePackagePath = path.join(this.runtimeRoot, 'package.json');
+            const packageContent = fs.readFileSync(runtimePackagePath, 'utf8');
+            this.logger.debug('Read package.json from runtime root', { path: runtimePackagePath });
+            return JSON.parse(packageContent);
+          } catch (runtimeError) {
+            this.logger.error('Failed to read package info from all locations', {
+              asarError: asarError.message,
+              appPathError: appPathError.message,
+              runtimeError: runtimeError.message
+            });
+          }
+        } else {
+          this.logger.error('Failed to read package info from app.asar and app path', {
+            asarError: asarError.message,
+            appPathError: appPathError.message
+          });
+        }
+      }
     }
+    
+    // 所有尝试都失败，返回默认值
+    return { version: 'unknown' };
   }
 
   async cleanup() {
