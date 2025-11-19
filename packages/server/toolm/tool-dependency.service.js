@@ -3,19 +3,18 @@
  * 
  * 职责：
  * 1. 检查工具依赖是否已安装
- * 2. 自动安装工具依赖
+ * 2. 自动安装工具依赖（使用 @npmcli/arborist，不依赖系统 npm）
  * 3. 验证依赖版本匹配
+ * 
+ * 使用 PackageInstaller 基于 @npmcli/arborist 实现，可在 Electron 环境中直接使用
  */
 
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import { logger } from '../utils/logger.js';
 import { pathExists } from './tool-utils.js';
-
-const execAsync = promisify(exec);
+import PackageInstaller from './package-installer.service.js';
 
 /**
  * 确保工具依赖已安装
@@ -42,16 +41,16 @@ export async function ensureToolDependencies(toolName, toolModule = null) {
     return;
   }
   
-  // 检查 node_modules 是否存在
-  if (!await pathExists(nodeModulesPath)) {
-    logger.info(`工具 ${toolName} 依赖未安装，开始安装...`);
-    await installDependencies(toolDir);
+  // 检查 node_modules 是否存在，或者检查依赖是否需要更新
+  const needsInstall = !await pathExists(nodeModulesPath) || await needsDependencyUpdate(toolDir, dependencies);
+  
+  if (needsInstall) {
+    logger.info(`工具 ${toolName} 依赖需要安装或更新，开始安装...`);
+    await installDependencies(toolDir, dependencies);
     return;
   }
   
-  // 检查依赖是否需要更新（简化版本：检查 package.json 是否更新）
-  // 这里可以进一步优化，检查 package.json 的修改时间
-  logger.debug(`工具 ${toolName} 依赖已存在`);
+  logger.debug(`工具 ${toolName} 依赖已存在且为最新`);
 }
 
 /**
@@ -104,37 +103,64 @@ async function createPackageJson(toolName, toolDir, toolModule) {
 }
 
 /**
- * 安装工具依赖
+ * 检查依赖是否需要更新
  * @param {string} toolDir - 工具目录
+ * @param {Object} expectedDependencies - 期望的依赖列表
+ * @returns {Promise<boolean>} 是否需要更新
  */
-async function installDependencies(toolDir) {
-  logger.info(`在目录 ${toolDir} 中安装依赖...`);
+async function needsDependencyUpdate(toolDir, expectedDependencies) {
+  try {
+    // 检查每个依赖是否已安装且版本匹配
+    for (const [packageName, expectedVersion] of Object.entries(expectedDependencies)) {
+      const isInstalled = await PackageInstaller.isPackageInstalled(toolDir, packageName);
+      if (!isInstalled) {
+        logger.debug(`依赖 ${packageName} 未安装，需要更新`);
+        return true;
+      }
+      
+      // 可以进一步检查版本是否匹配（简化版本，暂时只检查是否存在）
+      // 如果需要精确版本匹配，可以读取 package.json 并比较版本
+    }
+    
+    return false;
+  } catch (error) {
+    logger.warn('检查依赖更新状态失败，将重新安装', { error: error.message });
+    return true; // 出错时重新安装
+  }
+}
+
+/**
+ * 安装工具依赖（使用 PackageInstaller 基于 @npmcli/arborist）
+ * @param {string} toolDir - 工具目录
+ * @param {Object} dependencies - 依赖列表
+ */
+async function installDependencies(toolDir, dependencies) {
+  logger.info(`在目录 ${toolDir} 中安装依赖...`, { dependencies });
   
   try {
-    // 执行 npm install
-    const { stdout, stderr } = await execAsync('npm install', {
-      cwd: toolDir,
-      timeout: 300000, // 5分钟超时
-      env: {
-        ...process.env,
-        NODE_ENV: 'production'
-      }
+    // 使用 PackageInstaller 安装依赖
+    // PackageInstaller 使用 @npmcli/arborist，不依赖系统 npm
+    // 可在 Electron 环境中直接使用
+    const result = await PackageInstaller.install({
+      workingDir: toolDir,
+      dependencies: dependencies,
+      timeout: 300000 // 5分钟超时
     });
     
-    if (stdout) {
-      logger.debug('依赖安装输出:', stdout);
-    }
+    logger.info('依赖安装成功', {
+      elapsed: result.elapsed,
+      installedCount: result.installedPackages.length,
+      packages: result.installedPackages
+    });
     
-    if (stderr && !stderr.includes('npm WARN')) {
-      logger.warn('依赖安装警告:', stderr);
-    }
-    
-    logger.info('依赖安装成功');
+    return result;
     
   } catch (error) {
     logger.error('依赖安装失败', { 
       error: error.message,
-      toolDir 
+      toolDir,
+      dependencies,
+      stack: error.stack
     });
     throw new Error(`依赖安装失败: ${error.message}`);
   }
