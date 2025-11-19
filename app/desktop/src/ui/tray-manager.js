@@ -1,7 +1,8 @@
-const { Tray, Menu, clipboard, nativeImage, dialog, shell, BrowserWindow } = require('electron');
+const { Tray, Menu, clipboard, nativeImage, dialog, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const EventEmitter = require('../core/event-emitter');
+const AdminWindowManager = require('./admin-window-manager');
 
 class TrayManager extends EventEmitter {
   constructor(logger, errorHandler, iconManager) {
@@ -13,7 +14,7 @@ class TrayManager extends EventEmitter {
     this.menuTemplate = [];
     this.iconPaths = [];
     this.currentState = null;
-    this.adminWindow = null; // 添加adminWindow引用
+    this.adminWindowManager = new AdminWindowManager(logger, iconManager);
   }
 
   async initialize(stateManager) {
@@ -142,29 +143,13 @@ class TrayManager extends EventEmitter {
   }
 
   openAdminWindow(adminUrl) {
-    if (this.adminWindow) {
-      this.adminWindow.focus();
+    if (this.adminWindowManager.hasWindow()) {
+      this.adminWindowManager.getWindow().focus();
       return;
     }
 
     try {
-      this.adminWindow = new BrowserWindow({
-        width: 1200,
-        height: 800,
-        title: 'Prompt Server 管理后台',
-        webPreferences: {
-          contextIsolation: true,
-          nodeIntegration: false
-        }
-      });
-
-      this.adminWindow.loadURL(adminUrl);
-      
-      this.adminWindow.on('closed', () => {
-        this.adminWindow = null;
-      });
-
-      this.logger.info('Admin window opened', { url: adminUrl });
+      this.adminWindowManager.openAdminWindow(adminUrl);
     } catch (error) {
       this.logger.error('Failed to open admin window', error);
     }
@@ -192,9 +177,8 @@ class TrayManager extends EventEmitter {
       this.logger.info('Tray destroyed');
     }
     
-    if (this.adminWindow) {
-      this.adminWindow.close();
-      this.adminWindow = null;
+    if (this.adminWindowManager) {
+      this.adminWindowManager.closeAdminWindow();
     }
   }
 }
