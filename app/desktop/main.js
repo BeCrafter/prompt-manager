@@ -18,7 +18,7 @@ const UpdateManager = require('./src/services/update-manager');
 const AboutDialogManager = require('./src/ui/about-dialog-manager');
 const SplashManager = require('./src/ui/splash-manager');
 const IconManager = require('./src/utils/icon-manager');
-const EnvSync = require('./src/utils/env-sync');
+const RuntimeSync = require('./src/utils/runtime-sync');
 
 class PromptManagerApp {
   constructor() {
@@ -48,8 +48,8 @@ class PromptManagerApp {
       this.splashManager.updateStatus('正在初始化...', 20);
       
       // 同步环境配置
-      await EnvSync.syncEnvConfig();
-      this.splashManager.updateStatus('正在加载配置...', 40);
+      await RuntimeSync.syncRuntime();
+      this.splashManager.updateStatus('正在同步工具箱...', 35);
       
       // 初始化日志系统
       await this.logger.initialize();

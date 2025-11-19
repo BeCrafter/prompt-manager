@@ -17,7 +17,7 @@
     "electron-builder": "^24.13.3"
   },
   "dependencies": {
-    "@becrafter/prompt-manager-core": "^0.0.22",
+    "@becrafter/prompt-manager-core": "^0.0.23",
     "@modelcontextprotocol/sdk": "^1.20.2",
     "tar": "^7.5.2"
   },
@@ -30,11 +30,12 @@
       "assets/**/*",
       "!docs",
       "!.npmignore",
+      "!assets/**/*.1.png",
       "!node_modules/**/test/**",
       "!node_modules/**/example/**",
       "!node_modules/**/*.md",
       "!node_modules/**/LICENSE",
-       {
+      {
         "from": "../../packages/web/",
         "to": "web/",
         "filter": ["**/*"]
@@ -45,7 +46,15 @@
       "buildResources": "assets"
     },
     "extraResources": [
-
+      {
+        "from": "../../packages/resources/tools/",
+        "to": "runtime/toolbox/",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../../env.example",
+        "to": "runtime/.env"
+      }
     ],
     "mac": {
       "category": "public.app-category.productivity",
