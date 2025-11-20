@@ -189,7 +189,7 @@ export default {
     try {
       // 初始化文件系统
       await this.initializeFilesystem();
-      
+
       // 使用安全路径解析
       const resolvedPdfPath = this.resolvePromptManagerPath(params.pdfPath);
       
@@ -278,9 +278,7 @@ export default {
 
       // 3. 构建 PDF 数据目录，使用安全路径
       // 使用已初始化的目录列表，如果未初始化则获取
-      const allowedDirs = this._allowedDirectories ?? this.getAllowedDirectories();
-      const baseDir = allowedDirs[0];
-      const pdfDir = path.join(baseDir, '.prompt-manager', 'pdf-cache', pdfHash);
+      const pdfDir = path.join(this.__toolDir, 'pdf-cache', pdfHash);
 
       // 确保目录存在
       await fsPromises.mkdir(pdfDir, { recursive: true });
