@@ -75,16 +75,11 @@ class RuntimeSync {
     const results = {};
     
     // 同步 toolbox（对应 runtime/toolbox）
+    // 使用递归同步，确保新增的工具能够被同步
     const toolboxSource = path.join(projectRoot, 'packages', 'resources', 'tools');
     const toolboxTarget = path.join(configRoot, 'toolbox');
     if (await PathUtils.pathExists(toolboxSource)) {
-      const result = await ResourceSync.syncDirectory({
-        targetPath: toolboxTarget,
-        devPath: () => toolboxSource,
-        packagedPaths: () => [],
-        skipIfExists: true,
-        name: '工具箱'
-      });
+      const result = await this._syncDirectoryRecursive(toolboxSource, toolboxTarget, 'toolbox');
       results.toolbox = result;
     }
     
@@ -110,6 +105,98 @@ class RuntimeSync {
   }
   
   /**
+   * 递归同步目录
+   * 确保新增的子目录和文件能够被同步到运行环境
+   * @param {string} sourceDir - 源目录路径
+   * @param {string} targetDir - 目标目录路径
+   * @param {string} dirName - 目录名称（用于日志）
+   * @returns {Promise<Object>} 同步结果
+   */
+  static async _syncDirectoryRecursive(sourceDir, targetDir, dirName = '目录') {
+    const fs = require('fs').promises;
+    const results = {
+      synced: [],
+      skipped: [],
+      errors: []
+    };
+    
+    try {
+      // 确保目标目录存在
+      await PathUtils.ensureDir(targetDir);
+      
+      // 读取源目录下的所有条目
+      const entries = await fs.readdir(sourceDir, { withFileTypes: true });
+      
+      for (const entry of entries) {
+        const sourcePath = path.join(sourceDir, entry.name);
+        const targetPath = path.join(targetDir, entry.name);
+        
+        try {
+          if (entry.isDirectory()) {
+            // 递归同步子目录
+            const subResult = await this._syncDirectoryRecursive(sourcePath, targetPath, entry.name);
+            
+            // 合并结果
+            results.synced.push(...subResult.details.synced);
+            results.skipped.push(...subResult.details.skipped);
+            results.errors.push(...subResult.details.errors);
+          } else if (entry.isFile()) {
+            // 同步文件
+            const targetExists = await PathUtils.pathExists(targetPath);
+            let needsSync = !targetExists;
+            
+            if (targetExists) {
+              // 比较文件修改时间
+              try {
+                const sourceStat = await fs.stat(sourcePath);
+                const targetStat = await fs.stat(targetPath);
+                if (sourceStat.mtime > targetStat.mtime) {
+                  needsSync = true;
+                }
+              } catch (statError) {
+                // 如果无法获取文件状态，默认需要同步
+                needsSync = true;
+              }
+            }
+            
+            if (needsSync) {
+              // 确保目标文件的父目录存在
+              await PathUtils.ensureDir(path.dirname(targetPath));
+              
+              // 复制文件
+              await fs.copyFile(sourcePath, targetPath);
+              console.log(`已同步文件: ${entry.name} -> ${targetPath}`);
+              
+              results.synced.push(entry.name);
+            } else {
+              console.log(`文件已存在且无需更新，跳过: ${entry.name}`);
+              results.skipped.push({ item: entry.name, reason: '已存在且无需更新' });
+            }
+          }
+        } catch (error) {
+          console.error(`同步失败: ${entry.name}`, error);
+          results.errors.push({ item: entry.name, error: error.message });
+        }
+      }
+      
+      return {
+        success: results.errors.length === 0,
+        synced: results.synced.length,
+        skipped: results.skipped.length,
+        errors: results.errors.length,
+        details: results
+      };
+    } catch (error) {
+      console.error(`递归同步 ${dirName} 失败:`, error);
+      return {
+        success: false,
+        error: error.message,
+        details: results
+      };
+    }
+  }
+
+  /**
    * 同步 runtime 目录下的所有内容到目标目录
    * 逐个同步子目录和文件，避免覆盖已存在的文件
    */
@@ -126,14 +213,8 @@ class RuntimeSync {
         const targetPath = path.join(configRoot, entry.name);
         
         if (entry.isDirectory()) {
-          // 同步目录（如 toolbox）
-          const result = await ResourceSync.syncDirectory({
-            targetPath,
-            devPath: () => sourcePath,
-            packagedPaths: () => [sourcePath],
-            skipIfExists: true,
-            name: entry.name
-          });
+          // 所有目录都使用递归同步，确保新增的子目录和文件能够被同步
+          const result = await this._syncDirectoryRecursive(sourcePath, targetPath, entry.name);
           results[entry.name] = result;
         } else if (entry.isFile()) {
           // 同步文件（如 .env）
