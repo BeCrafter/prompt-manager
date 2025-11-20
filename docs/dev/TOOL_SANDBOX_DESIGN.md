@@ -92,26 +92,46 @@ async function syncSystemTools() {
       // 复制工具文件
       await fs.promises.copyFile(toolFile, sandboxToolFile);
       
-      // 创建默认的 package.json（如果不存在）
+      // 创建或更新 package.json（如果不存在则创建，存在则更新依赖）
       const packageJsonPath = path.join(sandboxDir, 'package.json');
-      if (!fs.existsSync(packageJsonPath)) {
-        const toolModule = await import(toolFile);
-        const dependencies = toolModule.default.getDependencies ? toolModule.default.getDependencies() : {};
-        
-        const packageJson = {
-          name: `@prompt-manager/${toolName}`,
-          version: '1.0.0',
-          description: `Prompt Manager System Tool: ${toolName}`,
-          main: `${toolName}.tool.js`,
-          dependencies: dependencies,
-          private: true
-        };
-        
-        await fs.promises.writeFile(
-          packageJsonPath,
-          JSON.stringify(packageJson, null, 2)
-        );
+      let packageJson = {};
+      
+      if (await pathExists(packageJsonPath)) {
+        // 读取现有的 package.json
+        try {
+          packageJson = await fs.readJson(packageJsonPath);
+        } catch (error) {
+          logger.warn(`读取 package.json 失败，将重新创建: ${packageJsonPath}`);
+        }
       }
+      
+      // 读取工具模块获取依赖信息
+      let dependencies = {};
+      try {
+        const toolModule = await import(toolFile);
+        if (toolModule.default && typeof toolModule.default.getDependencies === 'function') {
+          dependencies = toolModule.default.getDependencies() || {};
+        }
+      } catch (error) {
+        logger.warn(`读取工具依赖失败: ${toolName}`, { error: error.message });
+      }
+      
+      // 更新 package.json（合并现有依赖和新依赖）
+      packageJson = {
+        name: `@prompt-manager/${toolName}`,
+        version: packageJson.version || '1.0.0',
+        description: packageJson.description || `Prompt Manager System Tool: ${toolName}`,
+        main: `${toolName}.tool.js`,
+        type: 'module',
+        dependencies: {
+          ...(packageJson.dependencies || {}),
+          ...dependencies
+        },
+        private: true
+      };
+      
+      // 写入 package.json
+      await fs.writeJson(packageJsonPath, packageJson, { spaces: 2 });
       
       console.log(`系统工具 ${toolName} 已同步到沙箱环境`);
     }
@@ -189,29 +209,45 @@ async function ensureToolDependencies(toolName) {
   }
 }
 
-async function installDependencies(toolDir) {
-  // 在工具目录中执行 npm install
-  const { exec } = require('child_process');
-  return new Promise((resolve, reject) => {
-    const child = exec('npm install', { cwd: toolDir }, (error, stdout, stderr) => {
-      if (error) {
-        reject(new Error(`依赖安装失败: ${stderr}`));
-      } else {
-        console.log('依赖安装成功:', stdout);
-        resolve();
-      }
-    });
-    
-    // 设置超时
-    setTimeout(() => {
-      child.kill();
-      reject(new Error('依赖安装超时'));
-    }, 300000); // 5分钟超时
+async function installDependencies(toolDir, dependencies) {
+  // 使用 PackageInstaller 安装依赖（基于 @npmcli/arborist）
+  // PackageInstaller 不依赖系统 npm，可在 Electron 环境中直接使用
+  const result = await PackageInstaller.install({
+    workingDir: toolDir,
+    dependencies: dependencies,
+    timeout: 300000 // 5分钟超时
   });
+  
+  logger.info('依赖安装成功', {
+    elapsed: result.elapsed,
+    installedCount: result.installedPackages.length
+  });
+  
+  return result;
 }
 ```
 
-### 5.2 依赖版本锁定
+### 5.2 依赖安装实现
+
+**实际实现：使用 PackageInstaller 基于 @npmcli/arborist**
+
+工具依赖安装使用 `PackageInstaller` 服务，该服务基于 `@npmcli/arborist` 实现，不依赖系统 npm 命令。这使得依赖安装可以在 Electron 环境中直接使用，无需系统安装 npm。
+
+**实现位置**：`packages/server/toolm/package-installer.service.js`
+
+**关键特性**：
+- 不依赖系统 npm 命令
+- 可在 Electron 环境中直接使用
+- 支持自动选择最优的 npm registry
+- 支持超时控制（默认 5 分钟）
+
+**依赖安装流程**：
+1. 检查 `package.json` 是否存在，如果不存在则自动创建
+2. 检查 `node_modules` 目录是否存在
+3. 检查依赖是否需要更新（通过 `PackageInstaller.isPackageInstalled()` 检查）
+4. 如果需要安装或更新，调用 `PackageInstaller.install()` 安装依赖
+
+### 5.3 依赖版本锁定
 每个工具的 `package.json` 应包含精确的依赖版本，推荐使用 `package-lock.json` 锁定版本。
 
 ## 6. 沙箱执行机制
@@ -465,8 +501,9 @@ KEY2=value2
 ### 7.1 工具发现机制
 
 工具加载器 (`ToolLoaderService`) 自动扫描以下目录：
-- **系统内置工具**：`packages/resources/tools/`（开发时）→ 同步到 `~/.prompt-manager/toolbox/`（运行时）
-- **用户工具**：`~/.prompt-manager/toolbox/`
+- **所有工具**：`~/.prompt-manager/toolbox/`（系统工具和用户工具都在这里）
+
+**注意**：系统内置工具在服务启动时已通过 `syncSystemTools()` 同步到 `~/.prompt-manager/toolbox/`，因此工具加载器只需要扫描这一个目录。
 
 扫描规则：
 1. 每个工具在独立的子目录中
@@ -483,7 +520,7 @@ KEY2=value2
 1. 创建工具目录：`~/.prompt-manager/toolbox/{tool-name}/`
 2. 下载/复制工具文件到目录
 3. 验证工具结构（必需文件、接口方法）
-4. 自动安装依赖（`npm install`）
+4. 自动安装依赖（使用 `PackageInstaller` 基于 `@npmcli/arborist`，不依赖系统 npm）
 5. 工具就绪，可被加载和执行
 
 ### 8.2 工具更新流程
@@ -768,7 +805,7 @@ sequenceDiagram
         DepMgr->>FS: 23. 检查 package.json
         DepMgr->>FS: 24. 检查 node_modules/
         alt 依赖未安装
-            DepMgr->>DepMgr: 25. npm install<br/>(在工具目录执行)
+            DepMgr->>DepMgr: 25. PackageInstaller.install()<br/>(基于 @npmcli/arborist)
             DepMgr-->>Handler: 依赖安装完成
         end
         
@@ -899,7 +936,7 @@ ToolLoaderService.toolCache (内存缓存)
 package.json (工具目录)
   │
   ▼
-npm install (自动安装)
+PackageInstaller.install() (自动安装，基于 @npmcli/arborist)
   │
   ▼
 node_modules/ (工具独立依赖)
@@ -958,7 +995,7 @@ stateDiagram-v2
     等待工具调用 --> 工具调用处理中: handleToolM()<br/>(已初始化)
     
     工具调用处理中 --> 依赖检查中: ensureToolDependencies()
-    依赖检查中 --> 依赖安装中: npm install<br/>(如果需要)
+    依赖检查中 --> 依赖安装中: PackageInstaller.install()<br/>(如果需要)
     依赖安装中 --> 依赖就绪: 安装完成
     依赖检查中 --> 依赖就绪: 依赖已存在
     
@@ -1012,7 +1049,7 @@ stateDiagram-v2
 
 2. **工具加载器初始化** (`packages/server/toolm/tool-loader.service.js`)
    - `ToolLoaderService.initialize()` - 扫描并加载工具
-   - 自动从 `packages/resources/tools/` 和 `~/.prompt-manager/toolbox/` 加载工具
+   - 自动从 `~/.prompt-manager/toolbox/` 加载工具（系统工具和用户工具都在这里）
    - 当前实现：按需初始化（首次调用 `handleToolM()` 时初始化）
    - **注意**：工具目录路径解析需要考虑运行时环境的差异
 
@@ -1187,9 +1224,10 @@ graph TB
 #### 11.8.4 工具执行环境
 
 **依赖管理**：
-- `ensureToolDependencies(toolName)` - 确保工具依赖已安装
+- `ensureToolDependencies(toolName, toolModule)` - 确保工具依赖已安装
 - 检查 `package.json` 和 `node_modules/`
-- 自动执行 `npm install`（如果需要）
+- 如果 `package.json` 不存在，自动创建（从工具的 `getDependencies()` 方法获取依赖）
+- 自动执行依赖安装（使用 `PackageInstaller` 基于 `@npmcli/arborist`，不依赖系统 npm）
 
 **环境变量管理**：
 - `loadToolEnvironment(toolName)` - 加载工具环境变量
@@ -1203,10 +1241,20 @@ graph TB
 - `this.__toolDir` - 工具目录路径
 - `this.__toolName` - 工具名称
 
+**工具上下文提供的额外功能**：
+- `getAllowedDirectories()` - 获取允许访问的目录列表（从环境变量 `ALLOWED_DIRECTORIES` 读取）
+- `initializeFilesystem()` - 初始化文件系统（设置允许的目录列表）
+- `resolvePromptManagerPath(inputPath)` - 解析路径，确保路径在允许的目录范围内
+- `requireToolModule(moduleName)` - 导入 CommonJS 模块（优先从工具的 node_modules 导入）
+- `importToolModule(moduleName)` - 导入 ES 模块（支持 CommonJS 和 ES 模块，优先从工具的 node_modules 导入）
+
+这些功能通过 `createToolContext()` 创建工具执行上下文时自动绑定到工具实例，工具可以通过 `this` 访问。
+
 **日志记录**：
 - `ToolLogger` - 工具专用日志记录器
 - 自动清理超过3小时的旧日志
 - 限制日志文件大小（最大10MB）
+- 在服务启动时自动启动定期清理任务（每小时运行一次）
 
 ### 11.9 完整执行流程图
 
@@ -1269,10 +1317,9 @@ graph TB
 ├─ 检查 toolLoaderService.initialized
 ├─ 如果未初始化：
 │  ├─ ToolLoaderService.initialize()
-│  ├─ 确保用户工具目录存在
+│  ├─ 确保工具目录存在 (~/.prompt-manager/toolbox/)
 │  ├─ scanAndLoadTools()
-│  │  ├─ 扫描系统工具目录 (packages/resources/tools/)
-│  │  ├─ 扫描用户工具目录 (~/.prompt-manager/toolbox/)
+│  │  ├─ 扫描工具目录 (~/.prompt-manager/toolbox/)
 │  │  └─ 对每个工具：
 │  │     ├─ import(toolFile) - 动态导入
 │  │     ├─ validateToolInterface() - 验证接口
@@ -1308,7 +1355,7 @@ graph TB
 │  │  ├─ ensureToolDependencies()
 │  │  │  ├─ 检查 package.json
 │  │  │  ├─ 检查 node_modules/
-│  │  │  └─ npm install (如果需要)
+│  │  │  └─ PackageInstaller.install() (如果需要)
 │  ├─ 环境变量加载
 │  │  ├─ loadToolEnvironment()
 │  │  ├─ 读取 .env 文件
@@ -1418,7 +1465,8 @@ graph TB
 - 工具同步时，使用 `fs.copyFile()` 等标准 API，确保在 ASAR 中也能正常工作
 
 **依赖安装兼容性**：
-- `npm install` 命令需要在正确的 `cwd` 下执行
+- 使用 `PackageInstaller` 基于 `@npmcli/arborist`，不依赖系统 npm 命令
+- 可在 Electron 环境中直接使用，无需系统安装 npm
 - 确保 `package.json` 路径解析正确，不受运行时环境影响
 - 工具目录路径使用 `os.homedir()` 等标准 API，确保跨平台兼容
 
@@ -2675,7 +2723,8 @@ validator.validateAllTools();
 
 ### 阶段 2：依赖管理
 1. 实现依赖检查和安装逻辑
-   - 确保 `npm install` 在正确的 `cwd` 下执行
+   - 使用 `PackageInstaller` 基于 `@npmcli/arborist` 安装依赖
+   - 不依赖系统 npm 命令，可在 Electron 环境中直接使用
 2. 实现依赖版本管理
 
 ### 阶段 3：安全机制

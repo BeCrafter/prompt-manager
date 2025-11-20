@@ -59,7 +59,14 @@ export default {
 - `this.__toolDir` - 工具目录路径
 - `this.__toolName` - 工具名称
 
-**注意：** 工具代码中的 `this` 会被自动绑定到包含 `api` 的上下文对象，确保工具可以正确访问 `this.api`。
+**工具上下文提供的额外功能**：
+- `this.getAllowedDirectories()` - 获取允许访问的目录列表（从环境变量 `ALLOWED_DIRECTORIES` 读取）
+- `this.initializeFilesystem()` - 初始化文件系统（设置允许的目录列表）
+- `this.resolvePromptManagerPath(inputPath)` - 解析路径，确保路径在允许的目录范围内，如果路径越权会抛出错误
+- `this.requireToolModule(moduleName)` - 导入模块（同步方式，优先从工具的 node_modules 导入，支持 CommonJS 格式的依赖包）
+- `this.importToolModule(moduleName)` - 导入模块（异步方式，优先从工具的 node_modules 导入，自动兼容 CommonJS 和 ES 模块格式的依赖包）
+
+**注意：** 工具代码中的 `this` 会被自动绑定到包含 `api` 的上下文对象，确保工具可以正确访问 `this.api` 和上述功能。工具的所有方法（包括 `execute`）都会被绑定到同一个上下文对象，因此工具方法之间可以相互调用。
 
 ## 3. 必需接口方法
 
@@ -171,7 +178,16 @@ async execute(params) {
 }
 ```
 
-### 3.6 getRuntimeConfig() (可选)
+### 3.6 getRuntimeConfig() (可选，当前未使用)
+
+**注意**：此方法在当前实现中尚未被使用。工具的执行配置通过其他方式管理：
+
+- **超时控制**：通过工具执行时的超时机制实现（默认 30 秒，可通过工具执行上下文配置）
+- **文件系统访问**：通过环境变量 `ALLOWED_DIRECTORIES` 配置允许访问的目录列表
+- **环境变量**：通过 `.env` 文件配置
+
+如果将来需要更细粒度的运行时配置，可以考虑实现此方法：
+
 ```javascript
 getRuntimeConfig() {
   return {
@@ -203,6 +219,64 @@ getRuntimeConfig() {
 
 ### 4.2 环境变量访问
 通过 `api.environment.get(key)` 和 `api.environment.set(key, value)` 访问环境变量。环境变量通过 `.env` 文件配置，详见 `TOOL_SANDBOX_DESIGN.md`。
+
+**环境变量优先级**：
+1. 工具特定的环境变量（从 `~/.prompt-manager/toolbox/{toolname}/.env` 读取）
+2. 系统环境变量（`process.env`）
+
+### 4.3 文件系统访问控制
+工具可以通过 `this.resolvePromptManagerPath(inputPath)` 解析路径，该方法会：
+- 自动验证路径是否在允许的目录范围内（从环境变量 `ALLOWED_DIRECTORIES` 读取）
+- 如果路径越权，会抛出错误
+- 支持绝对路径和相对路径（相对路径相对于第一个允许的目录）
+
+**示例**：
+```javascript
+async execute(params) {
+  const { api } = this;
+  
+  // 初始化文件系统（可选，首次使用时自动初始化）
+  await this.initializeFilesystem();
+  
+  // 解析路径（会自动验证权限）
+  const safePath = this.resolvePromptManagerPath(params.filePath);
+  
+  // 使用安全路径进行文件操作
+  const fsPromises = (await import('fs')).promises;
+  const content = await fsPromises.readFile(safePath, 'utf-8');
+  
+  return content;
+}
+```
+
+### 4.4 模块导入
+
+**重要说明**：
+- 工具本身必须使用 ES6 模块格式（`export default`），不能使用 CommonJS 的 `module.exports`
+- 但工具可以导入 CommonJS 格式的依赖包（如 `pdf-parse`），通过工具上下文提供的方法
+
+工具可以通过 `this.requireToolModule()` 或 `this.importToolModule()` 导入依赖模块，这些方法会：
+- 优先从工具的独立 `node_modules` 目录导入
+- 如果工具目录中没有，则从系统 `node_modules` 导入
+- 自动处理 CommonJS 和 ES 模块格式的依赖包兼容性
+
+**示例**：
+```javascript
+async execute(params) {
+  // 方式1：使用 importToolModule（推荐，异步，自动兼容 CommonJS 和 ES 模块）
+  const pdfParse = await this.importToolModule('pdf-parse');
+  // pdf-parse 是 CommonJS 模块，会被自动包装为 { default: ... }
+  const data = await pdfParse.default(buffer);
+  
+  // 方式2：使用 requireToolModule（同步，仅支持 CommonJS 格式）
+  const fs = this.requireToolModule('fs');
+  // 注意：Node.js 内置模块可以直接使用 import，不需要通过工具上下文
+  
+  return data;
+}
+```
+
+**注意**：对于 Node.js 内置模块（如 `fs`、`path`、`os` 等），可以直接使用 ES6 的 `import` 语句，无需通过工具上下文的方法。
 
 ## 5. 执行环境说明
 
