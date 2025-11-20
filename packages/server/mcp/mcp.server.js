@@ -77,6 +77,7 @@ ToolM 作为统一工具管理器，提供：
 ### 常见场景（IF-THEN 规则）：
 - IF 需要文件操作 → 使用 tool://filesystem 通过 toolm
 - IF 需要处理PDF文档 → 使用 tool://pdf-reader 通过 toolm
+- IF 需要读取本地或远程文件 → 使用 tool://file-reader 通过 toolm
 - IF 看到 tool:// 格式 → 使用 toolm 调用
 - IF 不确定工具用法 → 先用 manual 模式查看手册
 
@@ -174,6 +175,7 @@ yaml 参数必须是完整的 YAML 文档：
 完整内置工具列表：
 - **tool://filesystem** - 文件系统操作（读/写/列表/搜索等）
 - **tool://pdf-reader** - PDF文档读取与处理（分页提取文本和图片）
+- **tool://file-reader** - 统一文件读取工具（支持本地和远程文件，自动识别文件类型并转换为模型友好格式，支持缓存、相对路径解析和链接提取）
 
 更多工具正在开发中...
 
