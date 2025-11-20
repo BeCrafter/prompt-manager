@@ -11,6 +11,7 @@ import { logger } from '../utils/logger.js';
 import { toolLoaderService } from './tool-loader.service.js';
 import { ensureToolDependencies } from './tool-dependency.service.js';
 import { createToolContext } from './tool-context.service.js';
+import { generateHelpInfo } from './tool-manual-generator.service.js';
 
 /**
  * 执行工具
@@ -78,12 +79,15 @@ export async function executeTool(toolName, parameters) {
   } catch (error) {
     logger.error(`工具执行失败: ${toolName}`, { error: error.message });
     
+    // 获取工具对象
+    const tool = toolLoaderService.getTool(toolName);
+    
     // 检查是否是参数验证错误（需要返回帮助信息）
     const isValidationError = isValidationErrorType(error.message);
     
     if (isValidationError) {
       // 生成帮助信息并返回
-      const helpInfo = generateHelpInfo(toolName, error, parameters);
+      const helpInfo = generateHelpInfo(toolName, error, tool, parameters);
       return {
         content: [
           {
@@ -95,13 +99,12 @@ export async function executeTool(toolName, parameters) {
     }
     
     // 检查是否是业务错误
-    const tool = toolLoaderService.getTool(toolName);
     const businessErrors = tool.businessErrors || [];
     
     for (const businessError of businessErrors) {
       if (businessError.match && businessError.match.test(error.message)) {
         // 业务错误也返回帮助信息
-        const helpInfo = generateHelpInfo(toolName, error, parameters, businessError);
+        const helpInfo = generateHelpInfo(toolName, error, tool, parameters, businessError);
         return {
           content: [
             {
@@ -114,7 +117,7 @@ export async function executeTool(toolName, parameters) {
     }
     
     // 其他错误也返回帮助信息
-    const helpInfo = generateHelpInfo(toolName, error, parameters);
+    const helpInfo = generateHelpInfo(toolName, error, tool, parameters);
     return {
       content: [
         {
@@ -142,192 +145,5 @@ function isValidationErrorType(errorMessage) {
   ];
   
   return validationPatterns.some(pattern => pattern.test(errorMessage));
-}
-
-/**
- * 生成帮助信息
- */
-function generateHelpInfo(toolName, error, parameters = {}, businessError = null) {
-  const tool = toolLoaderService.getTool(toolName);
-  const { metadata, schema } = tool;
-  
-  let helpText = '';
-  
-  // 错误提示
-  helpText += `# ⚠️ 工具执行错误\n\n`;
-  helpText += `**工具**: ${metadata.name || toolName}\n\n`;
-  helpText += `**错误信息**: ${error.message}\n\n`;
-  
-  if (businessError) {
-    helpText += `**错误类型**: ${businessError.description}\n\n`;
-    helpText += `**解决方案**: ${businessError.solution}\n\n`;
-  }
-  
-  helpText += `---\n\n`;
-  
-  // 工具基本信息
-  helpText += `## 📋 工具信息\n\n`;
-  if (metadata.description) {
-    helpText += `**描述**: ${metadata.description}\n\n`;
-  }
-  
-  // 当前参数
-  if (parameters && Object.keys(parameters).length > 0) {
-    helpText += `## 📥 当前参数\n\n`;
-    helpText += `\`\`\`json\n${JSON.stringify(parameters, null, 2)}\n\`\`\`\n\n`;
-  }
-  
-  // 参数说明
-  if (schema.parameters) {
-    helpText += `## 📝 参数说明\n\n`;
-    
-    const props = schema.parameters.properties || {};
-    const required = schema.parameters.required || [];
-    
-    // 必需参数
-    if (required.length > 0) {
-      helpText += `### ✅ 必需参数\n\n`;
-      for (const key of required) {
-        const prop = props[key];
-        if (prop) {
-          helpText += `- **${key}** (${prop.type || '未指定类型'})`;
-          if (prop.enum) {
-            helpText += ` - 可选值: ${prop.enum.join(', ')}`;
-          }
-          helpText += `\n`;
-          if (prop.description) {
-            helpText += `  ${prop.description}\n`;
-          }
-        }
-      }
-      helpText += `\n`;
-    }
-    
-    // 可选参数
-    const optional = Object.keys(props).filter(k => !required.includes(k));
-    if (optional.length > 0) {
-      helpText += `### 📌 可选参数\n\n`;
-      for (const key of optional) {
-        const prop = props[key];
-        if (prop) {
-          helpText += `- **${key}** (${prop.type || '未指定类型'})`;
-          if (prop.default !== undefined) {
-            helpText += ` - 默认值: ${prop.default}`;
-          }
-          if (prop.enum) {
-            helpText += ` - 可选值: ${prop.enum.join(', ')}`;
-          }
-          helpText += `\n`;
-          if (prop.description) {
-            helpText += `  ${prop.description}\n`;
-          }
-        }
-      }
-      helpText += `\n`;
-    }
-  }
-  
-  // 使用示例
-  helpText += `## 💡 使用示例\n\n`;
-  
-  // 根据错误类型生成不同的示例
-  if (error.message.includes('不支持的方法')) {
-    // 方法错误，显示所有支持的方法
-    if (schema.parameters && schema.parameters.properties && schema.parameters.properties.method) {
-      const methodEnum = schema.parameters.properties.method.enum || [];
-      if (methodEnum.length > 0) {
-        helpText += `### ❌ 错误：不支持的方法\n\n`;
-        helpText += `**支持的方法列表**：\n\n`;
-        methodEnum.forEach(method => {
-          helpText += `- \`${method}\`\n`;
-        });
-        helpText += `\n`;
-      }
-    }
-  }
-  
-  if (error.message.includes('缺少必需参数') || error.message.includes('缺少参数')) {
-    // 提取缺失的参数名
-    const missingMatch = error.message.match(/缺少.*参数[：:]\s*([^\n]+)/i);
-    if (missingMatch) {
-      const missingParams = missingMatch[1].split(',').map(p => p.trim());
-      helpText += `### ❌ 错误：缺少必需参数\n\n`;
-      helpText += `**缺失的参数**：${missingParams.join(', ')}\n\n`;
-      helpText += `**这些参数是必需的，必须提供**\n\n`;
-    }
-  }
-  
-  // 生成正确的使用示例
-  helpText += `### ✅ 正确使用方式\n\n`;
-  helpText += `\`\`\`yaml\n`;
-  helpText += `tool: tool://${toolName}\n`;
-  helpText += `mode: execute\n`;
-  helpText += `parameters:\n`;
-  
-  // 根据schema生成示例参数
-  if (schema.parameters && schema.parameters.properties) {
-    const props = schema.parameters.properties;
-    const required = schema.parameters.required || [];
-    
-    // 先添加必需参数
-    for (const key of required) {
-      const prop = props[key];
-      if (prop) {
-        if (prop.enum && prop.enum.length > 0) {
-          helpText += `  ${key}: ${prop.enum[0]}  # ${prop.description || ''}\n`;
-        } else if (prop.type === 'string') {
-          // 根据参数名提供更合适的示例值
-          let exampleValue = "示例值";
-          if (key.includes('path') || key.includes('url') || key.includes('file')) {
-            exampleValue = key.includes('url') ? "https://example.com/file.txt" : "~/.prompt-manager/file.txt";
-          } else if (key.includes('method')) {
-            exampleValue = prop.enum ? prop.enum[0] : "method_name";
-          }
-          helpText += `  ${key}: "${exampleValue}"  # ${prop.description || ''}\n`;
-        } else if (prop.type === 'number') {
-          helpText += `  ${key}: 0  # ${prop.description || ''}\n`;
-        } else if (prop.type === 'boolean') {
-          helpText += `  ${key}: true  # ${prop.description || ''}\n`;
-        } else if (prop.type === 'array') {
-          helpText += `  ${key}: []  # ${prop.description || ''}\n`;
-        } else if (prop.type === 'object') {
-          helpText += `  ${key}: {}  # ${prop.description || ''}\n`;
-        } else {
-          helpText += `  ${key}: # ${prop.description || ''}\n`;
-        }
-      }
-    }
-    
-    // 添加一些常用的可选参数（最多3个）
-    const optional = Object.keys(props).filter(k => !required.includes(k));
-    let shownOptional = 0;
-    for (const key of optional) {
-      if (shownOptional >= 3) break;
-      const prop = props[key];
-      if (prop) {
-        if (prop.default !== undefined) {
-          const defaultValue = typeof prop.default === 'string' ? `"${prop.default}"` : prop.default;
-          helpText += `  # ${key}: ${defaultValue}  # ${prop.description || ''} (可选，默认值: ${prop.default})\n`;
-          shownOptional++;
-        } else if (prop.enum && prop.enum.length > 0) {
-          helpText += `  # ${key}: ${prop.enum[0]}  # ${prop.description || ''} (可选)\n`;
-          shownOptional++;
-        }
-      }
-    }
-  }
-  
-  helpText += `\`\`\`\n\n`;
-  
-  // 查看完整手册的提示
-  helpText += `---\n\n`;
-  helpText += `## 🔍 需要更多帮助？\n\n`;
-  helpText += `使用以下命令查看完整的工具手册：\n\n`;
-  helpText += `\`\`\`yaml\n`;
-  helpText += `tool: tool://${toolName}\n`;
-  helpText += `mode: manual\n`;
-  helpText += `\`\`\`\n\n`;
-  
-  return helpText;
 }
 

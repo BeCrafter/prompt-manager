@@ -15,6 +15,7 @@ import os from 'os';
 import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 import { pathExists } from './tool-utils.js';
+import { generateManual as generateManualFromService } from './tool-manual-generator.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -207,109 +208,9 @@ class ToolLoaderService {
    * @returns {string} Markdown格式的手册
    */
   generateManual(toolName) {
+    // 使用统一的工具手册生成服务
     const tool = this.getTool(toolName);
-    const { metadata, schema, businessErrors } = tool;
-
-    let manual = '';
-    
-    // 标题和基本信息
-    manual += `# ${metadata.name || toolName}\n\n`;
-    
-    if (metadata.description) {
-      manual += `## 描述\n\n${metadata.description}\n\n`;
-    }
-
-    if (metadata.version) {
-      manual += `**版本**: ${metadata.version}\n\n`;
-    }
-
-    if (metadata.author) {
-      manual += `**作者**: ${metadata.author}\n\n`;
-    }
-
-    if (metadata.tags && metadata.tags.length > 0) {
-      manual += `**标签**: ${metadata.tags.join(', ')}\n\n`;
-    }
-
-    // 使用场景
-    if (metadata.scenarios && metadata.scenarios.length > 0) {
-      manual += `## 使用场景\n\n`;
-      metadata.scenarios.forEach(scenario => {
-        manual += `- ${scenario}\n`;
-      });
-      manual += '\n';
-    }
-
-    // 参数说明
-    if (schema.parameters) {
-      manual += `## 参数说明\n\n`;
-      
-      const props = schema.parameters.properties || {};
-      for (const [key, value] of Object.entries(props)) {
-        const required = schema.parameters.required?.includes(key) ? '**必需**' : '可选';
-        manual += `### ${key} (${required})\n\n`;
-        manual += `- **类型**: ${value.type || '未指定'}\n`;
-        if (value.description) {
-          manual += `- **说明**: ${value.description}\n`;
-        }
-        if (value.enum) {
-          manual += `- **可选值**: ${value.enum.join(', ')}\n`;
-        }
-        if (value.default) {
-          manual += `- **默认值**: ${value.default}\n`;
-        }
-        manual += '\n';
-      }
-    }
-
-    // 环境变量
-    if (schema.environment && schema.environment.properties) {
-      manual += `## 环境变量\n\n`;
-      const envProps = schema.environment.properties;
-      for (const [key, value] of Object.entries(envProps)) {
-        manual += `### ${key}\n\n`;
-        if (value.description) {
-          manual += `- **说明**: ${value.description}\n`;
-        }
-        if (value.default) {
-          manual += `- **默认值**: ${value.default}\n`;
-        }
-        manual += '\n';
-      }
-    }
-
-    // 错误处理
-    if (businessErrors && businessErrors.length > 0) {
-      manual += `## 常见错误\n\n`;
-      businessErrors.forEach(error => {
-        manual += `### ${error.code}\n\n`;
-        manual += `- **描述**: ${error.description}\n`;
-        manual += `- **解决方案**: ${error.solution}\n`;
-        manual += `- **可重试**: ${error.retryable ? '是' : '否'}\n\n`;
-      });
-    }
-
-    // 限制说明
-    if (metadata.limitations && metadata.limitations.length > 0) {
-      manual += `## 限制说明\n\n`;
-      metadata.limitations.forEach(limitation => {
-        manual += `- ${limitation}\n`;
-      });
-      manual += '\n';
-    }
-
-    // 使用示例
-    manual += `## 使用示例\n\n`;
-    manual += '```javascript\n';
-    manual += `toolm({\n`;
-    manual += `  yaml: \`tool: tool://${toolName}\n`;
-    manual += `mode: execute\n`;
-    manual += `parameters:\n`;
-    manual += `  // 在此填写参数\`\n`;
-    manual += `})\n`;
-    manual += '```\n';
-
-    return manual;
+    return generateManualFromService(toolName, tool);
   }
 }
 
