@@ -25,7 +25,10 @@ export {
   handleGetPrompt, 
   handleSearchPrompts, 
   handleReloadPrompts 
-} from './mcp/mcp.handler.js';
+} from './mcp/prompt.handler.js';
+export { handleSequentialThinking } from './mcp/sequential-thinking.handler.js';
+export { handleThinkPlan } from './mcp/think-plan.handler.js';
+export { handleToolM } from './toolm/index.js';
 
 // Export API routes
 export { adminRouter } from './api/admin.routes.js';
