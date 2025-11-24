@@ -122,8 +122,7 @@ export default {
    */
   getDependencies() {
     return {
-      'chrome-devtools-mcp': '^0.10.2',
-      'puppeteer': '^24.31.0'
+      'chrome-devtools-mcp': '^0.10.2'
     };
   },
 
@@ -526,12 +525,48 @@ export default {
       const chromeDevToolsMcp = await this.importToolModule('chrome-devtools-mcp');
       
       // 3. 获取或创建 McpContext
-      const context = await this.getMcpContext(params.options);
+      let context;
+      try {
+        context = await this.getMcpContext(params.options);
+      } catch (error) {
+        // 如果浏览器已关闭，清理管理器并重新创建
+        if (error.message && (error.message.includes('Target closed') || error.message.includes('Protocol error'))) {
+          api?.logger?.warn('检测到浏览器已关闭，清理并重新创建', { error: error.message });
+          await this.cleanupBrowser();
+          context = await this.getMcpContext(params.options);
+        } else {
+          throw error;
+        }
+      }
+      
+      // 检查浏览器连接状态
+      const manager = getBrowserManager();
+      if (manager.browser && !manager.browser.isConnected()) {
+        api?.logger?.warn('浏览器连接已断开，重新创建上下文');
+        await this.cleanupBrowser();
+        context = await this.getMcpContext(params.options);
+      }
       
       // 4. 处理页面导航后的 snapshot 失效问题
-      // 如果执行的是 navigate_page 操作，清除旧的 snapshot（页面已改变）
-      if (params.method === 'navigate_page' && params.url) {
-        await this.clearSnapshotIfNeeded(context, params.url);
+      // 如果执行的是 navigate_page 或 new_page 操作，清除旧的 snapshot（页面已改变）
+      if ((params.method === 'navigate_page' && params.url) || params.method === 'new_page') {
+        const targetUrl = params.url || (params.method === 'navigate_page' ? params.url : '');
+        if (targetUrl) {
+          await this.clearSnapshotIfNeeded(context, targetUrl);
+        } else if (params.method === 'new_page') {
+          // new_page 会创建新页面，清除旧快照
+          await this.clearSnapshotIfNeeded(context, 'new_page');
+        }
+      }
+      
+      // 处理 close 方法
+      if (params.method === 'close') {
+        await this.cleanupBrowser();
+        return {
+          success: true,
+          method: 'close',
+          text: '浏览器已关闭'
+        };
       }
       
       // 5. 对于需要 snapshot 的操作，如果 snapshot 不存在，自动创建一个
@@ -560,7 +595,9 @@ export default {
         response,
         context,
         chromeDevToolsMcp,
-        () => this.createMcpResponse()
+        () => this.createMcpResponse(),
+        params.options,
+        params.method  // 传递方法名以便重试时使用
       );
       
       // 10. 处理响应
@@ -764,7 +801,9 @@ export default {
       'take_snapshot': 'snapshot',
       'wait_for': 'snapshot',  // wait_for 在 snapshot.js 中导出
       // 模拟
-      'emulate': 'emulation'
+      'emulate': 'emulation',
+      // 管理
+      'close': 'pages'  // close 用于关闭浏览器，在 pages 工具中处理
     };
     return categoryMap[method];
   },
@@ -795,7 +834,8 @@ export default {
       'take_snapshot': 'takeSnapshot',  // chrome-devtools-mcp 导出的是 'takeSnapshot'
       'get_network_request': 'getNetworkRequest',
       'list_network_requests': 'listNetworkRequests',
-      'resize_page': 'resizePage'
+      'resize_page': 'resizePage',
+      'close': 'close'  // close 方法直接使用，用于清理浏览器
     };
     return nameMap[method] || method;
   },
@@ -959,6 +999,9 @@ export default {
       case 'select_page':
         transformed.pageIdx = params.pageIdx;
         break;
+      case 'close':
+        // close 方法不需要参数，用于清理浏览器实例
+        break;
       case 'wait_for':
         transformed.text = params.text;
         if (params.timeout) {
@@ -1016,6 +1059,17 @@ export default {
         
         // 确保结果是有效的函数表达式
         // chrome-devtools-mcp 会用 (${function}) 包装，所以我们需要确保传入的是函数体
+        // 基本语法检查：确保括号匹配
+        const openParens = (functionStr.match(/\(/g) || []).length;
+        const closeParens = (functionStr.match(/\)/g) || []).length;
+        if (openParens !== closeParens) {
+          api?.logger?.warn('函数括号不匹配，可能导致语法错误', {
+            openParens,
+            closeParens,
+            functionPreview: functionStr.substring(0, 100)
+          });
+        }
+        
         transformed.function = functionStr;
         if (params.args) {
           transformed.args = params.args;
@@ -1519,11 +1573,13 @@ export default {
    * @param {object} context - MCP 上下文
    * @param {object} chromeDevToolsMcp - chrome-devtools-mcp 模块
    * @param {Function} createResponse - 创建新响应对象的函数
+   * @param {object} options - 浏览器选项
+   * @param {string} methodName - 方法名，用于重试时判断是否需要 snapshot
    * @returns {object} 最终的响应对象
    */
-  async executeWithRetry(handler, request, response, context, chromeDevToolsMcp, createResponse) {
+  async executeWithRetry(handler, request, response, context, chromeDevToolsMcp, createResponse, options = {}, methodName = '') {
     const { api } = this;
-    const maxRetries = 1;
+    const maxRetries = 2; // 增加重试次数
     let retryCount = 0;
     let currentResponse = response;
     
@@ -1532,10 +1588,12 @@ export default {
         await handler(request, currentResponse, context);
         return currentResponse; // 成功则返回响应对象
       } catch (handlerError) {
+        const errorMessage = handlerError.message || '';
+        
         // 检查是否是 stale snapshot 错误
         if (isStaleSnapshotError(handlerError) && retryCount < maxRetries) {
           api?.logger?.warn('检测到 stale snapshot 错误，重新创建 snapshot 后重试', {
-            error: handlerError.message,
+            error: errorMessage,
             retryCount: retryCount + 1
           });
           
@@ -1549,7 +1607,33 @@ export default {
           continue;
         }
         
-        // 不是 stale snapshot 错误，或者已经重试过，抛出错误
+        // 检查是否是 Target closed 错误
+        if ((errorMessage.includes('Target closed') || errorMessage.includes('Protocol error')) && retryCount < maxRetries) {
+          api?.logger?.warn('检测到浏览器目标已关闭，重新创建上下文后重试', {
+            error: errorMessage,
+            retryCount: retryCount + 1
+          });
+          
+          // 清理并重新创建上下文
+          await this.cleanupBrowser();
+          const newContext = await this.getMcpContext(options);
+          
+          // 更新 context 引用
+          context = newContext;
+          
+          // 重新创建 snapshot（如果需要）
+          if (methodName && this.requiresSnapshot(methodName)) {
+            await this.ensureSnapshot(context, chromeDevToolsMcp);
+          }
+          
+          // 重新创建响应对象
+          currentResponse = createResponse();
+          
+          retryCount++;
+          continue;
+        }
+        
+        // 不是可重试的错误，或者已经重试过，抛出错误
         throw handlerError;
       }
     }
