@@ -284,7 +284,23 @@ export async function createToolContext(toolName, toolModule) {
           logger.debug(`使用 import 导入模块: ${moduleName}`, { path: modulePath });
           return await import(modulePath);
         } catch (resolveError) {
-          logger.debug(`resolve 失败，尝试直接导入: ${moduleName}`, { error: resolveError.message });
+          logger.debug(`resolve 失败，尝试特殊路径: ${moduleName}`, { error: resolveError.message });
+          
+          // 特殊处理：某些包的 main 字段指向错误的路径，需要尝试备用路径
+          const fallbackPaths = {
+            'chrome-devtools-mcp': 'chrome-devtools-mcp/build/src/index.js'
+          };
+          
+          if (fallbackPaths[moduleName]) {
+            try {
+              const fallbackPath = toolRequire.resolve(fallbackPaths[moduleName]);
+              logger.debug(`使用备用路径导入 ${moduleName}`, { path: fallbackPath });
+              return await import(fallbackPath);
+            } catch (fallbackError) {
+              logger.debug(`备用路径也失败: ${moduleName}`, { error: fallbackError.message });
+            }
+          }
+          
           // 如果 resolve 失败，尝试直接导入（可能从系统 node_modules）
           try {
             logger.debug(`尝试直接导入模块: ${moduleName}`);

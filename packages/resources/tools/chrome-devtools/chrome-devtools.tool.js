@@ -25,25 +25,87 @@ import os from 'os';
 
 const browserInstances = new Map();
 
+// 固定工具名称，确保跨执行复用浏览器实例
+const FIXED_TOOL_NAME = 'chrome-devtools';
+
 /**
  * 获取或创建浏览器实例管理器
+ * 使用固定的工具名称，确保跨执行复用
  */
-function getBrowserManager(toolName) {
-  if (!browserInstances.has(toolName)) {
-    browserInstances.set(toolName, {
+function getBrowserManager() {
+  if (!browserInstances.has(FIXED_TOOL_NAME)) {
+    browserInstances.set(FIXED_TOOL_NAME, {
       browser: null,
       context: null,
-      lastUsed: null
+      lastUsed: null,
+      lastNavigationUrl: null  // 记录最后导航的 URL，用于检测页面变化
     });
   }
-  return browserInstances.get(toolName);
+  return browserInstances.get(FIXED_TOOL_NAME);
 }
 
 /**
  * 清理浏览器实例管理器
  */
-function clearBrowserManager(toolName) {
-  browserInstances.delete(toolName);
+function clearBrowserManager() {
+  browserInstances.delete(FIXED_TOOL_NAME);
+}
+
+// ============================================================================
+// 辅助函数
+// ============================================================================
+
+/**
+ * 规范化图片 MIME 类型
+ * 确保返回有效的图片 MIME 类型，避免 "image/undefined" 等问题
+ * 
+ * @param {string|undefined} mimeType - 原始 MIME 类型
+ * @param {string} defaultType - 默认类型，默认为 'image/png'
+ * @returns {string} 规范化后的 MIME 类型
+ */
+function normalizeImageMimeType(mimeType, defaultType = 'image/png') {
+  // 如果 mimeType 无效，返回默认值
+  if (!mimeType || 
+      typeof mimeType !== 'string' || 
+      mimeType.trim() === '' ||
+      mimeType === 'undefined' ||
+      mimeType.toLowerCase() === 'undefined' ||
+      mimeType.toLowerCase() === 'image/undefined') {
+    return defaultType;
+  }
+  
+  const trimmed = mimeType.trim();
+  
+  // 如果已经是完整的 MIME 类型（如 "image/png"），直接使用
+  if (trimmed.startsWith('image/')) {
+    return trimmed;
+  }
+  
+  // 如果只是类型名（如 "png"），添加 "image/" 前缀
+  const typeName = trimmed.toLowerCase();
+  if (typeName && typeName !== 'undefined') {
+    return `image/${typeName}`;
+  }
+  
+  return defaultType;
+}
+
+/**
+ * 检查是否是 stale snapshot 错误
+ * 
+ * @param {Error} error - 错误对象
+ * @returns {boolean} 是否是 stale snapshot 错误
+ */
+function isStaleSnapshotError(error) {
+  if (!error?.message) {
+    return false;
+  }
+  
+  const message = error.message;
+  return message.includes('stale snapshot') || 
+         message.includes('stale') ||
+         message.includes('This uid is coming from a stale snapshot') ||
+         message.includes('Assignment to constant variable');
 }
 
 // ============================================================================
@@ -118,18 +180,18 @@ export default {
             description: '操作方法',
             enum: [
               // 输入自动化
-              'click', 'fill', 'hover', 'pressKey', 'drag', 'uploadFile', 'handleDialog', 'fillForm',
+              'click', 'fill', 'hover', 'press_key', 'drag', 'upload_file', 'handle_dialog', 'fill_form',
               // 导航自动化
-              'navigate', 'newPage', 'closePage', 'listPages', 'selectPage', 'waitFor',
+              'navigate_page', 'new_page', 'close_page', 'list_pages', 'select_page', 'wait_for',
               // 网络监控
-              'listNetworkRequests', 'getNetworkRequest',
+              'list_network_requests', 'get_network_request',
               // 性能分析
-              'startPerformanceTrace', 'stopPerformanceTrace', 'analyzePerformance',
+              'performance_start_trace', 'performance_stop_trace', 'performance_analyze_insight',
               // 调试
-              'evaluateScript', 'getConsoleMessage', 'listConsoleMessages',
-              'takeScreenshot', 'takeSnapshot',
+              'evaluate_script', 'get_console_message', 'list_console_messages',
+              'take_screenshot', 'take_snapshot',
               // 模拟
-              'emulate', 'resizePage',
+              'emulate', 'resize_page',
               // 管理
               'close'
             ]
@@ -158,24 +220,24 @@ export default {
           },
           filePath: {
             type: 'string',
-            description: '文件路径（uploadFile 方法）'
+            description: '文件路径（upload_file 方法）'
           },
           key: {
             type: 'string',
-            description: '按键或组合键（pressKey 方法，如 "Enter", "Control+A"）'
+            description: '按键或组合键（press_key 方法，如 "Enter", "Control+A"）'
           },
           action: {
             type: 'string',
-            description: '对话框操作（handleDialog 方法：accept/dismiss）',
+            description: '对话框操作（handle_dialog 方法：accept/dismiss）',
             enum: ['accept', 'dismiss']
           },
           promptText: {
             type: 'string',
-            description: '提示框文本（handleDialog 方法，action=accept 时）'
+            description: '提示框文本（handle_dialog 方法，action=accept 时）'
           },
           elements: {
             type: 'array',
-            description: '表单元素数组（fillForm 方法）',
+            description: '表单元素数组（fill_form 方法）',
             items: {
               type: 'object',
               properties: {
@@ -187,92 +249,130 @@ export default {
           // 导航参数
           url: {
             type: 'string',
-            description: '目标URL（navigate、newPage 方法）'
+            description: '目标URL（navigate_page、new_page 方法）。对于 navigate_page 方法，当 type 为 back/forward/reload 时可选'
           },
           type: {
             type: 'string',
-            description: '导航类型（navigate 方法：url/back/forward/reload）',
+            description: '导航类型（navigate_page 方法：url/back/forward/reload）',
             enum: ['url', 'back', 'forward', 'reload'],
             default: 'url'
           },
+          ignoreCache: {
+            type: 'boolean',
+            description: '是否忽略缓存（navigate_page 方法）',
+            default: false
+          },
           pageIdx: {
             type: 'number',
-            description: '页面索引（selectPage、closePage 方法）'
+            description: '页面索引（select_page、close_page 方法）'
           },
           text: {
             type: 'string',
-            description: '要等待的文本（waitFor 方法）'
+            description: '要等待的文本（wait_for 方法）'
           },
           // 网络监控参数
           includePreservedRequests: {
             type: 'boolean',
-            description: '是否包含保留的请求（listNetworkRequests 方法）',
+            description: '是否包含保留的请求（list_network_requests 方法）',
             default: false
           },
           resourceTypes: {
             type: 'array',
-            description: '资源类型过滤（listNetworkRequests 方法）',
+            description: '资源类型过滤（list_network_requests 方法）',
             items: { type: 'string' }
+          },
+          pageSize: {
+            type: 'number',
+            description: '最大返回数量（list_network_requests、list_console_messages 方法）'
           },
           reqid: {
             type: 'number',
-            description: '网络请求ID（getNetworkRequest 方法）'
+            description: '网络请求ID（get_network_request 方法，可选，省略时返回当前选中的请求）'
           },
           // 性能分析参数
           reload: {
             type: 'boolean',
-            description: '是否重新加载页面（startPerformanceTrace 方法）',
-            default: false
+            description: '是否重新加载页面（performance_start_trace 方法，必需）'
           },
           autoStop: {
             type: 'boolean',
-            description: '是否自动停止追踪（startPerformanceTrace 方法）',
-            default: false
+            description: '是否自动停止追踪（performance_start_trace 方法，必需）'
           },
           insightName: {
             type: 'string',
-            description: '性能洞察名称（analyzePerformance 方法）'
+            description: '性能洞察名称（performance_analyze_insight 方法，必需）'
+          },
+          insightSetId: {
+            type: 'string',
+            description: '性能洞察集合ID（performance_analyze_insight 方法，必需）'
           },
           // 调试参数
           function: {
             type: 'string',
-            description: '要执行的JavaScript函数（evaluateScript 方法）'
+            description: '要执行的JavaScript函数（evaluate_script 方法）'
           },
           args: {
             type: 'array',
-            description: '函数参数（evaluateScript 方法）'
+            description: '函数参数（evaluate_script 方法）'
           },
           msgid: {
             type: 'number',
-            description: '控制台消息ID（getConsoleMessage 方法）'
+            description: '控制台消息ID（get_console_message 方法）'
           },
           includePreservedMessages: {
             type: 'boolean',
-            description: '是否包含保留的消息（listConsoleMessages 方法）',
+            description: '是否包含保留的消息（list_console_messages 方法）',
             default: false
           },
           types: {
             type: 'array',
-            description: '消息类型过滤（listConsoleMessages 方法）',
+            description: '消息类型过滤（list_console_messages 方法）',
             items: { type: 'string', enum: ['error', 'warning', 'info', 'log'] }
           },
           verbose: {
             type: 'boolean',
-            description: '是否详细模式（takeSnapshot 方法）',
+            description: '是否详细模式（take_snapshot 方法）',
             default: false
+          },
+          // 截图参数
+          format: {
+            type: 'string',
+            description: '截图格式（take_screenshot 方法：png/jpeg/webp）',
+            enum: ['png', 'jpeg', 'webp'],
+            default: 'png'
+          },
+          fullPage: {
+            type: 'boolean',
+            description: '是否截取整页（take_screenshot 方法，与 uid 不兼容）',
+            default: false
+          },
+          quality: {
+            type: 'number',
+            description: '压缩质量（take_screenshot 方法，0-100，仅用于 JPEG 和 WebP）',
+            minimum: 0,
+            maximum: 100
           },
           // 模拟参数
           device: {
             type: 'string',
-            description: '设备名称（emulate 方法，如 "iPhone 12"）'
+            description: '设备名称（emulate 方法，如 "iPhone 12"，注意：官方文档中未包含此参数）'
+          },
+          cpuThrottlingRate: {
+            type: 'number',
+            description: 'CPU 降速因子（emulate 方法，设置为 1 禁用降速）'
+          },
+          networkConditions: {
+            type: 'string',
+            description: '网络条件（emulate 方法）',
+            enum: ['No emulation', 'Offline', 'Slow 3G', 'Fast 3G', 'Slow 4G', 'Fast 4G']
           },
           width: {
             type: 'number',
-            description: '视口宽度（resizePage 方法）'
+            description: '视口宽度（resize_page 方法）'
           },
           height: {
             type: 'number',
-            description: '视口高度（resizePage 方法）'
+            description: '视口高度（resize_page 方法）'
           },
           // 通用参数
           keepAlive: {
@@ -362,7 +462,7 @@ export default {
         code: 'ELEMENT_NOT_FOUND',
         description: '元素未找到',
         match: /element.*not found|uid.*not found|No such element|stale snapshot/i,
-        solution: '请先调用 takeSnapshot 获取页面快照，然后使用快照中的 uid',
+        solution: '请先调用 take_snapshot 获取页面快照，然后使用快照中的 uid',
         retryable: false
       },
       {
@@ -383,7 +483,7 @@ export default {
         code: 'INVALID_UID',
         description: '无效的元素标识符',
         match: /invalid.*uid|uid.*invalid|No snapshot found/i,
-        solution: '请先调用 takeSnapshot 获取页面快照，然后使用快照中的 uid',
+        solution: '请先调用 take_snapshot 获取页面快照，然后使用快照中的 uid',
         retryable: false
       },
       {
@@ -397,7 +497,7 @@ export default {
         code: 'PAGE_CLOSED',
         description: '页面已关闭',
         match: /page.*closed|The selected page has been closed/i,
-        solution: '页面已被关闭，请调用 listPages 查看可用页面',
+        solution: '页面已被关闭，请调用 list_pages 查看可用页面',
         retryable: false
       }
     ];
@@ -428,29 +528,58 @@ export default {
       // 3. 获取或创建 McpContext
       const context = await this.getMcpContext(params.options);
       
-      // 4. 获取工具 handler
+      // 4. 处理页面导航后的 snapshot 失效问题
+      // 如果执行的是 navigate_page 操作，清除旧的 snapshot（页面已改变）
+      if (params.method === 'navigate_page' && params.url) {
+        await this.clearSnapshotIfNeeded(context, params.url);
+      }
+      
+      // 5. 对于需要 snapshot 的操作，如果 snapshot 不存在，自动创建一个
+      // 注意：即使没有提供 uid，我们也应该确保 snapshot 存在，因为后续操作可能需要
+      if (this.requiresSnapshot(params.method)) {
+        await this.ensureSnapshot(context, chromeDevToolsMcp);
+      }
+      
+      // 6. 获取工具 handler
       const tool = await this.getToolHandler(params.method, chromeDevToolsMcp);
       if (!tool) {
         throw new Error(`不支持的方法: ${params.method}。请检查 chrome-devtools-mcp 是否正确安装，或该方法是否存在于工具库中。`);
       }
       
-      // 5. 转换参数格式
+      // 7. 转换参数格式
       const transformedParams = this.transformParams(params.method, params);
       
-      // 6. 创建请求和响应对象
+      // 8. 创建请求和响应对象
       const request = { params: transformedParams };
       const response = this.createMcpResponse();
+
+      // 9. 调用工具 handler（带重试机制处理 stale snapshot）
+      const finalResponse = await this.executeWithRetry(
+        tool.handler.bind(tool),
+        request,
+        response,
+        context,
+        chromeDevToolsMcp,
+        () => this.createMcpResponse()
+      );
       
-      // 7. 调用工具 handler
-      await tool.handler(request, response, context);
+      // 10. 处理响应
+      const content = await finalResponse.handle(params.method, context);
       
-      // 8. 处理响应
-      const content = await response.handle(params.method, context);
+      // 调试：检查截图响应内容
+      if (params.method === 'take_screenshot') {
+        api?.logger?.debug('截图响应内容', {
+          contentLength: content.length,
+          contentTypes: content.map(item => item.type),
+          hasImages: content.some(item => item.type === 'image'),
+          responseImagesCount: response.images.length
+        });
+      }
       
-      // 9. 格式化返回结果
+      // 11. 格式化返回结果
       const result = this.formatResponse(content, params.method);
       
-      // 10. 根据 keepAlive 决定是否关闭浏览器
+      // 12. 根据 keepAlive 决定是否关闭浏览器
       if (params.method !== 'close') {
         const keepAlive = this.getKeepAlive(params);
         if (!keepAlive) {
@@ -509,28 +638,36 @@ export default {
       'click': ['uid'],
       'fill': ['uid', 'value'],
       'hover': ['uid'],
-      'pressKey': ['key'],
+      'press_key': ['key'],
       'drag': ['from_uid', 'to_uid'],
-      'uploadFile': ['uid', 'filePath'],
-      'handleDialog': ['action'],
-      'fillForm': ['elements'],
-      'navigate': ['url'],
-      'newPage': ['url'],
-      'closePage': ['pageIdx'],
-      'selectPage': ['pageIdx'],
-      'waitFor': ['text'],
-      'listNetworkRequests': [],
-      'getNetworkRequest': ['reqid'],
-      'startPerformanceTrace': [],
-      'stopPerformanceTrace': [],
-      'analyzePerformance': ['insightName'],
-      'evaluateScript': ['function'],
-      'getConsoleMessage': ['msgid'],
-      'listConsoleMessages': [],
-      'takeScreenshot': [],
-      'takeSnapshot': [],
-      'emulate': ['device'],
-      'resizePage': ['width', 'height'],
+      'upload_file': ['uid', 'filePath'],
+      'handle_dialog': ['action'],
+      'fill_form': ['elements'],
+      // navigate_page: url 在 type 为 back/forward/reload 时可选
+      'navigate_page': (() => {
+        const type = params.type || 'url';
+        return ['back', 'forward', 'reload'].includes(type) ? [] : ['url'];
+      })(),
+      'new_page': ['url'],
+      'close_page': ['pageIdx'],
+      'select_page': ['pageIdx'],
+      'wait_for': ['text'],
+      'list_network_requests': [],
+      // get_network_request: reqid 可选
+      'get_network_request': [],
+      // performance_start_trace: autoStop 和 reload 必需
+      'performance_start_trace': ['autoStop', 'reload'],
+      'performance_stop_trace': [],
+      // performance_analyze_insight: insightName 和 insightSetId 必需
+      'performance_analyze_insight': ['insightName', 'insightSetId'],
+      'evaluate_script': ['function'],
+      'get_console_message': ['msgid'],
+      'list_console_messages': [],
+      'take_screenshot': [],
+      'take_snapshot': [],
+      // emulate: device 不是官方参数，但保留以兼容；官方参数是 cpuThrottlingRate 和 networkConditions（可选）
+      'emulate': [],
+      'resize_page': ['width', 'height'],
       'close': []
     };
     
@@ -600,51 +737,65 @@ export default {
       'click': 'input',
       'fill': 'input',
       'hover': 'input',
-      'pressKey': 'input',
+      'press_key': 'input',
       'drag': 'input',
-      'uploadFile': 'input',
-      'handleDialog': 'input',
-      'fillForm': 'input',
+      'upload_file': 'input',
+      'fill_form': 'input',
       // 导航自动化
-      'navigate': 'pages',
-      'newPage': 'pages',
-      'closePage': 'pages',
-      'listPages': 'pages',
-      'selectPage': 'pages',
-      'waitFor': 'pages',
+      'navigate_page': 'pages',
+      'new_page': 'pages',
+      'close_page': 'pages',
+      'list_pages': 'pages',
+      'select_page': 'pages',
+      'handle_dialog': 'pages',  // handle_dialog 在 pages.js 中导出
+      'resize_page': 'pages',  // resize_page 在 pages.js 中导出
       // 网络监控
-      'listNetworkRequests': 'network',
-      'getNetworkRequest': 'network',
+      'list_network_requests': 'network',
+      'get_network_request': 'network',
       // 性能分析
-      'startPerformanceTrace': 'performance',
-      'stopPerformanceTrace': 'performance',
-      'analyzePerformance': 'performance',
+      'performance_start_trace': 'performance',
+      'performance_stop_trace': 'performance',
+      'performance_analyze_insight': 'performance',
       // 调试
-      'evaluateScript': 'script',
-      'getConsoleMessage': 'console',
-      'listConsoleMessages': 'console',
-      'takeScreenshot': 'screenshot',
-      'takeSnapshot': 'snapshot',
+      'evaluate_script': 'script',
+      'get_console_message': 'console',
+      'list_console_messages': 'console',
+      'take_screenshot': 'screenshot',
+      'take_snapshot': 'snapshot',
+      'wait_for': 'snapshot',  // wait_for 在 snapshot.js 中导出
       // 模拟
-      'emulate': 'emulation',
-      'resizePage': 'emulation'
+      'emulate': 'emulation'
     };
     return categoryMap[method];
   },
 
   /**
    * 获取工具名称（chrome-devtools-mcp 中的实际名称）
+   * 注意：现在方法名已经是官方格式（下划线命名），但 chrome-devtools-mcp 内部使用的是驼峰命名
    */
   getToolName(method) {
     const nameMap = {
-      'navigate': 'navigatePage',
-      'pressKey': 'pressKey',
-      'startPerformanceTrace': 'performanceStartTrace',
-      'stopPerformanceTrace': 'performanceStopTrace',
-      'analyzePerformance': 'performanceAnalyzeInsight',
-      'evaluateScript': 'evaluateScript',
-      'takeScreenshot': 'takeScreenshot',
-      'takeSnapshot': 'takeSnapshot'
+      'navigate_page': 'navigatePage',
+      'new_page': 'newPage',
+      'close_page': 'closePage',
+      'list_pages': 'listPages',
+      'select_page': 'selectPage',
+      'press_key': 'pressKey',
+      'upload_file': 'uploadFile',
+      'handle_dialog': 'handleDialog',
+      'fill_form': 'fillForm',
+      'wait_for': 'waitFor',
+      'performance_start_trace': 'startTrace',  // chrome-devtools-mcp 导出的是 'startTrace'
+      'performance_stop_trace': 'stopTrace',  // chrome-devtools-mcp 导出的是 'stopTrace'
+      'performance_analyze_insight': 'analyzeInsight',  // chrome-devtools-mcp 导出的是 'analyzeInsight'
+      'evaluate_script': 'evaluateScript',
+      'get_console_message': 'getConsoleMessage',
+      'list_console_messages': 'listConsoleMessages',
+      'take_screenshot': 'screenshot',  // chrome-devtools-mcp 导出的是 'screenshot'
+      'take_snapshot': 'takeSnapshot',  // chrome-devtools-mcp 导出的是 'takeSnapshot'
+      'get_network_request': 'getNetworkRequest',
+      'list_network_requests': 'listNetworkRequests',
+      'resize_page': 'resizePage'
     };
     return nameMap[method] || method;
   },
@@ -655,7 +806,7 @@ export default {
    */
   async getMcpContext(options = {}) {
     const { api } = this;
-    const manager = getBrowserManager(this.__toolName);
+    const manager = getBrowserManager();
     
     // 如果已有上下文且浏览器仍然连接，直接返回
     if (manager.context && manager.context.browser && manager.context.browser.isConnected()) {
@@ -764,27 +915,27 @@ export default {
       case 'hover':
         transformed.uid = params.uid;
         break;
-      case 'pressKey':
+      case 'press_key':
         transformed.key = params.key;
         break;
       case 'drag':
         transformed.from_uid = params.from_uid;
         transformed.to_uid = params.to_uid;
         break;
-      case 'uploadFile':
+      case 'upload_file':
         transformed.uid = params.uid;
         transformed.filePath = params.filePath;
         break;
-      case 'handleDialog':
+      case 'handle_dialog':
         transformed.action = params.action;
         if (params.promptText) {
           transformed.promptText = params.promptText;
         }
         break;
-      case 'fillForm':
+      case 'fill_form':
         transformed.elements = params.elements;
         break;
-      case 'navigate':
+      case 'navigate_page':
         transformed.type = params.type || 'url';
         if (params.url) {
           transformed.url = params.url;
@@ -792,37 +943,49 @@ export default {
         if (params.timeout) {
           transformed.timeout = params.timeout;
         }
+        if (params.ignoreCache !== undefined) {
+          transformed.ignoreCache = params.ignoreCache;
+        }
         break;
-      case 'newPage':
+      case 'new_page':
         transformed.url = params.url;
         if (params.timeout) {
           transformed.timeout = params.timeout;
         }
         break;
-      case 'closePage':
+      case 'close_page':
         transformed.pageIdx = params.pageIdx;
         break;
-      case 'selectPage':
+      case 'select_page':
         transformed.pageIdx = params.pageIdx;
         break;
-      case 'waitFor':
+      case 'wait_for':
         transformed.text = params.text;
         if (params.timeout) {
           transformed.timeout = params.timeout;
         }
         break;
-      case 'listNetworkRequests':
+      case 'list_network_requests':
         if (params.includePreservedRequests !== undefined) {
           transformed.includePreservedRequests = params.includePreservedRequests;
         }
         if (params.resourceTypes) {
           transformed.resourceTypes = params.resourceTypes;
         }
+        if (params.pageIdx !== undefined) {
+          transformed.pageIdx = params.pageIdx;
+        }
+        if (params.pageSize !== undefined) {
+          transformed.pageSize = params.pageSize;
+        }
         break;
-      case 'getNetworkRequest':
-        transformed.reqid = params.reqid;
+      case 'get_network_request':
+        // reqid 可选，如果提供则传递
+        if (params.reqid !== undefined) {
+          transformed.reqid = params.reqid;
+        }
         break;
-      case 'startPerformanceTrace':
+      case 'performance_start_trace':
         if (params.reload !== undefined) {
           transformed.reload = params.reload;
         }
@@ -830,35 +993,89 @@ export default {
           transformed.autoStop = params.autoStop;
         }
         break;
-      case 'analyzePerformance':
+      case 'performance_analyze_insight':
         transformed.insightName = params.insightName;
+        transformed.insightSetId = params.insightSetId;
         break;
-      case 'evaluateScript':
-        transformed.function = params.function;
+      case 'evaluate_script':
+        // chrome-devtools-mcp 期望的是一个函数字符串，它会用 (${function}) 包装
+        // 如果用户传入的是立即执行的函数表达式，需要转换为函数声明
+        let functionStr = params.function;
+        
+        // 检查是否是立即执行的函数表达式 (function() {...})() 或 (() => {...})()
+        functionStr = functionStr.trim();
+        
+        // 匹配立即执行函数：以 ( 开头，以 )() 结尾
+        if (functionStr.startsWith('(') && functionStr.endsWith(')()')) {
+          // 移除开头的 ( 和结尾的 ()
+          functionStr = functionStr.slice(1, -2);
+        } else if (functionStr.endsWith('()')) {
+          // 只移除结尾的 ()
+          functionStr = functionStr.slice(0, -2);
+        }
+        
+        // 确保结果是有效的函数表达式
+        // chrome-devtools-mcp 会用 (${function}) 包装，所以我们需要确保传入的是函数体
+        transformed.function = functionStr;
         if (params.args) {
           transformed.args = params.args;
         }
         break;
-      case 'getConsoleMessage':
+      case 'get_console_message':
         transformed.msgid = params.msgid;
         break;
-      case 'listConsoleMessages':
+      case 'list_console_messages':
         if (params.includePreservedMessages !== undefined) {
           transformed.includePreservedMessages = params.includePreservedMessages;
         }
         if (params.types) {
           transformed.types = params.types;
         }
+        if (params.pageIdx !== undefined) {
+          transformed.pageIdx = params.pageIdx;
+        }
+        if (params.pageSize !== undefined) {
+          transformed.pageSize = params.pageSize;
+        }
         break;
-      case 'takeSnapshot':
+      case 'take_screenshot':
+        if (params.filePath) {
+          transformed.filePath = params.filePath;
+        }
+        if (params.format) {
+          transformed.format = params.format;
+        }
+        if (params.fullPage !== undefined) {
+          transformed.fullPage = params.fullPage;
+        }
+        if (params.quality !== undefined) {
+          transformed.quality = params.quality;
+        }
+        if (params.uid) {
+          transformed.uid = params.uid;
+        }
+        break;
+      case 'take_snapshot':
         if (params.verbose !== undefined) {
           transformed.verbose = params.verbose;
         }
+        if (params.filePath) {
+          transformed.filePath = params.filePath;
+        }
         break;
       case 'emulate':
-        transformed.device = params.device;
+        // 保留 device 参数以兼容，但优先使用官方参数
+        if (params.device) {
+          transformed.device = params.device;
+        }
+        if (params.cpuThrottlingRate !== undefined) {
+          transformed.cpuThrottlingRate = params.cpuThrottlingRate;
+        }
+        if (params.networkConditions) {
+          transformed.networkConditions = params.networkConditions;
+        }
         break;
-      case 'resizePage':
+      case 'resize_page':
         transformed.width = params.width;
         transformed.height = params.height;
         break;
@@ -1010,13 +1227,13 @@ export default {
             });
           }
         }
-        
+
         // 附加图片
         for (const image of this.images) {
           content.push({
             type: 'image',
             data: image.data,
-            mimeType: image.mimeType
+            mimeType: normalizeImageMimeType(image.mimeType)
           });
         }
         
@@ -1114,6 +1331,8 @@ export default {
    * 格式化响应结果
    */
   formatResponse(content, method) {
+    const { api } = this;
+    
     if (!content || content.length === 0) {
       return { success: true, method };
     }
@@ -1125,12 +1344,48 @@ export default {
       .join('\n');
     
     // 提取图片
-    const images = content
+    let images = content
       .filter(item => item.type === 'image')
       .map(item => ({
         data: item.data,
-        mimeType: item.mimeType
+        mimeType: normalizeImageMimeType(item.mimeType)
       }));
+    
+    // 对于截图方法，如果响应中没有图片，尝试从文本中提取 base64 图片数据
+    if (method === 'take_screenshot' && images.length === 0 && texts) {
+      // 尝试匹配 base64 图片数据（data:image/...;base64,... 或纯 base64 字符串）
+      const base64Pattern = /data:image\/([^;]+);base64,([A-Za-z0-9+/=]+)/g;
+      const matches = [...texts.matchAll(base64Pattern)];
+      
+      if (matches.length > 0) {
+        api?.logger?.debug('从文本中提取 base64 图片数据', { matchesCount: matches.length });
+        images = matches.map(match => ({
+          data: match[2], // base64 数据部分
+          mimeType: `image/${match[1]}` // 图片类型
+        }));
+      } else {
+        // 尝试匹配纯 base64 字符串（可能是截图工具返回的）
+        const pureBase64Pattern = /^[A-Za-z0-9+/=]{100,}$/m; // 至少100个字符的 base64 字符串
+        const base64Match = texts.match(pureBase64Pattern);
+        if (base64Match) {
+          api?.logger?.debug('从文本中提取纯 base64 图片数据');
+          images = [{
+            data: base64Match[0],
+            mimeType: 'image/png' // 默认 PNG
+          }];
+        }
+      }
+    }
+    
+    // 调试：检查截图结果
+    if (method === 'take_screenshot') {
+      api?.logger?.debug('格式化截图响应', {
+        imagesCount: images.length,
+        hasImages: images.length > 0,
+        contentItems: content.map(item => ({ type: item.type, hasData: !!item.data })),
+        extractedFromText: images.length > 0 && content.filter(item => item.type === 'image').length === 0
+      });
+    }
     
     const result = {
       success: true,
@@ -1140,13 +1395,13 @@ export default {
     };
     
     // 对于特定方法，提取结构化数据
-    if (method === 'listPages') {
+    if (method === 'list_pages') {
       result.pages = this.extractPagesFromText(texts);
-    } else if (method === 'listNetworkRequests') {
+    } else if (method === 'list_network_requests') {
       result.requests = this.extractRequestsFromText(texts);
-    } else if (method === 'listConsoleMessages') {
+    } else if (method === 'list_console_messages') {
       result.messages = this.extractMessagesFromText(texts);
-    } else if (method === 'takeSnapshot') {
+    } else if (method === 'take_snapshot') {
       result.snapshot = texts;
     }
     
@@ -1212,11 +1467,136 @@ export default {
   },
 
   /**
+   * 检查操作是否需要 snapshot
+   */
+  requiresSnapshot(method) {
+    const methodsRequiringSnapshot = ['click', 'fill', 'hover', 'drag', 'upload_file'];
+    return methodsRequiringSnapshot.includes(method);
+  },
+
+  /**
+   * 确保 snapshot 存在（如果不存在则创建）
+   */
+  async ensureSnapshot(context, chromeDevToolsMcp) {
+    const { api } = this;
+    
+    try {
+      // 优先通过工具 handler 创建 snapshot，这是最可靠的方式
+      api?.logger?.debug('通过工具 handler 创建 snapshot');
+      const snapshotTool = await this.getToolHandler('take_snapshot', chromeDevToolsMcp);
+      if (snapshotTool) {
+        const request = { params: { verbose: false } };
+        const response = this.createMcpResponse();
+        response.includeSnapshot({ verbose: false });
+        await snapshotTool.handler(request, response, context);
+        // 处理响应以创建 snapshot
+        await response.handle('take_snapshot', context);
+        api?.logger?.debug('Snapshot 创建成功');
+        return;
+      }
+      
+      // 备用方案：如果 context 有 createTextSnapshot 方法，使用它
+      if (context.createTextSnapshot && typeof context.createTextSnapshot === 'function') {
+        await context.createTextSnapshot(false, null);
+        api?.logger?.debug('通过 createTextSnapshot 创建 snapshot');
+        return;
+      }
+      
+      api?.logger?.warn('无法创建 snapshot：找不到可用的方法');
+    } catch (error) {
+      // 如果创建 snapshot 失败，记录警告但不抛出错误
+      // 让原始操作继续执行，chrome-devtools-mcp 可能会在需要时自动创建
+      api?.logger?.warn('自动创建 snapshot 失败，将继续执行操作', { error: error.message });
+    }
+  },
+
+  /**
+   * 执行工具 handler，带重试机制处理 stale snapshot 错误
+   * 
+   * @param {Function} handler - 工具 handler 函数
+   * @param {object} request - 请求对象
+   * @param {object} response - 响应对象
+   * @param {object} context - MCP 上下文
+   * @param {object} chromeDevToolsMcp - chrome-devtools-mcp 模块
+   * @param {Function} createResponse - 创建新响应对象的函数
+   * @returns {object} 最终的响应对象
+   */
+  async executeWithRetry(handler, request, response, context, chromeDevToolsMcp, createResponse) {
+    const { api } = this;
+    const maxRetries = 1;
+    let retryCount = 0;
+    let currentResponse = response;
+    
+    while (retryCount <= maxRetries) {
+      try {
+        await handler(request, currentResponse, context);
+        return currentResponse; // 成功则返回响应对象
+      } catch (handlerError) {
+        // 检查是否是 stale snapshot 错误
+        if (isStaleSnapshotError(handlerError) && retryCount < maxRetries) {
+          api?.logger?.warn('检测到 stale snapshot 错误，重新创建 snapshot 后重试', {
+            error: handlerError.message,
+            retryCount: retryCount + 1
+          });
+          
+          // 重新创建 snapshot
+          await this.ensureSnapshot(context, chromeDevToolsMcp);
+          
+          // 重新创建响应对象
+          currentResponse = createResponse();
+          
+          retryCount++;
+          continue;
+        }
+        
+        // 不是 stale snapshot 错误，或者已经重试过，抛出错误
+        throw handlerError;
+      }
+    }
+  },
+
+  /**
+   * 在页面导航后清除旧的 snapshot
+   */
+  async clearSnapshotIfNeeded(context, newUrl) {
+    const { api } = this;
+    const manager = getBrowserManager();
+    
+    // 如果 URL 发生变化，清除旧的 snapshot
+    if (manager.lastNavigationUrl && manager.lastNavigationUrl !== newUrl) {
+      api?.logger?.info('检测到页面导航，清除旧的 snapshot', {
+        oldUrl: manager.lastNavigationUrl,
+        newUrl: newUrl
+      });
+      
+      // 清除 snapshot（通过重新创建来清除旧的）
+      try {
+        if (context.clearTextSnapshot && typeof context.clearTextSnapshot === 'function') {
+          context.clearTextSnapshot();
+        } else if (context.getTextSnapshot) {
+          // 如果 context 没有 clearTextSnapshot 方法，尝试通过设置 null 来清除
+          // 这取决于 chrome-devtools-mcp 的实现
+          const snapshot = context.getTextSnapshot();
+          if (snapshot) {
+            // 导航后 snapshot 会自动失效，这里只是记录日志
+            api?.logger?.debug('旧的 snapshot 将在下次操作时自动失效');
+          }
+        }
+      } catch (error) {
+        api?.logger?.warn('清除 snapshot 时出错', { error: error.message });
+      }
+    }
+    
+    // 更新最后导航的 URL
+    manager.lastNavigationUrl = newUrl;
+  },
+
+  /**
    * 清理浏览器资源
    */
   async cleanupBrowser() {
     const { api } = this;
-    const manager = getBrowserManager(this.__toolName);
+    const manager = getBrowserManager();
     
     try {
       // 清理上下文
@@ -1233,8 +1613,7 @@ export default {
     } catch (error) {
       api?.logger?.warn('清理浏览器时出错', { error: error.message });
     } finally {
-      // 清理全局管理器
-      clearBrowserManager(this.__toolName);
+      clearBrowserManager();
     }
   }
 };
