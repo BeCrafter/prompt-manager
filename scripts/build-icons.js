@@ -32,80 +32,104 @@ if (!fs.existsSync(traySourceIcon)) {
   process.exit(1);
 }
 
-console.log('Found source icons:');
-console.log(`  - App icon: ${appSourceIcon}`);
-console.log(`  - Tray icon: ${traySourceIcon}`);
+async function buildIcons() {
+  try {
+    console.log('Found source icons:');
+    console.log(`  - App icon: ${appSourceIcon}`);
+    console.log(`  - Tray icon: ${traySourceIcon}`);
 
-// macOS 图标尺寸
-const macSizes = [16, 32, 64, 128, 256, 512, 1024];
+    // macOS 图标尺寸
+    const macSizes = [16, 32, 64, 128, 256, 512, 1024];
 
-// 创建托盘图标 (24x24)
-console.log('Creating tray icon...');
-const filename = `tray.png`;
-const trayIconPath = path.join(assetsDir, filename);
-console.log(`  - ${filename}`);
-await sharp(traySourceIcon).resize(24, 24).toFile(trayIconPath);
-
-
-// 创建 PNG 图⌚️
-console.log('Creating PNG file for default...');
-const iconFilename = `icon.png`;
-const appIconPath = path.join(assetsDir, iconFilename);
-console.log(`  - ${filename}`);
-await sharp(appSourceIcon).resize(512, 512).toFile(appIconPath);
+    // 创建托盘图标 (24x24)
+    console.log('Creating tray icon...');
+    const filename = `tray.png`;
+    const trayIconPath = path.join(assetsDir, filename);
+    console.log(`  - ${filename}`);
+    await sharp(traySourceIcon).resize(24, 24).toFile(trayIconPath);
 
 
-// 为 macOS 创建不同尺寸的应用图标
-console.log('Creating macOS app icons...');
-const macIconDir = path.join(assetsDir, 'app.iconset');
-if (!fs.existsSync(macIconDir)) {
-  fs.mkdirSync(macIconDir, { recursive: true });
-}
+    // 创建 PNG 图标
+    console.log('Creating PNG file for default...');
+    const iconFilename = `icon.png`;
+    const appIconPath = path.join(assetsDir, iconFilename);
+    console.log(`  - ${iconFilename}`);
+    await sharp(appSourceIcon).resize(512, 512).toFile(appIconPath);
 
-for (const size of macSizes) {
-  const filename = `icon_${size}x${size}.png`;
-  const filepath = path.join(macIconDir, size === 512 ? 'icon_512x512@2x.png' : `icon_${size}x${size}.png`);
-  console.log(`  - ${filename}`);
-  // 对于 512x512@2x 实际上是 1024x1024
-  const actualSize = size === 512 ? 1024 : size;
-  await sharp(appSourceIcon).resize(actualSize, actualSize).toFile(filepath);
-}
 
-// 创建 ICNS 文件 (macOS) - 使用 iconutil 工具
-console.log('Creating ICNS file for macOS...');
-try {
-  const icnsPath = path.join(assetsDir, 'icon.icns');
-  
-  // 使用 iconutil 创建 ICNS 文件
-  const iconutil = spawn('iconutil', ['-c', 'icns', '-o', icnsPath, macIconDir]);
-  
-  iconutil.on('close', (code) => {
-    if (code === 0) {
-      console.log('  - icon.icns');
-      // 清理临时文件
-      fs.rmSync(macIconDir, { recursive: true, force: true });
-    } else {
-      console.log('  - Failed to create ICNS file with iconutil');
+    // 为 macOS 创建不同尺寸的应用图标
+    console.log('Creating macOS app icons...');
+    const macIconDir = path.join(assetsDir, 'app.iconset');
+    if (!fs.existsSync(macIconDir)) {
+      fs.mkdirSync(macIconDir, { recursive: true });
     }
-  });
-} catch (error) {
-  console.log('  - Failed to create ICNS file:', error.message, error.stack);
+
+    for (const size of macSizes) {
+      const filename = `icon_${size}x${size}.png`;
+      const filepath = path.join(macIconDir, size === 512 ? 'icon_512x512@2x.png' : `icon_${size}x${size}.png`);
+      console.log(`  - ${filename}`);
+      // 对于 512x512@2x 实际上是 1024x1024
+      const actualSize = size === 512 ? 1024 : size;
+      await sharp(appSourceIcon).resize(actualSize, actualSize).toFile(filepath);
+    }
+
+    // 创建 ICNS 文件 (macOS) - 使用 iconutil 工具
+    console.log('Creating ICNS file for macOS...');
+    try {
+      const icnsPath = path.join(assetsDir, 'icon.icns');
+      
+      // 使用 iconutil 创建 ICNS 文件
+      await new Promise((resolve, reject) => {
+        const iconutil = spawn('iconutil', ['-c', 'icns', '-o', icnsPath, macIconDir]);
+        
+        iconutil.on('close', (code) => {
+          if (code === 0) {
+            console.log('  - icon.icns');
+            // 清理临时文件
+            fs.rmSync(macIconDir, { recursive: true, force: true });
+            resolve();
+          } else {
+            console.log('  - Failed to create ICNS file with iconutil');
+            resolve(); // 继续执行，不阻止其他图标生成
+          }
+        });
+        
+        iconutil.on('error', (error) => {
+          console.log('  - Failed to create ICNS file:', error.message);
+          resolve(); // 继续执行，不阻止其他图标生成
+        });
+      });
+    } catch (error) {
+      console.log('  - Failed to create ICNS file:', error.message);
+    }
+
+
+    // 创建 ICO 文件 (Windows)
+    console.log('Creating ICO file for Windows...');
+    // Windows 图标常用尺寸
+    const winSizes = [16, 32, 48, 64, 128, 256];
+    const winIconBuffers = [];
+
+    for (const size of winSizes) {
+      const buffer = await sharp(appSourceIcon).resize(size, size).png().toBuffer();
+      winIconBuffers.push(buffer);
+    }
+
+    if (winIconBuffers.length > 0) {
+      console.log('  - icon.ico');
+      const icoBuffer = await toIco(winIconBuffers);
+      const icoPath = path.join(assetsDir, 'icon.ico');
+      fs.writeFileSync(icoPath, icoBuffer);
+    } else {
+      console.log('  - No valid buffers for ICO creation');
+    }
+
+
+    console.log('Icon preparation completed.');
+  } catch (error) {
+    console.error('Error building icons:', error);
+    process.exit(1);
+  }
 }
 
-
-// 创建 ICO 文件 (Windows)
-console.log('Creating ICO file for Windows...');
-console.log('Creating Windows app icons...');
-const winIconBuffers = await sharp(appSourceIcon).resize(256, 256).png({ compressionLevel: 9 }).toBuffer();
-const validBuffers = winIconBuffers.filter(buffer => Buffer.isBuffer(buffer) && buffer.length > 0);
-if (validBuffers.length > 0) {
-  console.log('  - icon.ico');
-  const icoBuffer = await toIco(validBuffers);
-  const icoPath = path.join(assetsDir, 'icon.ico');
-  fs.writeFileSync(icoPath, icoBuffer);
-} else {
-  console.log('  - No valid buffers for ICO creation');
-}
-
-
-console.log('Icon preparation completed.');
+buildIcons();

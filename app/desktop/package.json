@@ -19,6 +19,7 @@
   "dependencies": {
     "@becrafter/prompt-manager-core": "file:../../packages/server",
     "@modelcontextprotocol/sdk": "^1.20.2",
+    "http-proxy-middleware": "^3.0.5",
     "tar": "^7.5.2"
   },
   "build": {
@@ -75,7 +76,6 @@
           "target": "nsis",
           "arch": [
             "x64",
-            "ia32",
             "arm64"
           ]
         }
