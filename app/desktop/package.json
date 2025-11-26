@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "electron .",
     "start": "npm run dev",
-    "prebuild": "node ../../scripts/build-icons.js",
+    "prebuild": "cd ../.. && npm run build:icons",
     "build": "electron-builder"
   },
   "devDependencies": {

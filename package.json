@@ -31,7 +31,8 @@
     "desktop:build:win": "bash scripts/build.sh build:win",
     "desktop:build:linux": "bash scripts/build.sh build:linux",
     "postinstall": "node ./scripts/postinstall.js",
-    "build:core": "npm run build --prefix packages/server"
+    "build:core": "npm run build --prefix packages/server",
+    "build:icons": "node ./scripts/build-icons.js"
   },
   "keywords": [
     "mcp",
