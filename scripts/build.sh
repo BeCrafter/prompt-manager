@@ -26,6 +26,9 @@ if [ "$1" != "dev" ]; then
   npm run admin:build
 fi
 
+# 构建根目录环境
+echo "Building root environment..."
+npm install
 
 # 根据参数执行 desktop 构建
 echo "Building desktop app..."
