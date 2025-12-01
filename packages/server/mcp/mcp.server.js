@@ -9,7 +9,8 @@ import {
 import { handleToolM } from '../toolm/index.js';
 import { handleSequentialThinking } from './sequential-thinking.handler.js';
 import { handleThinkPlan } from './think-plan.handler.js';
-import { generateToolmDescription } from '../toolm/tool-description-generator.service.js';
+// import { generateToolmDescription } from '../toolm/tool-description-generator.service.js';
+import { generateToolmDescription } from '../toolm/tool-description-generator-optimized.service.js';
 import { toolLoaderService } from '../toolm/tool-loader.service.js';
 
 class Server {
