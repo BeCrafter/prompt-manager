@@ -172,8 +172,12 @@ app.all('/mcp', (req, res) => {
               transports[sessionId] = transport;
               
               // 为新会话创建MCP服务器实例
-              mcpServers[sessionId] = getMcpServer();
-              mcpServers[sessionId].connect(transport);
+              getMcpServer().then(server => {
+                  mcpServers[sessionId] = server;
+                  mcpServers[sessionId].connect(transport);
+              }).catch(error => {
+                  console.error('创建MCP服务器失败:', error);
+              });
           }
       });
 

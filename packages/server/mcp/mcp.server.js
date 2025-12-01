@@ -9,6 +9,8 @@ import {
 import { handleToolM } from '../toolm/index.js';
 import { handleSequentialThinking } from './sequential-thinking.handler.js';
 import { handleThinkPlan } from './think-plan.handler.js';
+import { generateToolmDescription } from '../toolm/tool-description-generator.service.js';
+import { toolLoaderService } from '../toolm/tool-loader.service.js';
 
 class Server {
     constructor() {
@@ -38,8 +40,22 @@ class Server {
     }
 }
 
-export const getMcpServer = () => {
+export const getMcpServer = async () => {
     const mcpServer = new Server();
+    
+    // 确保工具加载器已初始化（用于生成动态描述）
+    if (!toolLoaderService.initialized) {
+        try {
+            await toolLoaderService.initialize();
+        } catch (error) {
+            // 如果初始化失败，继续使用默认描述
+            console.warn('工具加载器初始化失败，使用默认描述:', error.message);
+        }
+    }
+    
+    // 动态生成 toolm 工具的描述
+    const toolmDescription = generateToolmDescription();
+    
     mcpServer.registerTools([
         {
             name: 'search_prompts',
@@ -63,155 +79,7 @@ export const getMcpServer = () => {
         },
         {
             name: 'toolm',
-            description: `ToolM 是 Prompt Manager 新一代工具系统运行时，提供统一的工具管理和执行能力。
-
-## 核心特性
-
-ToolM 作为统一工具管理器，提供：
-- **智能工具加载** - 自动扫描并加载所有可用工具
-- **四种运行模式** - manual（手册）、execute（执行）、configure（配置）、log（日志）
-- **依赖管理** - 自动处理工具依赖和安装
-- **错误智能处理** - 业务错误识别和解决方案提示
-- **统一接口** - 所有工具遵循标准接口规范
-
-## 何时使用 ToolM
-
-### 常见场景（IF-THEN 规则）：
-- IF 需要文件操作 → 使用 tool://filesystem 通过 toolm
-- IF 需要处理PDF文档 → 使用 tool://pdf-reader 通过 toolm
-- IF 需要读取本地或远程文件 → 使用 tool://file-reader 通过 toolm
-- IF 需要浏览器自动化 → 使用 tool://playwright 通过 toolm
-- IF 需要 Chrome DevTools 高级功能（性能分析、网络监控、控制台监控） → 使用 tool://chrome-devtools 通过 toolm
-- IF 需要任务管理（TodoList） → 使用 tool://todolist 通过 toolm
-- IF 需要与远程 Ollama 服务器交互（列出模型、发送对话请求） → 使用 tool://ollama-remote 通过 toolm
-- IF 看到 tool:// 格式 → 使用 toolm 调用
-- IF 不确定工具用法 → 先用 manual 模式查看手册
-
-### 首次使用任何工具
-⚠️ **必须先运行 mode: manual** 阅读工具文档
-⚠️ 示例：toolm with mode: manual for tool://filesystem
-
-## 如何使用 ToolM（复制这些模式）
-
-### 模式 1：查看工具手册（首次使用）
-
-**使用代码：**
-\`\`\`javascript
-mcp__promptmanager__toolm({
-  yaml: \`tool: tool://filesystem
-mode: manual\`
-})
-\`\`\`
-
-**作用：** 显示 filesystem 工具的完整使用手册
-
-### 模式 2：执行工具操作
-
-**使用代码：**
-\`\`\`javascript
-// 写入文件
-mcp__promptmanager__toolm({
-  yaml: \`tool: tool://filesystem
-mode: execute
-parameters:
-  method: write_file
-  path: ~/.prompt-manager/test.txt
-  content: |
-    Hello World
-    这是测试内容\`
-})
-
-// 读取文件
-mcp__promptmanager__toolm({
-  yaml: \`tool: tool://filesystem
-mode: execute
-parameters:
-  method: read_text_file
-  path: ~/.prompt-manager/test.txt\`
-})
-\`\`\`
-
-**作用：** 根据指定的工具和参数执行操作
-
-### 模式 3：配置工具环境
-
-**使用代码：**
-\`\`\`javascript
-mcp__promptmanager__toolm({
-  yaml: \`tool: tool://filesystem
-mode: configure
-parameters:
-  ALLOWED_DIRECTORIES: '["~/.prompt-manager", "/tmp"]'\`
-})
-\`\`\`
-
-**作用：** 设置工具的环境变量
-
-### 模式 4：查看工具日志
-
-**使用代码：**
-\`\`\`javascript
-mcp__promptmanager__toolm({
-  yaml: \`tool: tool://filesystem
-mode: log
-parameters:
-  action: tail
-  lines: 50\`
-})
-\`\`\`
-
-**作用：** 查看工具最近的 50 条日志
-
-## 关键规则（必须遵守）
-
-### ✅ 正确格式
-yaml 参数必须是完整的 YAML 文档：
-- 以 \`tool: tool://tool-name\` 开头
-- 添加 \`mode: execute\`（或 manual/configure/log）
-- 如需参数，添加 \`parameters:\` 部分并正确缩进
-
-### ❌ 常见错误避免
-- 不要只传 "tool://filesystem"（缺少 YAML 结构）
-- 不要添加 @ 前缀如 "@tool://filesystem"（系统会处理）
-- 不要忘记 "tool://" 前缀（不是 "tool: filesystem"）
-- 不要跳过手册，首次使用必须先看 manual
-
-## 系统内置工具
-
-完整内置工具列表：
-- **tool://filesystem** - 文件系统操作（读/写/列表/搜索等）
-- **tool://pdf-reader** - PDF文档读取与处理（分页提取文本和图片）
-- **tool://file-reader** - 统一文件读取工具（支持本地和远程文件，自动识别文件类型并转换为模型友好格式，支持缓存、相对路径解析和链接提取）
-- **tool://playwright** - 浏览器自动化工具（基于 Playwright，支持页面导航、元素操作、截图、内容提取等功能）
-- **tool://chrome-devtools** - Chrome DevTools 浏览器自动化工具（基于 chrome-devtools-mcp，完全复用官方实现，支持性能分析、网络监控、控制台监控等高级功能）
-- **tool://todolist** - TodoList 任务管理工具（基于 SQLite 的本地任务管理，默认创建会话任务，也可指定项目创建持久化任务，支持快速查询、批量操作、任务统计等功能）
-- **tool://ollama-remote** - 远程 Ollama 服务器交互工具（支持列出远程 Ollama 服务器上的可用模型，以及向远程 Ollama 服务器发送对话请求，支持自定义系统提示词和温度参数）
-
-更多工具正在开发中...
-
-## 逐步工作流程
-
-### 步骤 1：查看可用工具
-使用 manual 模式了解工具能力
-
-### 步骤 2：阅读工具手册
-\`\`\`javascript
-mcp__promptmanager__toolm({
-  yaml: \`tool: tool://TOOLNAME
-mode: manual\`
-})
-\`\`\`
-
-### 步骤 3：执行工具操作
-根据手册中的示例，修改参数以满足需求
-
-### 步骤 4：处理错误
-如果执行失败，检查：
-- 工具名称是否正确？
-- 参数是否正确缩进？
-- 是否先阅读了手册？
-- 错误提示中是否有解决方案？
-`,
+            description: toolmDescription,
             inputSchema: {
                 yaml: z.string().describe('YAML 格式的工具调用配置')
             },

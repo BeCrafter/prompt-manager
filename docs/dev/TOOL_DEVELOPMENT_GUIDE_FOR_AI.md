@@ -941,45 +941,81 @@ export default {
 3. 测试错误情况
 4. 检查日志输出
 
-### 步骤 6：工具注册到系统
+### 步骤 6：工具自动注册（无需手动操作）
 
-**重要**：工具创建并验证正确之后，必须将新增的工具补充到系统 mcp toolm 工具的描述中，以便用户能够发现和使用新工具。
+**重要更新**：工具系统已实现自动注册机制，无需手动修改 `mcp.server.js` 文件！
 
-**操作步骤**：
+**自动注册机制**：
 
-1. **打开工具描述文件**：
-   - 文件路径：`packages/server/mcp/mcp.server.js`
-   - 找到 `toolm` 工具的 `description` 字段
+1. **工具自动发现**：
+   - 系统启动时自动扫描 `~/.prompt-manager/toolbox/` 目录
+   - 自动加载所有符合规范的工具（`{tool-name}.tool.js`）
+   - 自动从工具的 `getMetadata()` 方法获取元数据
 
-2. **在"常见场景（IF-THEN 规则）"部分添加**：
-   ```markdown
-   - IF 需要{工具功能描述} → 使用 tool://{tool-name} 通过 toolm
-   ```
-   
-   示例：
-   ```markdown
-   - IF 需要浏览器自动化 → 使用 tool://playwright 通过 toolm
-   ```
+2. **描述自动生成**：
+   - `toolm` 工具的 description 会自动从所有已加载工具的元数据生成
+   - 自动生成"常见场景（IF-THEN 规则）"列表
+   - 自动生成"系统内置工具"列表
+   - 工具描述来自 `getMetadata().description`
+   - 使用场景来自 `getMetadata().scenarios`（优先）或 `description`
 
-3. **在"系统内置工具"部分添加**：
-   ```markdown
-   - **tool://{tool-name}** - {工具简短描述}
-   ```
-   
-   示例：
-   ```markdown
-   - **tool://playwright** - 浏览器自动化工具（基于 Playwright，支持页面导航、元素操作、截图、内容提取等功能）
-   ```
+3. **无需手动操作**：
+   - ✅ 不需要修改 `packages/server/mcp/mcp.server.js`
+   - ✅ 不需要手动添加工具描述
+   - ✅ 工具创建后，重启服务器即可自动注册
+   - ✅ 工具列表和使用场景会自动更新
 
-4. **验证修改**：
-   - 确保格式正确（Markdown 格式）
-   - 确保工具名称与 `getMetadata().id` 一致
-   - 确保描述准确反映工具功能
+**工作原理**：
+
+```javascript
+// 在 getMcpServer() 中自动执行：
+1. 初始化工具加载器（扫描并加载所有工具）
+2. 调用 generateToolmDescription() 生成动态描述
+3. 从所有工具的 getMetadata() 提取信息
+4. 自动生成工具列表和使用场景规则
+```
+
+**确保自动注册成功的条件**：
+
+1. ✅ 工具文件位于正确目录：
+   - 系统工具：`packages/resources/tools/{tool-name}/{tool-name}.tool.js`
+   - 用户工具：`~/.prompt-manager/toolbox/{tool-name}/{tool-name}.tool.js`
+
+2. ✅ 工具实现了 `getMetadata()` 方法：
+   - 包含 `description` 字段（用于工具列表）
+   - 包含 `scenarios` 字段（用于使用场景规则，可选但推荐）
+
+3. ✅ 重启服务器：
+   - 新工具需要重启服务器才能被加载
+   - 工具描述会在服务器启动时自动生成
+
+**示例：工具元数据如何影响自动注册**：
+
+```javascript
+getMetadata() {
+  return {
+    id: 'my-tool',
+    name: '我的工具',
+    description: '这是一个用于XXX的工具，支持YYY和ZZZ功能',  // 会出现在工具列表中
+    scenarios: [
+      '需要XXX功能时使用',  // 会出现在 IF-THEN 规则中（第一个场景）
+      '需要YYY功能时使用'
+    ],
+    // ...
+  };
+}
+```
+
+**自动生成的描述格式**：
+
+- **使用场景规则**：`- IF {scenarios[0]} → 使用 tool://{tool-name}`
+- **工具列表项**：`- **tool://{tool-name}** - {description}`
 
 **注意事项**：
-- 工具描述应该简洁明了，突出工具的核心功能
-- 保持与其他工具描述的风格一致
-- 如果工具有特殊使用场景，可以在描述中说明
+- 工具描述应该简洁明了，突出工具的核心功能（建议 50-120 字符）
+- `scenarios` 数组的第一个元素会用于生成 IF-THEN 规则
+- 如果工具没有 `scenarios`，系统会从 `description` 中提取
+- 工具按名称字母顺序排序显示
 
 ### 步骤 7：创建 README.md 文档
 
@@ -1291,13 +1327,15 @@ parameters:
 - [ ] README.md 格式与现有工具保持一致
 - [ ] README.md 中的示例代码可以正常运行
 
-### 工具注册验证
+### 工具自动注册验证
 
-- [ ] **已将工具补充到 toolm 工具描述中**（`packages/server/mcp/mcp.server.js`）
-- [ ] 在"常见场景（IF-THEN 规则）"部分添加了工具说明
-- [ ] 在"系统内置工具"部分添加了工具说明
+- [ ] **工具已实现 `getMetadata()` 方法**（必需，用于自动注册）
+- [ ] `getMetadata()` 包含 `description` 字段（用于工具列表）
+- [ ] `getMetadata()` 包含 `scenarios` 字段（推荐，用于使用场景规则）
+- [ ] 工具文件位于正确目录（系统工具或用户工具目录）
+- [ ] 重启服务器后工具能自动被发现和加载
+- [ ] 工具描述在 toolm 的 description 中自动出现
 - [ ] 工具名称与 `getMetadata().id` 一致
-- [ ] 工具描述准确反映工具功能
 
 ---
 
@@ -2035,7 +2073,7 @@ async execute(params) {
 8. ✅ Schema 定义完整准确
 9. ✅ 业务错误定义完整
 10. ✅ 依赖声明完整
-11. ✅ **已将工具补充到 toolm 工具描述中**（`packages/server/mcp/mcp.server.js`）
+11. ✅ **工具元数据完整**（`getMetadata()` 包含 description 和 scenarios，用于自动注册）
 12. ✅ **已创建 README.md 文档**（与工具文件同级目录，格式与现有工具一致）
 
 ---
