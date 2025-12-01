@@ -981,6 +981,205 @@ export default {
 - 保持与其他工具描述的风格一致
 - 如果工具有特殊使用场景，可以在描述中说明
 
+### 步骤 7：创建 README.md 文档
+
+**重要**：工具完成并验证正确之后，必须在工具同级目录创建 README.md 文档，格式与现有工具保持一致。
+
+**文件位置**：
+- 系统工具：`packages/resources/tools/{tool-name}/README.md`
+- 用户工具：`~/.prompt-manager/toolbox/{tool-name}/README.md`
+
+**文档结构**：
+
+```markdown
+# {工具名称} Tool
+
+{工具简短描述，1-2句话说明工具的核心功能}
+
+## 功能特性
+
+1. **功能1** (`method1`)
+   - 功能点1
+   - 功能点2
+
+2. **功能2** (`method2`)
+   - 功能点1
+   - 功能点2
+
+## 环境变量配置
+
+工具需要配置以下环境变量：
+
+- `ENV_VAR_NAME` (必需/可选): 环境变量说明
+  - 默认值: `default_value`
+  - 示例: `example_value`
+
+## 使用方法
+
+### 1. 配置环境变量
+
+```yaml
+tool: tool://{tool-name}
+mode: configure
+parameters:
+  ENV_VAR: "value"
+```
+
+### 2. 执行操作
+
+```yaml
+tool: tool://{tool-name}
+mode: execute
+parameters:
+  method: "method_name"
+  param1: "value1"
+  param2: "value2"
+```
+
+## 参数说明
+
+### method1 方法
+
+- `method` (必需): 必须为 `"method1"`
+- `param1` (必需): 参数1说明
+- `param2` (可选): 参数2说明，默认 `default_value`
+
+### method2 方法
+
+- `method` (必需): 必须为 `"method2"`
+- `param3` (必需): 参数3说明
+
+## 返回格式
+
+### method1 返回
+
+```json
+{
+  "success": true,
+  "data": "..."
+}
+```
+
+### method2 返回
+
+```json
+{
+  "success": true,
+  "result": "..."
+}
+```
+
+## 错误处理
+
+工具定义了以下业务错误：
+
+- `ERROR_CODE1`: 错误描述1
+- `ERROR_CODE2`: 错误描述2
+
+## 注意事项
+
+1. **服务器同步**: 新添加的工具需要重启服务器才能被加载
+2. **其他注意事项**: ...
+
+## 测试步骤
+
+1. **重启服务器**（如果服务器已在运行）
+
+2. **查看工具手册**
+   ```yaml
+   tool: tool://{tool-name}
+   mode: manual
+   ```
+
+3. **配置环境变量**
+   ```yaml
+   tool: tool://{tool-name}
+   mode: configure
+   parameters:
+     ENV_VAR: "value"
+   ```
+
+4. **测试执行**
+   ```yaml
+   tool: tool://{tool-name}
+   mode: execute
+   parameters:
+     method: "method_name"
+     param1: "value1"
+   ```
+
+## 开发说明
+
+工具遵循 Prompt Manager 工具开发规范：
+
+- 使用 ES6 模块格式 (`export default`)
+- 实现必需方法 `execute()`
+- 实现推荐方法：`getDependencies()`, `getMetadata()`, `getSchema()`, `getBusinessErrors()`
+- 完整的错误处理和日志记录
+- 符合工具开发指南的所有要求
+
+## 版本历史
+
+- **1.0.0** (2025-01-01): 初始版本
+  - 实现功能1
+  - 实现功能2
+  - 支持环境变量配置
+  - 完整的错误处理
+```
+
+**文档编写要点**：
+
+1. **标题和简介**：
+   - 使用 `# {工具名称} Tool` 作为标题
+   - 第一段简要描述工具的核心功能（1-2句话）
+
+2. **功能特性**：
+   - 列出工具的主要功能点
+   - 每个功能点说明对应的方法和主要能力
+
+3. **环境变量配置**：
+   - 列出所有环境变量及其说明
+   - 标注是否必需
+   - 提供默认值和示例
+
+4. **使用方法**：
+   - 提供配置环境变量的示例
+   - 提供主要操作的使用示例
+   - 使用 YAML 代码块格式
+
+5. **参数说明**：
+   - 按方法分组说明参数
+   - 标注参数是否必需
+   - 说明参数类型和默认值
+
+6. **返回格式**：
+   - 提供主要方法的返回格式示例
+   - 使用 JSON 代码块格式
+
+7. **错误处理**：
+   - 列出所有业务错误代码和描述
+   - 参考 `getBusinessErrors()` 中的定义
+
+8. **注意事项**：
+   - 列出使用工具时需要注意的事项
+   - 包括服务器同步、路径限制、性能考虑等
+
+9. **测试步骤**：
+   - 提供完整的测试流程
+   - 从查看手册到执行测试的步骤
+
+10. **开发说明**：
+    - 说明工具遵循的开发规范
+    - 可以提及参考实现或依赖库
+
+11. **版本历史**：
+    - 记录版本号和发布日期
+    - 列出每个版本的主要变更
+
+**参考示例**：
+- 系统工具示例：`packages/resources/tools/ollama-remote/README.md`
+- 其他工具示例：`packages/resources/tools/chrome-devtools/README.md`、`packages/resources/tools/filesystem/README.md` 等
+
 ---
 
 ## ✅ 验证清单
@@ -1076,6 +1275,21 @@ export default {
 - [ ] 每个方法都有注释说明
 - [ ] 复杂逻辑有注释解释
 - [ ] 使用场景和限制说明清晰
+- [ ] **已创建 README.md 文档**（与工具文件同级目录）
+- [ ] README.md 包含所有必需部分：
+  - [ ] 标题和简介
+  - [ ] 功能特性
+  - [ ] 环境变量配置
+  - [ ] 使用方法（包含配置和执行示例）
+  - [ ] 参数说明（按方法分组）
+  - [ ] 返回格式（主要方法的返回示例）
+  - [ ] 错误处理（列出所有业务错误）
+  - [ ] 注意事项
+  - [ ] 测试步骤（完整测试流程）
+  - [ ] 开发说明
+  - [ ] 版本历史
+- [ ] README.md 格式与现有工具保持一致
+- [ ] README.md 中的示例代码可以正常运行
 
 ### 工具注册验证
 
@@ -1822,6 +2036,7 @@ async execute(params) {
 9. ✅ 业务错误定义完整
 10. ✅ 依赖声明完整
 11. ✅ **已将工具补充到 toolm 工具描述中**（`packages/server/mcp/mcp.server.js`）
+12. ✅ **已创建 README.md 文档**（与工具文件同级目录，格式与现有工具一致）
 
 ---
 

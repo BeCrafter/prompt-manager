@@ -83,6 +83,7 @@ ToolM 作为统一工具管理器，提供：
 - IF 需要浏览器自动化 → 使用 tool://playwright 通过 toolm
 - IF 需要 Chrome DevTools 高级功能（性能分析、网络监控、控制台监控） → 使用 tool://chrome-devtools 通过 toolm
 - IF 需要任务管理（TodoList） → 使用 tool://todolist 通过 toolm
+- IF 需要与远程 Ollama 服务器交互（列出模型、发送对话请求） → 使用 tool://ollama-remote 通过 toolm
 - IF 看到 tool:// 格式 → 使用 toolm 调用
 - IF 不确定工具用法 → 先用 manual 模式查看手册
 
@@ -184,6 +185,7 @@ yaml 参数必须是完整的 YAML 文档：
 - **tool://playwright** - 浏览器自动化工具（基于 Playwright，支持页面导航、元素操作、截图、内容提取等功能）
 - **tool://chrome-devtools** - Chrome DevTools 浏览器自动化工具（基于 chrome-devtools-mcp，完全复用官方实现，支持性能分析、网络监控、控制台监控等高级功能）
 - **tool://todolist** - TodoList 任务管理工具（基于 SQLite 的本地任务管理，默认创建会话任务，也可指定项目创建持久化任务，支持快速查询、批量操作、任务统计等功能）
+- **tool://ollama-remote** - 远程 Ollama 服务器交互工具（支持列出远程 Ollama 服务器上的可用模型，以及向远程 Ollama 服务器发送对话请求，支持自定义系统提示词和温度参数）
 
 更多工具正在开发中...
 
