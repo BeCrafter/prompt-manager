@@ -1351,8 +1351,8 @@ async function handleGroupRename(pathValue, newName) {
     return;
   }
   const trimmedName = newName.trim();
-  if (!/^[a-zA-Z0-9-_一-龥]{1,64}$/.test(trimmedName)) {
-    showMessage('名称格式无效，只能包含字母、数字、中划线、下划线和中文', 'error');
+  if (!/^(?![.]{1,2}$)[^\\/:*?"<>|\r\n]{1,64}$/.test(trimmedName)) {
+    showMessage('名称格式无效，不能包含 / \\ : * ? \" < > | 或换行，长度需在1-64字符', 'error');
     return;
   }
   const currentSegments = pathValue.split('/');
@@ -2221,8 +2221,8 @@ async function createNewFolder() {
   }
 
   // 验证目录名称格式
-  if (!/^[a-zA-Z0-9-_一-龥]{1,64}$/.test(folderName)) {
-    showMessage('目录名称格式无效，只能包含字母、数字、中划线、下划线和中文', 'error');
+  if (!/^(?![.]{1,2}$)[^\\/:*?"<>|\r\n]{1,64}$/.test(folderName)) {
+    showMessage('目录名称格式无效，不能包含 / \\ : * ? \" < > | 或换行，长度需在1-64字符', 'error');
     nameInput?.focus();
     return;
   }
