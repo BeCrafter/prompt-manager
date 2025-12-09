@@ -8,7 +8,8 @@ import { fileURLToPath } from 'url';
 import { logger } from './logger.js';
 
 export const GROUP_META_FILENAME = '.groupmeta.json';
-export const GROUP_NAME_REGEX = /^[a-zA-Z0-9-_\u4e00-\u9fa5]{1,64}$/;
+// 允许中文、空格、emoji 等字符，禁止路径分隔符及常见非法文件名字符
+export const GROUP_NAME_REGEX = /^(?![.]{1,2}$)[^\\/:*?"<>|\r\n]{1,64}$/;
 
 // 获取当前文件的目录路径
 const __filename = fileURLToPath(import.meta.url);
@@ -206,6 +207,7 @@ export class Util {
      * @returns 
      */
     isValidGroupName(name) {
+        if (typeof name !== 'string') return false;
         return GROUP_NAME_REGEX.test(name);
     }
 

@@ -17,6 +17,7 @@ const router = express.Router();
 
 // 获取prompts目录路径（在启动时可能被覆盖）
 let promptsDir = config.getPromptsDir();
+const PROMPT_NAME_REGEX = /^(?![.]{1,2}$)[^\\/:*?"<>|\r\n]{1,64}$/;
 
 // 获取服务器配置端点
 router.get('/config', (req, res) => {
@@ -147,14 +148,15 @@ router.get('/prompts/:name', adminAuthMiddleware, (req, res) => {
 router.post('/prompts', adminAuthMiddleware, (req, res) => {
     try {
         const { name, group, yaml: yamlContent, relativePath: originalRelativePath } = req.body;
+        const trimmedName = (name || '').trim();
 
-        if (!name || !yamlContent) {
+        if (!trimmedName || !yamlContent) {
             return res.status(400).json({ error: '名称和YAML内容是必需的' });
         }
 
         // 验证名称格式
-        if (!/^[a-zA-Z0-9-_]{1,64}$/.test(name)) {
-            return res.status(400).json({ error: '名称格式无效' });
+        if (!PROMPT_NAME_REGEX.test(trimmedName)) {
+            return res.status(400).json({ error: '名称格式无效，不能包含 / \\ : * ? \" < > | 或换行，长度需在1-64字符' });
         }
 
         // 计算目标路径
@@ -166,7 +168,7 @@ router.post('/prompts', adminAuthMiddleware, (req, res) => {
             targetSegments.push(groupName);
         }
 
-        const finalFileName = `${name}.yaml`;
+        const finalFileName = `${trimmedName}.yaml`;
         targetSegments.push(finalFileName);
 
         const targetRelativePath = path.posix.join(...targetSegments);
@@ -178,7 +180,7 @@ router.post('/prompts', adminAuthMiddleware, (req, res) => {
         // 检查是否重名（同目录下）
         const prompts = util.getPromptsFromFiles();
         const existingPrompt = prompts.find(p => {
-            if (p.name !== name) return false;
+            if (p.name !== trimmedName) return false;
             const isOriginalFile = normalizedOriginalPath && p.relativePath === normalizedOriginalPath;
             if (isOriginalFile) return false;
             const sameRelativePath = p.relativePath === targetRelativePath;
@@ -219,7 +221,7 @@ router.post('/groups', adminAuthMiddleware, (req, res) => {
 
         // 验证名称格式
         if (!util.isValidGroupName(name)) {
-            return res.status(400).json({ error: '名称格式无效，只能包含字母、数字、中划线、下划线和中文' });
+            return res.status(400).json({ error: '名称格式无效，不能包含 / \\ : * ? \" < > | 或换行，长度需在1-64字符' });
         }
 
         // 构建目标目录路径
@@ -257,7 +259,7 @@ router.patch('/groups/rename', adminAuthMiddleware, (req, res) => {
             return res.status(400).json({ error: '分组路径和新名称是必需的' });
         }
         if (!util.isValidGroupName(newName)) {
-            return res.status(400).json({ error: '名称格式无效，只能包含字母、数字、中划线、下划线和中文' });
+            return res.status(400).json({ error: '名称格式无效，不能包含 / \\ : * ? \" < > | 或换行，长度需在1-64字符' });
         }
         if (groupPath === 'default') {
             return res.status(400).json({ error: '默认分组不允许重命名' });
