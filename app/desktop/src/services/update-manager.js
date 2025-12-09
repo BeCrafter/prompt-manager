@@ -95,21 +95,20 @@ class UpdateManager {
 
   async showUpdateAvailableDialog(latestVersion, currentVersion) {
     const { response } = await dialog.showMessageBox({
-      type: 'question',
+      type: 'info',
       title: '发现新版本',
       message: `发现新版本 ${latestVersion}`,
-      detail: '升级期间服务会短暂停止，是否继续？',
-      buttons: ['立即升级', '打开发布页', '取消'],
+      detail: `当前版本：${currentVersion}\n可前往发布页下载并手动更新。`,
+      buttons: ['打开发布页', '取消'],
       defaultId: 0,
-      cancelId: 2
+      cancelId: 1
     });
 
-    if (response === 1) {
+    if (response === 0) {
       shell.openExternal('https://github.com/BeCrafter/prompt-manager/releases/latest');
-      return false;
     }
 
-    return response === 0;
+    return false;
   }
 
   async performUpdate(version) {
