@@ -163,17 +163,31 @@ app.all('/mcp', (req, res) => {
       }
     } else if (!sessionId && req.method === 'POST' && isInitializeRequest(req.body)) {
       const eventStore = new InMemoryEventStore();
+      
+      // 预先创建 MCP 服务器实例，避免异步时序问题
+      let mcpServerPromise = null;
+      let serverReady = false;
+      
       transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => randomUUID(),
           eventStore, // Enable resumability
-          onsessioninitialized: sessionId => {
+          onsessioninitialized: async sessionId => {
               // Store the transport by session ID when session is initialized
               console.log(`StreamableHTTP session initialized with ID: ${sessionId}`);
               transports[sessionId] = transport;
               
-              // 为新会话创建MCP服务器实例
-              mcpServers[sessionId] = getMcpServer();
-              mcpServers[sessionId].connect(transport);
+              try {
+                  // 为新会话创建MCP服务器实例（同步等待完成）
+                  const server = await getMcpServer();
+                  mcpServers[sessionId] = server;
+                  server.connect(transport);
+                  serverReady = true;
+                  console.log(`MCP server connected for session ${sessionId}`);
+              } catch (error) {
+                  console.error('创建MCP服务器失败:', error);
+                  // 即使失败也标记为ready，避免阻塞
+                  serverReady = true;
+              }
           }
       });
 

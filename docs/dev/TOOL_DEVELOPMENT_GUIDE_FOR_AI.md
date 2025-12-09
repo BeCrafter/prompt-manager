@@ -941,45 +941,280 @@ export default {
 3. 测试错误情况
 4. 检查日志输出
 
-### 步骤 6：工具注册到系统
+### 步骤 6：工具自动注册（无需手动操作）
 
-**重要**：工具创建并验证正确之后，必须将新增的工具补充到系统 mcp toolm 工具的描述中，以便用户能够发现和使用新工具。
+**重要更新**：工具系统已实现自动注册机制，无需手动修改 `mcp.server.js` 文件！
 
-**操作步骤**：
+**自动注册机制**：
 
-1. **打开工具描述文件**：
-   - 文件路径：`packages/server/mcp/mcp.server.js`
-   - 找到 `toolm` 工具的 `description` 字段
+1. **工具自动发现**：
+   - 系统启动时自动扫描 `~/.prompt-manager/toolbox/` 目录
+   - 自动加载所有符合规范的工具（`{tool-name}.tool.js`）
+   - 自动从工具的 `getMetadata()` 方法获取元数据
 
-2. **在"常见场景（IF-THEN 规则）"部分添加**：
-   ```markdown
-   - IF 需要{工具功能描述} → 使用 tool://{tool-name} 通过 toolm
-   ```
-   
-   示例：
-   ```markdown
-   - IF 需要浏览器自动化 → 使用 tool://playwright 通过 toolm
-   ```
+2. **描述自动生成**：
+   - `toolm` 工具的 description 会自动从所有已加载工具的元数据生成
+   - 自动生成"常见场景（IF-THEN 规则）"列表
+   - 自动生成"系统内置工具"列表
+   - 工具描述来自 `getMetadata().description`
+   - 使用场景来自 `getMetadata().scenarios`（优先）或 `description`
 
-3. **在"系统内置工具"部分添加**：
-   ```markdown
-   - **tool://{tool-name}** - {工具简短描述}
-   ```
-   
-   示例：
-   ```markdown
-   - **tool://playwright** - 浏览器自动化工具（基于 Playwright，支持页面导航、元素操作、截图、内容提取等功能）
-   ```
+3. **无需手动操作**：
+   - ✅ 不需要修改 `packages/server/mcp/mcp.server.js`
+   - ✅ 不需要手动添加工具描述
+   - ✅ 工具创建后，重启服务器即可自动注册
+   - ✅ 工具列表和使用场景会自动更新
 
-4. **验证修改**：
-   - 确保格式正确（Markdown 格式）
-   - 确保工具名称与 `getMetadata().id` 一致
-   - 确保描述准确反映工具功能
+**工作原理**：
+
+```javascript
+// 在 getMcpServer() 中自动执行：
+1. 初始化工具加载器（扫描并加载所有工具）
+2. 调用 generateToolmDescription() 生成动态描述
+3. 从所有工具的 getMetadata() 提取信息
+4. 自动生成工具列表和使用场景规则
+```
+
+**确保自动注册成功的条件**：
+
+1. ✅ 工具文件位于正确目录：
+   - 系统工具：`packages/resources/tools/{tool-name}/{tool-name}.tool.js`
+   - 用户工具：`~/.prompt-manager/toolbox/{tool-name}/{tool-name}.tool.js`
+
+2. ✅ 工具实现了 `getMetadata()` 方法：
+   - 包含 `description` 字段（用于工具列表）
+   - 包含 `scenarios` 字段（用于使用场景规则，可选但推荐）
+
+3. ✅ 重启服务器：
+   - 新工具需要重启服务器才能被加载
+   - 工具描述会在服务器启动时自动生成
+
+**示例：工具元数据如何影响自动注册**：
+
+```javascript
+getMetadata() {
+  return {
+    id: 'my-tool',
+    name: '我的工具',
+    description: '这是一个用于XXX的工具，支持YYY和ZZZ功能',  // 会出现在工具列表中
+    scenarios: [
+      '需要XXX功能时使用',  // 会出现在 IF-THEN 规则中（第一个场景）
+      '需要YYY功能时使用'
+    ],
+    // ...
+  };
+}
+```
+
+**自动生成的描述格式**：
+
+- **使用场景规则**：`- IF {scenarios[0]} → 使用 tool://{tool-name}`
+- **工具列表项**：`- **tool://{tool-name}** - {description}`
 
 **注意事项**：
-- 工具描述应该简洁明了，突出工具的核心功能
-- 保持与其他工具描述的风格一致
-- 如果工具有特殊使用场景，可以在描述中说明
+- 工具描述应该简洁明了，突出工具的核心功能（建议 50-120 字符）
+- `scenarios` 数组的第一个元素会用于生成 IF-THEN 规则
+- 如果工具没有 `scenarios`，系统会从 `description` 中提取
+- 工具按名称字母顺序排序显示
+
+### 步骤 7：创建 README.md 文档
+
+**重要**：工具完成并验证正确之后，必须在工具同级目录创建 README.md 文档，格式与现有工具保持一致。
+
+**文件位置**：
+- 系统工具：`packages/resources/tools/{tool-name}/README.md`
+- 用户工具：`~/.prompt-manager/toolbox/{tool-name}/README.md`
+
+**文档结构**：
+
+```markdown
+# {工具名称} Tool
+
+{工具简短描述，1-2句话说明工具的核心功能}
+
+## 功能特性
+
+1. **功能1** (`method1`)
+   - 功能点1
+   - 功能点2
+
+2. **功能2** (`method2`)
+   - 功能点1
+   - 功能点2
+
+## 环境变量配置
+
+工具需要配置以下环境变量：
+
+- `ENV_VAR_NAME` (必需/可选): 环境变量说明
+  - 默认值: `default_value`
+  - 示例: `example_value`
+
+## 使用方法
+
+### 1. 配置环境变量
+
+```yaml
+tool: tool://{tool-name}
+mode: configure
+parameters:
+  ENV_VAR: "value"
+```
+
+### 2. 执行操作
+
+```yaml
+tool: tool://{tool-name}
+mode: execute
+parameters:
+  method: "method_name"
+  param1: "value1"
+  param2: "value2"
+```
+
+## 参数说明
+
+### method1 方法
+
+- `method` (必需): 必须为 `"method1"`
+- `param1` (必需): 参数1说明
+- `param2` (可选): 参数2说明，默认 `default_value`
+
+### method2 方法
+
+- `method` (必需): 必须为 `"method2"`
+- `param3` (必需): 参数3说明
+
+## 返回格式
+
+### method1 返回
+
+```json
+{
+  "success": true,
+  "data": "..."
+}
+```
+
+### method2 返回
+
+```json
+{
+  "success": true,
+  "result": "..."
+}
+```
+
+## 错误处理
+
+工具定义了以下业务错误：
+
+- `ERROR_CODE1`: 错误描述1
+- `ERROR_CODE2`: 错误描述2
+
+## 注意事项
+
+1. **服务器同步**: 新添加的工具需要重启服务器才能被加载
+2. **其他注意事项**: ...
+
+## 测试步骤
+
+1. **重启服务器**（如果服务器已在运行）
+
+2. **查看工具手册**
+   ```yaml
+   tool: tool://{tool-name}
+   mode: manual
+   ```
+
+3. **配置环境变量**
+   ```yaml
+   tool: tool://{tool-name}
+   mode: configure
+   parameters:
+     ENV_VAR: "value"
+   ```
+
+4. **测试执行**
+   ```yaml
+   tool: tool://{tool-name}
+   mode: execute
+   parameters:
+     method: "method_name"
+     param1: "value1"
+   ```
+
+## 开发说明
+
+工具遵循 Prompt Manager 工具开发规范：
+
+- 使用 ES6 模块格式 (`export default`)
+- 实现必需方法 `execute()`
+- 实现推荐方法：`getDependencies()`, `getMetadata()`, `getSchema()`, `getBusinessErrors()`
+- 完整的错误处理和日志记录
+- 符合工具开发指南的所有要求
+
+## 版本历史
+
+- **1.0.0** (2025-01-01): 初始版本
+  - 实现功能1
+  - 实现功能2
+  - 支持环境变量配置
+  - 完整的错误处理
+```
+
+**文档编写要点**：
+
+1. **标题和简介**：
+   - 使用 `# {工具名称} Tool` 作为标题
+   - 第一段简要描述工具的核心功能（1-2句话）
+
+2. **功能特性**：
+   - 列出工具的主要功能点
+   - 每个功能点说明对应的方法和主要能力
+
+3. **环境变量配置**：
+   - 列出所有环境变量及其说明
+   - 标注是否必需
+   - 提供默认值和示例
+
+4. **使用方法**：
+   - 提供配置环境变量的示例
+   - 提供主要操作的使用示例
+   - 使用 YAML 代码块格式
+
+5. **参数说明**：
+   - 按方法分组说明参数
+   - 标注参数是否必需
+   - 说明参数类型和默认值
+
+6. **返回格式**：
+   - 提供主要方法的返回格式示例
+   - 使用 JSON 代码块格式
+
+7. **错误处理**：
+   - 列出所有业务错误代码和描述
+   - 参考 `getBusinessErrors()` 中的定义
+
+8. **注意事项**：
+   - 列出使用工具时需要注意的事项
+   - 包括服务器同步、路径限制、性能考虑等
+
+9. **测试步骤**：
+   - 提供完整的测试流程
+   - 从查看手册到执行测试的步骤
+
+10. **开发说明**：
+    - 说明工具遵循的开发规范
+    - 可以提及参考实现或依赖库
+
+11. **版本历史**：
+    - 记录版本号和发布日期
+    - 列出每个版本的主要变更
+
+**参考示例**：
+- 系统工具示例：`packages/resources/tools/ollama-remote/README.md`
+- 其他工具示例：`packages/resources/tools/chrome-devtools/README.md`、`packages/resources/tools/filesystem/README.md` 等
 
 ---
 
@@ -1076,14 +1311,31 @@ export default {
 - [ ] 每个方法都有注释说明
 - [ ] 复杂逻辑有注释解释
 - [ ] 使用场景和限制说明清晰
+- [ ] **已创建 README.md 文档**（与工具文件同级目录）
+- [ ] README.md 包含所有必需部分：
+  - [ ] 标题和简介
+  - [ ] 功能特性
+  - [ ] 环境变量配置
+  - [ ] 使用方法（包含配置和执行示例）
+  - [ ] 参数说明（按方法分组）
+  - [ ] 返回格式（主要方法的返回示例）
+  - [ ] 错误处理（列出所有业务错误）
+  - [ ] 注意事项
+  - [ ] 测试步骤（完整测试流程）
+  - [ ] 开发说明
+  - [ ] 版本历史
+- [ ] README.md 格式与现有工具保持一致
+- [ ] README.md 中的示例代码可以正常运行
 
-### 工具注册验证
+### 工具自动注册验证
 
-- [ ] **已将工具补充到 toolm 工具描述中**（`packages/server/mcp/mcp.server.js`）
-- [ ] 在"常见场景（IF-THEN 规则）"部分添加了工具说明
-- [ ] 在"系统内置工具"部分添加了工具说明
+- [ ] **工具已实现 `getMetadata()` 方法**（必需，用于自动注册）
+- [ ] `getMetadata()` 包含 `description` 字段（用于工具列表）
+- [ ] `getMetadata()` 包含 `scenarios` 字段（推荐，用于使用场景规则）
+- [ ] 工具文件位于正确目录（系统工具或用户工具目录）
+- [ ] 重启服务器后工具能自动被发现和加载
+- [ ] 工具描述在 toolm 的 description 中自动出现
 - [ ] 工具名称与 `getMetadata().id` 一致
-- [ ] 工具描述准确反映工具功能
 
 ---
 
@@ -1821,7 +2073,8 @@ async execute(params) {
 8. ✅ Schema 定义完整准确
 9. ✅ 业务错误定义完整
 10. ✅ 依赖声明完整
-11. ✅ **已将工具补充到 toolm 工具描述中**（`packages/server/mcp/mcp.server.js`）
+11. ✅ **工具元数据完整**（`getMetadata()` 包含 description 和 scenarios，用于自动注册）
+12. ✅ **已创建 README.md 文档**（与工具文件同级目录，格式与现有工具一致）
 
 ---
 
