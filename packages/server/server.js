@@ -60,6 +60,10 @@ export async function startServer(options = {}) {
         logger.error('同步系统工具失败，继续启动服务', { error: error.message });
       }
       
+    // MCP 长连接可能长时间空闲（IDE 侧保持会话），若沿用 Node 默认超时（requestTimeout 5 分钟、keepAliveTimeout 5 秒、headersTimeout 60 秒）
+    // 会导致连接被动关闭。这里将相关超时调高/关闭以避免 IDE 定期断开。
+    const MCP_LONG_TIMEOUT = 24 * 60 * 60 * 1000; // 24h
+
       // 启动日志清理任务
       startLogCleanupTask();
 
@@ -70,6 +74,14 @@ export async function startServer(options = {}) {
             logger.info(`管理员界面可通过 http://localhost:${config.getPort()}${config.adminPath} 访问`);
             process.stderr.write('\n======================================================================================\n');
           }
+
+        // 放宽 HTTP 服务器超时，防止 MCP 流式会话被意外回收
+        server.keepAliveTimeout = MCP_LONG_TIMEOUT;
+        server.headersTimeout = MCP_LONG_TIMEOUT + 1000; // 必须大于 keepAliveTimeout
+        server.requestTimeout = 0; // 0 表示关闭 request 超时
+        server.setTimeout(0); // 兼容旧接口，关闭 socket 超时
+        logger.info(`MCP 长连接超时已放宽: keepAliveTimeout=${server.keepAliveTimeout}ms`);
+
           // 保存服务器实例引用，以便后续可以关闭它
           serverInstance = server;
           resolve(server);
@@ -94,7 +106,8 @@ export async function startServer(options = {}) {
 export async function stopServer() {
   if (serverStartingPromise) {
     try {
-      await serverStartingPromise.exitCode();
+      // 等待启动流程结束，避免中途关闭导致的资源悬挂
+      await serverStartingPromise;
     } catch (error) {
       // ignore failing start when stopping
     }
