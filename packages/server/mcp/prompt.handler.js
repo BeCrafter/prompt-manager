@@ -263,3 +263,29 @@ function convertToText(result, format) {
     ]
   };
 }
+
+/**
+ * 处理融合的 prompts 工具调用
+ * 支持搜索和获取提示词两种操作
+ */
+export async function handlePrompts(args) {
+  const { action, query } = args;
+
+  if (!action) {
+    throw new Error("缺少必需参数: action (search 或 get)");
+  }
+
+  switch (action) {
+    case 'search':
+      return handleSearchPrompts({ name: query });
+
+    case 'get':
+      if (!query) {
+        throw new Error("get操作需要提供query参数指定提示词ID或名称");
+      }
+      return handleGetPrompt({ prompt_id: query });
+
+    default:
+      throw new Error(`不支持的操作类型: ${action}。支持的操作: search, get`);
+  }
+}

@@ -240,7 +240,10 @@ export function generateToolmDescription() {
     const toolComparison = generateToolComparison(tools);
     
     // 组装完整的描述（优化结构，减少冗余）
-    const description = `ToolM 是 Prompt Manager 新一代工具系统运行时，提供统一的工具管理和执行能力。
+    const description = `🛠️ ToolM 是 Prompt Manager 新一代工具系统运行时，提供统一的工具管理和执行能力。
+
+【规范名称】promptmanager_toolm
+【调用说明】在提示词中使用 promptmanager_toolm，实际调用时自动映射到 mcp__[server]__action
 
 ## 核心特性
 
@@ -318,7 +321,7 @@ ${categorizedToolList}
  * @returns {string} 默认描述
  */
 function getDefaultDescription() {
-  return `ToolM 是 Prompt Manager 新一代工具系统运行时，提供统一的工具管理和执行能力。
+  return `🛠️ ToolM 是 Prompt Manager 新一代工具系统运行时，提供统一的工具管理和执行能力。
 
 ## 核心特性
 
