@@ -142,13 +142,11 @@ function normalizePayloadByScenario(scenario, payload) {
 const SEQUENTIAL_THINKING_DESCRIPTION = `🧠 **顺序思考工具 (Sequential Thinking)** - 动态反思性思维工具
 
 ## 🎯 工具定位
-这是一个用于**探索性、分析性、不确定性**问题的动态思考工具。支持非线性思维、修订和分支，适合需要深入分析和反复验证的场景。
+这是一个用于**探索性、分析性、不确定性**问题的动态思考工具。支持非线性思维、修订和分支，适合需要深入分析和反复验证的场景。每个思考都可以在理解加深时，在之前获得的见解上构建、质疑或修订。
 
 **重要说明：** 此工具支持 MCP 工具协调功能。模型会分析可用工具及其描述，智能推荐合适的工具，并由服务器跟踪和组织这些推荐。
 
 ## 🔍 场景识别 - 何时使用此工具？
-
-### ✅ 优先使用 sequentialthinking 的场景：
 
 **1. 探索性问题（问题不明确）**
    - ❓ "为什么系统性能下降？" → 需要分析原因
@@ -177,20 +175,6 @@ const SEQUENTIAL_THINKING_DESCRIPTION = `🧠 **顺序思考工具 (Sequential T
    - 需要了解工具的执行顺序
    - 需要工具使用的参数建议
    - 需要工具推荐的合理性说明
-
-### ❌ 不适合使用 sequentialthinking 的场景：
-   - ✅ 目标明确，只需要执行 → 使用 think_and_plan
-   - ✅ 需要具体的行动步骤 → 使用 think_and_plan
-   - ✅ 任务分解和执行规划 → 使用 think_and_plan
-
-## 🆚 工具对比决策树
-
-决策流程：
-  问题是否明确？
-  - 不明确/需要探索 → sequentialthinking
-  - 明确 + 需要执行 → think_and_plan
-  - 明确 + 只需分析 → sequentialthinking
-  - 需要工具推荐和指导 → sequentialthinking
 
 ## ✨ 核心特性
 
@@ -306,8 +290,6 @@ export const THINK_AND_PLAN_DESCRIPTION = `📋 **思考规划工具 (Think & Pl
 
 ## 🔍 场景识别 - 何时使用此工具？
 
-### ✅ 优先使用 think_and_plan 的场景：
-
 **1. 任务执行（目标明确）**
    - ✅ "实现用户登录功能" → 需要具体实现步骤
    - ✅ "部署新版本到生产环境" → 需要执行计划
@@ -330,20 +312,6 @@ export const THINK_AND_PLAN_DESCRIPTION = `📋 **思考规划工具 (Think & Pl
    - 每个步骤都需要明确的下一步行动
    - 需要调用具体工具或执行具体操作
    - 需要验证和检查点
-
-### ❌ 不适合使用 think_and_plan 的场景：
-   - ❓ 问题不明确，需要探索 → 使用 sequentialthinking
-   - ❓ 需要分析原因或诊断问题 → 使用 sequentialthinking
-   - ❓ 需要多方案对比或修订 → 使用 sequentialthinking
-   - ❓ 创意性工作，需要发散思维 → 使用 sequentialthinking
-
-## 🆚 工具对比决策树
-
-决策流程：
-  问题是否明确？
-  - 明确 + 需要执行 → think_and_plan (优先选择)
-  - 明确 + 只需分析 → sequentialthinking
-  - 不明确/需要探索 → sequentialthinking
 
 ## ✨ 核心特性
 
@@ -400,15 +368,7 @@ export const THINK_AND_PLAN_DESCRIPTION = `📋 **思考规划工具 (Think & Pl
 - Thought: "需要完成月度业务分析报告"
 - Plan: "1. 收集数据 2. 分析趋势 3. 编写报告 4. 审核发布"
 - Action: "调用数据分析工具提取本月业务数据"
-
-## 🔄 与 sequentialthinking 的配合使用
-
-**推荐工作流：**
-1. **探索阶段** → 使用 sequentialthinking
-   - 分析问题、探索方案、验证假设
-2. **执行阶段** → 使用 think_and_plan
-   - 将确定的方案转化为可执行步骤
-   - 追踪执行进度和结果`;
+`;
 
 const descriptionMap = {
     exploratory: SEQUENTIAL_THINKING_DESCRIPTION,
