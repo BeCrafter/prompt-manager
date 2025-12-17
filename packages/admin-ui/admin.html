@@ -112,8 +112,30 @@
 
     <!-- 主体内容 -->
     <main>
+      <!-- 一级导航 -->
+      <nav class="primary-nav">
+        <div class="primary-nav-items">
+          <button class="primary-nav-item active" data-nav="prompts" title="Prompts">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            <span>Prompts</span>
+          </button>
+          <button class="primary-nav-item" data-nav="tools" title="Tools">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+            </svg>
+            <span>Tools</span>
+          </button>
+        </div>
+      </nav>
+      
       <!-- 左侧边栏 -->
-      <aside>
+      <aside id="promptsSidebar">
         <div class="sidebar-header">
           <button id="newPromptBtn" class="new-prompt-btn">
             新建 Prompt
@@ -131,8 +153,17 @@
         <div id="groupList"></div>
       </aside>
 
+      <!-- 工具区域（默认隐藏） -->
+      <div id="toolsArea" class="tools-area" style="display: none;">
+        <div class="tools-empty">
+          <div class="tools-empty-icon">🔧</div>
+          <div class="tools-empty-text">工具列表</div>
+          <div class="tools-empty-hint">敬请期待...</div>
+        </div>
+      </div>
+
       <!-- 右侧编辑器 -->
-      <div class="editor-container">
+      <div class="editor-container" id="promptsArea">
         <!-- 自定义空白内容区域 -->
         <div class="custom-blank-content" id="customBlankContent">
           <div class="blank-placeholder">

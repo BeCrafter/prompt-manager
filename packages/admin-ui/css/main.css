@@ -322,6 +322,80 @@ main {
   height: 93%;
 }
 
+/* 一级导航样式 */
+.primary-nav {
+  width: 60px;
+  background: #fafafa;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 12px 0;
+  flex-shrink: 0;
+}
+
+.primary-nav-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 8px;
+}
+
+.primary-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--gray);
+  position: relative;
+}
+
+.primary-nav-item svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2;
+  transition: all 0.2s ease;
+  /* transform: rotate(90deg); */
+}
+
+.primary-nav-item span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  writing-mode: vertical-lr;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.primary-nav-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--primary);
+}
+
+.primary-nav-item.active {
+  background: white;
+  color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.primary-nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background: var(--primary);
+  border-radius: 0 3px 3px 0;
+}
+
 aside {
   width: 320px;
   background: var(--sidebar-bg);
@@ -2589,4 +2663,38 @@ body.modal-open {
   background: #ffffff;
   border-radius: 8px;
   box-shadow: 4px 4px 4px #ccc;
+}
+
+/* 工具区域样式 */
+.tools-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border-left: 1px solid var(--border);
+}
+
+.tools-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: var(--gray);
+}
+
+.tools-empty-icon {
+  font-size: 64px;
+  opacity: 0.5;
+}
+
+.tools-empty-text {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--dark);
+}
+
+.tools-empty-hint {
+  font-size: 14px;
+  color: var(--gray);
 }

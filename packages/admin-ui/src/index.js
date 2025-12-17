@@ -58,6 +58,8 @@ let groupManageEditingPath = null;
 const groupManageActionLoading = new Set();
 // 是否需要认证（默认不需要，直到从服务器获取配置）
 let requireAuth = false;
+// 当前激活的导航项
+let currentNav = 'prompts';
 
 const API_HOST = 'http://localhost:5621';
 
@@ -2472,6 +2474,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       showLoading(); // 显示加载中效果
       loadPrompts(); // 先加载提示词列表
       await initApp(); // 然后初始化应用
+      // 设置导航事件
+      setupNavigation();
       // 页面加载后显示自定义的空白内容区域，不显示编辑器
       showCustomBlankContent();
             // 初始化推荐词功能（内联函数定义）
@@ -3184,5 +3188,51 @@ function setupLoginEvents() {
         passwordInput.focus();
       }
     }
+  });
+}
+
+// 切换导航
+function switchNav(navType) {
+  if (currentNav === navType) return;
+  
+  currentNav = navType;
+  
+  // 更新导航按钮状态
+  document.querySelectorAll('.primary-nav-item').forEach(item => {
+    if (item.dataset.nav === navType) {
+      item.classList.add('active');
+    } else {
+      item.classList.remove('active');
+    }
+  });
+  
+  // 切换显示区域
+  const promptsSidebar = document.getElementById('promptsSidebar');
+  const promptsArea = document.getElementById('promptsArea');
+  const toolsArea = document.getElementById('toolsArea');
+  
+  if (navType === 'prompts') {
+    // 显示提示词区域
+    if (promptsSidebar) promptsSidebar.style.display = 'flex';
+    if (promptsArea) promptsArea.style.display = 'flex';
+    if (toolsArea) toolsArea.style.display = 'none';
+  } else if (navType === 'tools') {
+    // 显示工具区域
+    if (promptsSidebar) promptsSidebar.style.display = 'none';
+    if (promptsArea) promptsArea.style.display = 'none';
+    if (toolsArea) toolsArea.style.display = 'flex';
+  }
+}
+
+// 设置导航事件
+function setupNavigation() {
+  const navItems = document.querySelectorAll('.primary-nav-item');
+  navItems.forEach(item => {
+    item.addEventListener('click', () => {
+      const navType = item.dataset.nav;
+      if (navType) {
+        switchNav(navType);
+      }
+    });
   });
 }
