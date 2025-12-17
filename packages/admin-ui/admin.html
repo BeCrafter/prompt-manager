@@ -245,14 +245,21 @@
                 </button>
               </div>
             </div>
-            <textarea id="promptDescription" class="prompt-description" placeholder="Prompt 描述"></textarea>
           </div>
 
           <div class="editor-content">
-            <section class="arguments-section" id="argumentsSection">
-              <div class="arguments-header">
+            <textarea id="promptDescription" class="prompt-description" placeholder="Prompt 描述"></textarea>
+
+            <section class="arguments-section collapsed" id="argumentsSection">
+              <div class="arguments-header" id="argumentsHeaderToggle">
                 <div class="arguments-title">
+                  <button type="button" class="arguments-toggle" id="argumentsToggleBtn" aria-expanded="false">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
                   <span>参数配置</span>
+                  <span class="arguments-count" id="argumentsCount">(0)</span>
                 </div>
                 <div class="arguments-actions">
                   <button id="addArgumentBtn" class="btn btn-outline btn-sm" type="button">

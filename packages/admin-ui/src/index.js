@@ -364,10 +364,12 @@ function hideLoading() {
 }
 
 // 加载prompt列表
-async function loadPrompts(search = '', enabledOnly = false, group = null) {
+async function loadPrompts(search = '', enabledOnly = false, group = null, showLoadingIndicator = true) {
   try {
-    // 显示加载中效果
-    showLoading();
+    // 只在需要时显示加载中效果（初始加载时）
+    if (showLoadingIndicator) {
+      showLoading();
+    }
     
     const queryParams = new URLSearchParams();
     if (search) queryParams.append('search', search);
@@ -380,8 +382,10 @@ async function loadPrompts(search = '', enabledOnly = false, group = null) {
   } catch (error) {
     console.error('加载prompt列表失败:', error);
   } finally {
-    // 隐藏加载中效果
-    hideLoading();
+    // 只在显示了加载效果时才隐藏
+    if (showLoadingIndicator) {
+      hideLoading();
+    }
   }
 }
 
@@ -578,6 +582,12 @@ function renderArgumentsEditor() {
   if (!listEl) return;
 
   listEl.innerHTML = '';
+
+  // 更新参数计数
+  const countEl = document.getElementById('argumentsCount');
+  if (countEl) {
+    countEl.textContent = `(${argumentsState.length})`;
+  }
 
   if (!argumentsState.length) {
     listEl.innerHTML = '<div class="arguments-empty">暂无参数，点击"新增参数"开始配置</div>';
@@ -1715,7 +1725,8 @@ async function togglePrompt(promptName, relativePath) {
     });
     const searchInput = document.getElementById('searchInput');
     const searchValue = searchInput ? searchInput.value : '';
-    await loadPrompts(searchValue);
+    // 不显示加载动画，避免闪动
+    await loadPrompts(searchValue, false, null, false);
     const statusText = result?.enabled ? '已启用' : '已停用';
     showMessage(`"${promptName}" ${statusText}`, result?.enabled ? 'success' : 'info');
     if (currentPrompt?.relativePath === relativePath) {
@@ -1739,7 +1750,8 @@ async function deletePrompt(promptName, relativePath) {
     }
     const searchInput = document.getElementById('searchInput');
     const searchValue = searchInput ? searchInput.value : '';
-    await loadPrompts(searchValue);
+    // 不显示加载动画，避免闪动
+    await loadPrompts(searchValue, false, null, false);
     showMessage(`已删除 "${promptName}"`);
   } catch (error) {
     console.error('删除prompt失败:', error);
@@ -1750,10 +1762,7 @@ async function deletePrompt(promptName, relativePath) {
 // 选择prompt
 async function selectPrompt(prompt, triggerEvent) {
   try {
-    // 显示加载中效果
-    showLoading();
-    
-    // 显示prompt编辑区域
+    // 显示prompt编辑区域（不显示全屏加载效果，避免闪动）
     showPromptEditorArea();
     
     const query = prompt.relativePath ? `?path=${encodeURIComponent(prompt.relativePath)}` : '';
@@ -1876,9 +1885,7 @@ async function selectPrompt(prompt, triggerEvent) {
     updatePreview(true);
   } catch (error) {
     console.error('加载prompt详情失败:', error);
-  } finally {
-    // 隐藏加载中效果
-    hideLoading();
+    showMessage('加载提示词失败', 'error');
   }
 }
 
@@ -1893,6 +1900,7 @@ function setWorkspaceMode(mode) {
   const editModeBtn = document.getElementById('editModeBtn');
   const previewModeBtn = document.getElementById('previewModeBtn');
   const argumentsSection = document.getElementById('argumentsSection');
+  const descriptionEl = document.getElementById('promptDescription');
 
   if (!editorPane || !previewPane || !editModeBtn || !previewModeBtn) return;
 
@@ -1901,10 +1909,15 @@ function setWorkspaceMode(mode) {
   editorPane.classList.toggle('hidden', isPreview);
   previewPane.classList.toggle('hidden', !isPreview);
   
-  // 在预览模式下隐藏参数配置区域，编辑模式下显示
+  // 在预览模式下隐藏参数配置区域和描述信息，编辑模式下显示
   if (argumentsSection) {
     argumentsSection.style.display = isPreview ? 'none' : 'flex';
   }
+
+  // 描述信息不隐藏，保持显示
+  // if (descriptionEl) {
+  //   descriptionEl.style.display = isPreview ? 'none' : 'block';
+  // }
 
   if (isPreview) {
     updatePreview(true);
@@ -2038,9 +2051,6 @@ async function savePrompt() {
   }
   
   try {
-    // 显示加载中效果
-    showLoading();
-
     const result = await apiCall('/prompts', {
       method: 'POST',
       body: JSON.stringify({
@@ -2063,10 +2073,10 @@ async function savePrompt() {
       group: result?.group || group,
       groupPath: updatedGroupPath
     };
-    // 重新加载列表，传递搜索参数
+    // 重新加载列表，传递搜索参数，不显示加载动画
     const searchInput = document.getElementById('searchInput');
     const searchValue = searchInput ? searchInput.value : '';
-    await loadPrompts(searchValue);
+    await loadPrompts(searchValue, false, null, false);
   } catch (error) {
     console.error('保存失败:', error);
     if (!error?.__shown) {
@@ -2078,8 +2088,6 @@ async function savePrompt() {
       saveBtn.classList.remove('loading');
       saveBtn.textContent = originalText;
     }
-    // 隐藏加载中效果
-    hideLoading();
   }
 }
 
@@ -2317,6 +2325,23 @@ async function initApp() {
 
     // 绑定参数按钮事件
     document.getElementById('addArgumentBtn').addEventListener('click', () => openArgumentModal());
+
+    // 绑定参数配置区域折叠事件
+    const argumentsHeaderToggle = document.getElementById('argumentsHeaderToggle');
+    const argumentsSection = document.getElementById('argumentsSection');
+    const argumentsToggleBtn = document.getElementById('argumentsToggleBtn');
+    if (argumentsHeaderToggle && argumentsSection) {
+      argumentsHeaderToggle.addEventListener('click', (e) => {
+        // 如果点击的是"新增"按钮，不触发折叠
+        if (e.target.closest('#addArgumentBtn')) {
+          return;
+        }
+        const isCollapsed = argumentsSection.classList.toggle('collapsed');
+        if (argumentsToggleBtn) {
+          argumentsToggleBtn.setAttribute('aria-expanded', !isCollapsed);
+        }
+      });
+    }
 
     // 绑定参数模态框事件
     document.getElementById('argumentModalClose').addEventListener('click', closeArgumentModal);

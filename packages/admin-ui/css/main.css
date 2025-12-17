@@ -38,7 +38,7 @@ body {
 
 header {
   background-color: white;
-  padding: 12px 25px;
+  padding: 8px 25px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -319,18 +319,20 @@ main {
   display: flex;
   flex: 1;
   overflow: hidden;
-  height: 93%;
+  height: calc(100vh - 57px); /* 减去header高度 */
 }
 
 /* 一级导航样式 */
 .primary-nav {
-  width: 60px;
+  width: 58px;
   background: #fafafa;
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   padding: 12px 0;
   flex-shrink: 0;
+  height: 100%;
+  overflow-y: auto;
 }
 
 .primary-nav-items {
@@ -403,9 +405,10 @@ aside {
   padding: 0;
   display: flex;
   flex-direction: column;
-  max-height: 100%;
+  height: 100%;
   overflow-y: auto;
   scrollbar-width: none;
+  flex-shrink: 0;
 }
 
 .sidebar-header {
@@ -1278,19 +1281,20 @@ aside {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: white;
-  border-left: 1px solid var(--border);
-  padding: 16px; /* 添加四周内边距 */
   background: #f5f5f5;
+  border-left: 1px solid var(--border);
+  padding: 16px 16px 0 16px;
+  overflow-y: auto;
+  min-width: 0;
 }
 
 .editor-header {
-  padding: 15px 0;
-  /* border-bottom: 1px solid var(--border); */
+  padding: 8px 0 8px;
   display: flex;
   flex-direction: column;
   gap: 12px;
   background: white;
+  flex-shrink: 0;
 }
 
 .editor-header-top {
@@ -1379,9 +1383,10 @@ aside {
 .prompt-description {
   width: 100%;
   min-height: 38px;
+  max-height: 200px;
   line-height: 1.5;
-  resize: none;
-  overflow-y: hidden;
+  resize: vertical;
+  overflow-y: auto;
   transition: border-color 0.2s ease;
 }
 
@@ -1431,11 +1436,9 @@ aside {
 .editor-content {
   display: flex;
   flex-direction: column;
-  flex: 1;
   gap: 16px;
-  margin: 12px 0 20px;
-  overflow-y: auto;
-  scrollbar-width: none;
+  margin: 12px 0 0 0;
+  min-height: 0;
 }
 
 .arguments-section {
@@ -1447,6 +1450,27 @@ aside {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  transition: all 0.3s ease;
+}
+
+.arguments-section.collapsed {
+  padding: 10px 20px 10px 20px;
+  gap: 0;
+}
+
+.arguments-section.collapsed .arguments-list {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  margin-top: 0;
+  transition: all 0.3s ease;
+}
+
+.arguments-section:not(.collapsed) .arguments-list {
+  max-height: 2000px;
+  opacity: 1;
+  margin-top: 16px;
+  transition: all 0.3s ease;
 }
 
 .arguments-section.has-error {
@@ -1460,18 +1484,56 @@ aside {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.arguments-header:hover .arguments-toggle {
+  opacity: 1;
 }
 
 .arguments-title {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
 }
 
-.arguments-title span {
+.arguments-toggle {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--gray);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  opacity: 0.6;
+  padding: 0;
+}
+
+.arguments-toggle:hover {
+  background: rgba(0,0,0,0.05);
+  opacity: 1;
+}
+
+.arguments-section.collapsed .arguments-toggle {
+  transform: rotate(-90deg);
+}
+
+.arguments-title > span {
   font-size: 14px;
   font-weight: 600;
   color: var(--gray);
+}
+
+.arguments-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gray);
+  opacity: 0.7;
 }
 
 .arguments-title small {
@@ -2204,15 +2266,10 @@ body.modal-open {
 }
 
 .editor-body {
-  position: relative;
-  flex: 1;
   box-sizing: border-box;
-  min-height: 0;
 }
 
 .workspace-pane {
-  position: absolute;
-  inset: 0;
   display: flex;
   flex-direction: column;
   background: white;
@@ -2221,7 +2278,6 @@ body.modal-open {
   overflow: hidden;
   border: 1px solid var(--border);
   box-shadow: 0 8px 24px rgba(0,0,0,0.05);
-  min-height: 400px;
   scrollbar-width: none;
 }
 
@@ -2229,6 +2285,7 @@ body.modal-open {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+  display: none;
 }
 
 .pane-header {
@@ -2241,12 +2298,9 @@ body.modal-open {
 }
 
 .pane-content {
-  flex: 1;
   display: flex;
   flex-direction: column;
   padding: 0;
-  min-height: 200px;
-  height: 100%;
 }
 
 .pane-content.preview {
@@ -2277,9 +2331,8 @@ body.modal-open {
   line-height: 1.5;
   color: #000;
   background: #fff;
-  /* border: 1px solid #e0e0e0; */
   border-radius: 4px;
-  padding: 8px; /* 添加内边距 */
+  padding: 8px;
 }
 
 .cm-scroller {
@@ -2653,13 +2706,48 @@ body.modal-open {
   100% { transform: rotate(360deg); }
 }
 
+.custom-blank-content {
+  display: flex;
+  flex-direction: column;
+  width: min(1280px, 100%);
+  margin: 0 auto 16px auto;
+  padding: 24px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 4px 4px 4px #ccc;
+  min-height: 400px;
+}
+
+.blank-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.blank-placeholder-body {
+  text-align: center;
+  color: var(--gray);
+}
+
+.blank-placeholder-emoji {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.blank-placeholder-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--gray);
+}
+
 #promptEditorArea {
   display: none;
   flex-direction: column;
-  height: 100%;
-  width: min(1280px, 100% - 48px);
-  margin: 0 auto;
-  padding:8px 15px;
+  width: min(1280px, 100%);
+  margin: 0 auto 16px auto;
+  padding: 8px 15px 16px 15px;
   background: #ffffff;
   border-radius: 8px;
   box-shadow: 4px 4px 4px #ccc;
