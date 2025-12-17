@@ -85,8 +85,12 @@ app.use(express.urlencoded({ extended: true }));
 const isAsarPath = adminUiRoot.includes('.asar') && fs.existsSync(adminUiRoot.replace(/\/.*$/, '.asar'));
 if (isAsarPath) {
   app.use(config.adminPath, serveAsarStatic(adminUiRoot));
+  // 为assets路径提供静态文件服务
+  app.use('/assets', serveAsarStatic(path.join(adminUiRoot, 'assets')));
 } else {
   app.use(config.adminPath, express.static(adminUiRoot));
+  // 为assets路径提供静态文件服务
+  app.use('/assets', express.static(path.join(adminUiRoot, 'assets')));
 }
 
 // 统一处理 index.html 请求的辅助函数
