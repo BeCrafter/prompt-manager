@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meta Tabs Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    
+    .tool-card {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      max-width: 400px;
+      margin: 20px auto;
+    }
+    
+    .tool-card-meta-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #ddd;
+    }
+    
+    .tool-card-meta-tab {
+      padding: 8px 16px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    
+    .tool-card-meta-tab.active {
+      border-bottom-color: #333;
+      font-weight: bold;
+    }
+    
+    .tool-card-meta-panel {
+      display: none;
+      padding: 12px;
+      background: #f9f9f9;
+      border-radius: 4px;
+    }
+    
+    .tool-card-meta-panel.active {
+      display: block;
+    }
+    
+    .tool-card-meta-item {
+      display: inline-block;
+      padding: 4px 8px;
+      margin: 4px;
+      background: #e0e0e0;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    
+    .debug-log {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 300px;
+      max-height: 400px;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 12px;
+      font-family: monospace;
+    }
+    
+    .log-entry {
+      margin-bottom: 4px;
+      padding: 4px;
+      border-left: 3px solid #333;
+      padding-left: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Meta Tabs 功能测试</h1>
+  <p>点击下方卡片中的"使用场景"和"使用限制"标签，查看右下角的调试日志。</p>
+  
+  <div class="tool-card" data-tool-id="test-tool-1">
+    <h3>测试工具 1</h3>
+    
+    <div class="tool-card-meta">
+      <div class="tool-card-meta-tabs">
+        <button class="tool-card-meta-tab scenarios-tab active">
+          🎯 使用场景
+        </button>
+        <button class="tool-card-meta-tab limitations-tab">
+          ⚠️ 使用限制
+        </button>
+      </div>
+      
+      <div class="tool-card-meta-content">
+        <div class="tool-card-meta-panel scenarios active">
+          <div class="tool-card-meta-list">
+            <span class="tool-card-meta-item">场景1</span>
+            <span class="tool-card-meta-item">场景2</span>
+            <span class="tool-card-meta-item">场景3</span>
+          </div>
+        </div>
+        
+        <div class="tool-card-meta-panel limitations">
+          <div class="tool-card-meta-list">
+            <span class="tool-card-meta-item">限制1</span>
+            <span class="tool-card-meta-item">限制2</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="debug-log" id="debugLog">
+    <strong>调试日志：</strong>
+    <div id="logEntries"></div>
+  </div>
+  
+  <script>
+    // 日志函数
+    function log(message) {
+      const logEntries = document.getElementById('logEntries');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logEntries.appendChild(entry);
+      logEntries.scrollTop = logEntries.scrollHeight;
+    }
+    
+    // switchMetaTab 函数
+    function switchMetaTab(toolId, tabType) {
+      log(`switchMetaTab called: toolId=${toolId}, tabType=${tabType}`);
+      
+      const tabsContainer = document.querySelector(`.tool-card[data-tool-id="${toolId}"] .tool-card-meta-tabs`);
+      const panelsContainer = document.querySelector(`.tool-card[data-tool-id="${toolId}"] .tool-card-meta-content`);
+      
+      log(`Found containers: tabs=${!!tabsContainer}, panels=${!!panelsContainer}`);
+      
+      if (!tabsContainer || !panelsContainer) {
+        log(`ERROR: Containers not found for toolId: ${toolId}`);
+        return;
+      }
+      
+      // 切换tab状态
+      const tabs = tabsContainer.querySelectorAll('.tool-card-meta-tab');
+      log(`Found ${tabs.length} tabs`);
+      
+      tabs.forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.classList.contains(`${tabType}-tab`)) {
+          tab.classList.add('active');
+          log(`Activated tab: ${tabType}`);
+        }
+      });
+      
+      // 切换面板状态
+      const panels = panelsContainer.querySelectorAll('.tool-card-meta-panel');
+      log(`Found ${panels.length} panels`);
+      
+      panels.forEach(panel => {
+        panel.classList.remove('active');
+        if (panel.classList.contains(tabType)) {
+          panel.classList.add('active');
+          log(`Activated panel: ${tabType}`);
+        }
+      });
+    }
+    
+    // 绑定事件
+    document.addEventListener('DOMContentLoaded', () => {
+      log('DOM loaded, binding events...');
+      
+      const card = document.querySelector('.tool-card');
+      const toolId = card.dataset.toolId;
+      const metaTabs = card.querySelectorAll('.tool-card-meta-tab');
+      
+      log(`Found ${metaTabs.length} meta tabs for tool ${toolId}`);
+      
+      metaTabs.forEach(tab => {
+        const tabType = tab.classList.contains('scenarios-tab') ? 'scenarios' : 'limitations';
+        log(`Adding listener for ${tabType} tab`);
+        
+        tab.addEventListener('click', (e) => {
+          log(`Tab clicked: ${tabType}`);
+          e.stopPropagation();
+          switchMetaTab(toolId, tabType);
+        });
+      });
+      
+      log('Event binding complete!');
+    });
+  </script>
+</body>
+</html>

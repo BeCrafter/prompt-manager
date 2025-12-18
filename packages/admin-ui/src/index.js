@@ -2182,16 +2182,29 @@ function toggleNewFolderModal(show) {
 }
 
 // 切换工具卡片meta tab
-function switchMetaTab(toolId, tabType) {
-  const tabsContainer = document.querySelector(`.tool-card[data-tool-id="${toolId}"] .tool-card-meta-tabs`);
-  const panelsContainer = document.querySelector(`.tool-card[data-tool-id="${toolId}"] .tool-card-meta-content`);
-  
-  if (!tabsContainer || !panelsContainer) return;
+function switchMetaTab(toolId, tabType, triggerTab = null) {
+  const triggeringCard =
+    triggerTab && triggerTab.closest ? triggerTab.closest('.tool-card') : null;
+  const cardElement =
+    triggeringCard || document.querySelector(`.tool-card[data-tool-id="${toolId}"]`);
+  if (!cardElement) {
+    console.warn('Tool card not found for', toolId);
+    return;
+  }
+
+  const tabsContainer = cardElement.querySelector('.tool-card-meta-tabs');
+  const panelsContainer = cardElement.querySelector('.tool-card-meta-content');
+
+  if (!tabsContainer || !panelsContainer) {
+    console.warn('Containers not found for toolId:', toolId);
+    return;
+  }
   
   // 切换tab状态
   const tabs = tabsContainer.querySelectorAll('.tool-card-meta-tab');
-  tabs.forEach(tab => {
+  tabs.forEach((tab, index) => {
     tab.classList.remove('active');
+    
     if (tab.classList.contains(`${tabType}-tab`)) {
       tab.classList.add('active');
     }
@@ -2199,8 +2212,9 @@ function switchMetaTab(toolId, tabType) {
   
   // 切换面板状态
   const panels = panelsContainer.querySelectorAll('.tool-card-meta-panel');
-  panels.forEach(panel => {
+  panels.forEach((panel, index) => {
     panel.classList.remove('active');
+    
     if (panel.classList.contains(tabType)) {
       panel.classList.add('active');
     }
@@ -3311,7 +3325,16 @@ function bindToolsEvents() {
     searchInput.addEventListener('input', (e) => {
       currentSearch = e.target.value.trim();
       searchClear.style.display = currentSearch ? 'block' : 'none';
-      filterAndRenderTools();
+      
+      // 如果有搜索内容且当前不在"全部"视图，自动切换到"全部"视图
+      if (currentSearch && currentFilter !== 'all') {
+        currentFilter = 'all';
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector('.filter-btn[data-filter="all"]')?.classList.add('active');
+        switchToolsView('all');
+      } else {
+        filterAndRenderTools();
+      }
     });
   }
   
@@ -3596,28 +3619,47 @@ function renderToolsGrid(tools) {
   
   // 绑定卡片点击事件
   toolsGrid.querySelectorAll('.tool-card').forEach(card => {
+    const toolId = card.dataset.toolId;
+    
     card.addEventListener('click', () => {
-      const toolId = card.dataset.toolId;
       showToolDetail(toolId);
+    });
+    
+    const detailBtn = card.querySelector('.tool-card-action');
+    if (detailBtn) {
+      detailBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showToolDetail(toolId);
+      });
+    }
+    
+    const metaTabs = card.querySelectorAll('.tool-card-meta-tab');
+    metaTabs.forEach(tab => {
+      const tabType = tab.classList.contains('scenarios-tab') ? 'scenarios' : 'limitations';
+      tab.addEventListener('click', (e) => {
+        e.stopPropagation();
+        switchMetaTab(toolId, tabType, tab);
+      });
     });
   });
 }
 
 // 创建工具卡片
 function createToolCard(tool) {
-  const metaHtml = (tool.scenarios && tool.scenarios.length > 0) || (tool.limitations && tool.limitations.length > 0) ? `
+  const hasScenarios = !!(tool.scenarios && tool.scenarios.length > 0);
+  const hasLimitations = !!(tool.limitations && tool.limitations.length > 0);
+
+  const metaHtml = hasScenarios || hasLimitations ? `
     <div class="tool-card-meta">
       <div class="tool-card-meta-tabs ${(tool.scenarios && tool.scenarios.length > 0 && tool.limitations && tool.limitations.length > 0) ? '' : 'single-tab ' + 
         (tool.scenarios && tool.scenarios.length > 0 ? 'scenarios-only' : 'limitations-only')}">
         ${tool.scenarios && tool.scenarios.length > 0 ? `
-          <button class="tool-card-meta-tab scenarios-tab active" 
-                  onclick="event.stopPropagation(); switchMetaTab('${tool.id}', 'scenarios')">
+          <button class="tool-card-meta-tab scenarios-tab active">
             🎯 使用场景
           </button>
         ` : ''}
         ${tool.limitations && tool.limitations.length > 0 ? `
-          <button class="tool-card-meta-tab limitations-tab ${!tool.scenarios || tool.scenarios.length === 0 ? 'active' : ''}" 
-                  onclick="event.stopPropagation(); switchMetaTab('${tool.id}', 'limitations')">
+          <button class="tool-card-meta-tab limitations-tab ${!tool.scenarios || tool.scenarios.length === 0 ? 'active' : ''}">
             ⚠️ 使用限制
           </button>
         ` : ''}
@@ -3670,7 +3712,7 @@ function createToolCard(tool) {
       <div class="tool-card-footer">
         <div class="tool-card-author">${tool.author}</div>
         <div class="tool-card-actions">
-          <button class="tool-card-action" onclick="event.stopPropagation(); showToolDetail('${tool.id}')">详情</button>
+          <button class="tool-card-action">详情</button>
         </div>
       </div>
     </div>
@@ -3703,7 +3745,7 @@ function showCategoryView() {
   
   // 渲染侧边栏类别列表
   categorySidebar.innerHTML = Object.entries(categories).map(([category, tools]) => `
-    <div class="sidebar-item ${selectedCategory === category ? 'active' : ''}" onclick="selectCategory('${category}')">
+    <div class="sidebar-item ${selectedCategory === category ? 'active' : ''}" data-category="${category}">
       <div class="sidebar-item-icon">${getCategoryIcon(category)}</div>
       <div class="sidebar-item-content">
         <div class="sidebar-item-name">${category}</div>
@@ -3712,6 +3754,14 @@ function showCategoryView() {
     </div>
   `).join('');
   
+  // 绑定侧边栏项目点击事件
+  categorySidebar.querySelectorAll('.sidebar-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const category = item.dataset.category;
+      selectCategory(category);
+    });
+  });
+  
   // 如果有选中的类别，显示对应的工具
   if (selectedCategory && categories[selectedCategory]) {
     categoryContentHeader.innerHTML = `<h3>${selectedCategory}</h3>`;
@@ -3719,9 +3769,30 @@ function showCategoryView() {
     
     // 绑定卡片点击事件
     categoryContentGrid.querySelectorAll('.tool-card').forEach(card => {
+      const toolId = card.dataset.toolId;
+      
       card.addEventListener('click', () => {
-        const toolId = card.dataset.toolId;
         showToolDetail(toolId);
+      });
+      
+      // 绑定详情按钮事件
+      const detailBtn = card.querySelector('.tool-card-action');
+      if (detailBtn) {
+        detailBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showToolDetail(toolId);
+        });
+      }
+      
+      // 绑定 meta tab 切换事件
+      const metaTabs = card.querySelectorAll('.tool-card-meta-tab');
+      metaTabs.forEach(tab => {
+        const tabType = tab.classList.contains('scenarios-tab') ? 'scenarios' : 'limitations';
+        
+        tab.addEventListener('click', (e) => {
+          e.stopPropagation();
+          switchMetaTab(toolId, tabType, tab);
+        });
       });
     });
   } else {
@@ -3745,6 +3816,7 @@ function showTagView() {
   if (!tagView || !tagCloud || !tagToolsList) return;
   
   tagView.style.display = 'block';
+  tagView.style.margin = '20px';
   
   // 收集所有标签
   const allTags = new Set();
@@ -3754,8 +3826,16 @@ function showTagView() {
   
   // 渲染标签云
   tagCloud.innerHTML = Array.from(allTags).map(tag => `
-    <span class="tag-item ${selectedTag === tag ? 'active' : ''}" onclick="selectTag('${tag}')">${tag}</span>
+    <span class="tag-item ${selectedTag === tag ? 'active' : ''}" data-tag="${tag}">${tag}</span>
   `).join('');
+  
+  // 绑定标签点击事件
+  tagCloud.querySelectorAll('.tag-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const tag = item.dataset.tag;
+      selectTag(tag);
+    });
+  });
   
   // 如果有选中的标签，显示对应的工具
   if (selectedTag) {
@@ -3764,9 +3844,29 @@ function showTagView() {
     
     // 绑定卡片点击事件
     tagToolsList.querySelectorAll('.tool-card').forEach(card => {
+      const toolId = card.dataset.toolId;
+      
       card.addEventListener('click', () => {
-        const toolId = card.dataset.toolId;
         showToolDetail(toolId);
+      });
+      
+      // 绑定详情按钮事件
+      const detailBtn = card.querySelector('.tool-card-action');
+      if (detailBtn) {
+        detailBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showToolDetail(toolId);
+        });
+      }
+      
+      // 绑定 meta tab 切换事件
+      const metaTabs = card.querySelectorAll('.tool-card-meta-tab');
+      metaTabs.forEach(tab => {
+        const tabType = tab.classList.contains('scenarios-tab') ? 'scenarios' : 'limitations';
+        tab.addEventListener('click', (e) => {
+          e.stopPropagation();
+          switchMetaTab(toolId, tabType, tab);
+        });
       });
     });
   } else {
@@ -3802,7 +3902,7 @@ function showAuthorView() {
   
   // 渲染侧边栏作者列表
   authorSidebar.innerHTML = Object.values(authors).map(author => `
-    <div class="sidebar-item ${selectedAuthor === author.name ? 'active' : ''}" onclick="selectAuthor('${author.name}')">
+    <div class="sidebar-item ${selectedAuthor === author.name ? 'active' : ''}" data-author="${author.name}">
       <div class="sidebar-item-icon">${author.avatar}</div>
       <div class="sidebar-item-content">
         <div class="sidebar-item-name">${author.name}</div>
@@ -3810,6 +3910,14 @@ function showAuthorView() {
       </div>
     </div>
   `).join('');
+  
+  // 绑定侧边栏项目点击事件
+  authorSidebar.querySelectorAll('.sidebar-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const authorName = item.dataset.author;
+      selectAuthor(authorName);
+    });
+  });
   
   // 如果有选中的作者，显示对应的工具
   if (selectedAuthor && authors[selectedAuthor]) {
@@ -3822,9 +3930,29 @@ function showAuthorView() {
     
     // 绑定卡片点击事件
     authorContentGrid.querySelectorAll('.tool-card').forEach(card => {
+      const toolId = card.dataset.toolId;
+      
       card.addEventListener('click', () => {
-        const toolId = card.dataset.toolId;
         showToolDetail(toolId);
+      });
+      
+      // 绑定详情按钮事件
+      const detailBtn = card.querySelector('.tool-card-action');
+      if (detailBtn) {
+        detailBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showToolDetail(toolId);
+        });
+      }
+      
+      // 绑定 meta tab 切换事件
+      const metaTabs = card.querySelectorAll('.tool-card-meta-tab');
+      metaTabs.forEach(tab => {
+        const tabType = tab.classList.contains('scenarios-tab') ? 'scenarios' : 'limitations';
+        tab.addEventListener('click', (e) => {
+          e.stopPropagation();
+          switchMetaTab(toolId, tabType, tab);
+        });
       });
     });
   } else {
