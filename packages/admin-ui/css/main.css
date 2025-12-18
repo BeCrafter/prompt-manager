@@ -2968,7 +2968,7 @@ body.modal-open {
   color: var(--gray);
   font-size: 14px;
   line-height: 1.6;
-  margin-bottom: 20px;
+  /* margin-bottom: 20px; */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -3014,11 +3014,38 @@ body.modal-open {
   border-radius: 2px;
 }
 
+.tool-card-description-wrapper {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--gray-light);
+}
+
+.tool-card-category-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #838282;
+  background: linear-gradient(135deg, #e3f2fd 0%, #f0f7ff 100%);
+  /* border: 1px solid #90caf9; */
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-right: 6px;
+  vertical-align: baseline;
+  box-shadow: 0 1px 2px rgba(66, 153, 225, 0.1);
+  transition: all 0.2s ease;
+}
+
+.tool-card-category-badge:hover {
+  background: linear-gradient(135deg, #bbdefb 0%, #e3f2fd 100%);
+  border-color: #64b5f6;
+  box-shadow: 0 2px 4px rgba(66, 153, 225, 0.15);
+}
+
 .tool-card-tags-row {
   position: relative;
-  height: 42px;
-  margin-bottom: 16px;
-  overflow: hidden;
+  height: 32px;
+  margin-bottom: 8px;
+  overflow-y: auto;
 }
 
 .tool-card-tags-container {
@@ -3026,8 +3053,8 @@ body.modal-open {
   flex-wrap: wrap;
   gap: 8px;
   line-height: 1.2;
-  max-height: 42px;
-  overflow: hidden;
+  max-height: 64px;
+  overflow-y: auto;
 }
 
 .tool-card-tags-row.expanded .tool-card-tags-container {
@@ -3100,9 +3127,9 @@ body.modal-open {
 
 /* 工具卡片特殊字段 - Tab设计 */
 .tool-card-meta {
-  margin-top: 16px;
+  /* margin-top: 16px; */
   padding-top: 16px;
-  border-top: 1px solid var(--gray-light);
+  border-top: 1px dashed var(--gray-light);
 }
 
 .tool-card-meta-tabs {
@@ -3154,6 +3181,8 @@ body.modal-open {
 
 .tool-card-meta-content {
   min-height: 40px;
+  max-height: 72px;
+  overflow-y: auto;
 }
 
 .tool-card-meta-panel {
@@ -3227,6 +3256,65 @@ body.modal-open {
 
 .aggregated-view {
   width: 100%;
+  display: flex;
+  gap: 24px;
+  min-height: 600px;
+}
+
+.aggregated-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.aggregated-sidebar-header {
+  padding: 20px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 1px solid var(--border);
+}
+
+.aggregated-sidebar-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--dark);
+  margin: 0;
+}
+
+.aggregated-sidebar-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.aggregated-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.aggregated-content-header {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--border);
+}
+
+.aggregated-content-header h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--dark);
+  margin: 0;
+}
+
+.aggregated-content-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
 }
 
 .aggregated-header {
@@ -3240,6 +3328,70 @@ body.modal-open {
   font-weight: 600;
   color: var(--dark);
   margin: 0;
+}
+
+/* 侧边栏列表项 */
+.sidebar-item {
+  padding: 12px 16px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: transparent;
+}
+
+.sidebar-item:hover {
+  background: #f8f9fa;
+}
+
+.sidebar-item.active {
+  background: linear-gradient(135deg, #e3f2fd 0%, #f0f7ff 100%);
+  border-left: 3px solid var(--primary);
+  padding-left: 13px;
+}
+
+.sidebar-item-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  background: linear-gradient(135deg, var(--primary), #6366f1);
+  color: white;
+  flex-shrink: 0;
+}
+
+.sidebar-item.active .sidebar-item-icon {
+  box-shadow: 0 2px 8px rgba(66, 153, 225, 0.3);
+}
+
+.sidebar-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-item-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dark);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-item-count {
+  font-size: 12px;
+  color: var(--gray);
+}
+
+.sidebar-item.active .sidebar-item-name {
+  color: var(--primary);
 }
 
 /* 类别网格 */
@@ -3307,7 +3459,7 @@ body.modal-open {
   padding: 8px 16px;
   background: white;
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: 10px;
   font-size: 14px;
   color: var(--gray);
   cursor: pointer;

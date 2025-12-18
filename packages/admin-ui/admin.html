@@ -206,11 +206,21 @@
           <div class="tools-aggregated-view" id="toolsAggregatedView" style="display: none;">
             <!-- 类别聚合视图 -->
             <div class="aggregated-view" id="categoryView" style="display: none;">
-              <div class="aggregated-header">
-                <h3>按类别浏览</h3>
+              <div class="aggregated-sidebar">
+                <div class="aggregated-sidebar-header">
+                  <h3>类别列表</h3>
+                </div>
+                <div class="aggregated-sidebar-list" id="categorySidebar">
+                  <!-- 类别列表将通过JavaScript动态加载 -->
+                </div>
               </div>
-              <div class="category-grid" id="categoryGrid">
-                <!-- 类别卡片将通过JavaScript动态加载 -->
+              <div class="aggregated-content">
+                <div class="aggregated-content-header" id="categoryContentHeader">
+                  <h3>请选择类别</h3>
+                </div>
+                <div class="aggregated-content-grid" id="categoryContentGrid">
+                  <!-- 选中类别的工具将通过JavaScript动态加载 -->
+                </div>
               </div>
             </div>
 
@@ -229,11 +239,21 @@
 
             <!-- 作者聚合视图 -->
             <div class="aggregated-view" id="authorView" style="display: none;">
-              <div class="aggregated-header">
-                <h3>按作者浏览</h3>
+              <div class="aggregated-sidebar">
+                <div class="aggregated-sidebar-header">
+                  <h3>作者列表</h3>
+                </div>
+                <div class="aggregated-sidebar-list" id="authorSidebar">
+                  <!-- 作者列表将通过JavaScript动态加载 -->
+                </div>
               </div>
-              <div class="author-grid" id="authorGrid">
-                <!-- 作者卡片将通过JavaScript动态加载 -->
+              <div class="aggregated-content">
+                <div class="aggregated-content-header" id="authorContentHeader">
+                  <h3>请选择作者</h3>
+                </div>
+                <div class="aggregated-content-grid" id="authorContentGrid">
+                  <!-- 选中作者的工具将通过JavaScript动态加载 -->
+                </div>
               </div>
             </div>
           </div>

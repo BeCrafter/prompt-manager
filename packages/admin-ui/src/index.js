@@ -3610,7 +3610,7 @@ function createToolCard(tool) {
       <div class="tool-card-meta-tabs ${(tool.scenarios && tool.scenarios.length > 0 && tool.limitations && tool.limitations.length > 0) ? '' : 'single-tab ' + 
         (tool.scenarios && tool.scenarios.length > 0 ? 'scenarios-only' : 'limitations-only')}">
         ${tool.scenarios && tool.scenarios.length > 0 ? `
-          <button class="tool-card-meta-tab scenarios-tab ${!tool.limitations || tool.limitations.length === 0 ? 'active' : ''}" 
+          <button class="tool-card-meta-tab scenarios-tab active" 
                   onclick="event.stopPropagation(); switchMetaTab('${tool.id}', 'scenarios')">
             🎯 使用场景
           </button>
@@ -3642,9 +3642,6 @@ function createToolCard(tool) {
   ` : '';
 
   const tagsHtml = tool.tags && tool.tags.length > 0 ? `
-    <div class="tool-card-category-row">
-      <span class="tool-card-category">${tool.category}</span>
-    </div>
     <div class="tool-card-tags-row" data-tool-id="${tool.id}">
       <div class="tool-card-tags-container">
         ${tool.tags.map(tag => `<span class="tool-card-tag">${tag}</span>`).join('')}
@@ -3662,7 +3659,9 @@ function createToolCard(tool) {
         <span class="tool-card-version">v${tool.version}</span>
       </div>
       
-      <p class="tool-card-description">${tool.description}</p>
+      <div class="tool-card-description-wrapper">
+        <p class="tool-card-description"><span class="tool-card-category-badge">${tool.category}</span>${tool.description}</p>
+      </div>
       
       ${tagsHtml}
       
@@ -3678,14 +3677,20 @@ function createToolCard(tool) {
   `;
 }
 
+// 当前选中的类别和作者
+let selectedCategory = null;
+let selectedAuthor = null;
+
 // 显示类别视图
 function showCategoryView() {
   const categoryView = document.getElementById('categoryView');
-  const categoryGrid = document.getElementById('categoryGrid');
+  const categorySidebar = document.getElementById('categorySidebar');
+  const categoryContentHeader = document.getElementById('categoryContentHeader');
+  const categoryContentGrid = document.getElementById('categoryContentGrid');
   
-  if (!categoryView || !categoryGrid) return;
+  if (!categoryView || !categorySidebar) return;
   
-  categoryView.style.display = 'block';
+  categoryView.style.display = 'flex';
   
   // 按类别分组
   const categories = {};
@@ -3696,14 +3701,39 @@ function showCategoryView() {
     categories[tool.category].push(tool);
   });
   
-  // 渲染类别卡片
-  categoryGrid.innerHTML = Object.entries(categories).map(([category, tools]) => `
-    <div class="category-card" onclick="showCategoryTools('${category}')">
-      <div class="category-icon">${getCategoryIcon(category)}</div>
-      <div class="category-name">${category}</div>
-      <div class="category-count">${tools.length} 个工具</div>
+  // 渲染侧边栏类别列表
+  categorySidebar.innerHTML = Object.entries(categories).map(([category, tools]) => `
+    <div class="sidebar-item ${selectedCategory === category ? 'active' : ''}" onclick="selectCategory('${category}')">
+      <div class="sidebar-item-icon">${getCategoryIcon(category)}</div>
+      <div class="sidebar-item-content">
+        <div class="sidebar-item-name">${category}</div>
+        <div class="sidebar-item-count">${tools.length} 个工具</div>
+      </div>
     </div>
   `).join('');
+  
+  // 如果有选中的类别，显示对应的工具
+  if (selectedCategory && categories[selectedCategory]) {
+    categoryContentHeader.innerHTML = `<h3>${selectedCategory}</h3>`;
+    categoryContentGrid.innerHTML = categories[selectedCategory].map(tool => createToolCard(tool)).join('');
+    
+    // 绑定卡片点击事件
+    categoryContentGrid.querySelectorAll('.tool-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const toolId = card.dataset.toolId;
+        showToolDetail(toolId);
+      });
+    });
+  } else {
+    categoryContentHeader.innerHTML = '<h3>请选择类别</h3>';
+    categoryContentGrid.innerHTML = '<div style="text-align: center; color: var(--gray); padding: 60px 20px;">请从左侧选择一个类别查看工具</div>';
+  }
+}
+
+// 选择类别
+function selectCategory(category) {
+  selectedCategory = category;
+  showCategoryView();
 }
 
 // 显示标签视图
@@ -3747,11 +3777,13 @@ function showTagView() {
 // 显示作者视图
 function showAuthorView() {
   const authorView = document.getElementById('authorView');
-  const authorGrid = document.getElementById('authorGrid');
+  const authorSidebar = document.getElementById('authorSidebar');
+  const authorContentHeader = document.getElementById('authorContentHeader');
+  const authorContentGrid = document.getElementById('authorContentGrid');
   
-  if (!authorView || !authorGrid) return;
+  if (!authorView || !authorSidebar) return;
   
-  authorView.style.display = 'block';
+  authorView.style.display = 'flex';
   
   // 按作者分组
   const authors = {};
@@ -3768,25 +3800,43 @@ function showAuthorView() {
     authors[tool.author].tools.push(tool);
   });
   
-  // 渲染作者卡片
-  authorGrid.innerHTML = Object.values(authors).map(author => `
-    <div class="author-card" onclick="showAuthorTools('${author.name}')">
-      <div class="author-avatar">${author.avatar}</div>
-      <div class="author-name">${author.name}</div>
-      <div class="author-role">${author.role}</div>
-      <div class="author-bio">${author.bio}</div>
-      <div class="author-stats">
-        <div class="author-stat">
-          <div class="author-stat-value">${author.tools.length}</div>
-          <div class="author-stat-label">工具</div>
-        </div>
-        <div class="author-stat">
-          <div class="author-stat-value">${getTotalDownloads(author.tools)}</div>
-          <div class="author-stat-label">下载</div>
-        </div>
+  // 渲染侧边栏作者列表
+  authorSidebar.innerHTML = Object.values(authors).map(author => `
+    <div class="sidebar-item ${selectedAuthor === author.name ? 'active' : ''}" onclick="selectAuthor('${author.name}')">
+      <div class="sidebar-item-icon">${author.avatar}</div>
+      <div class="sidebar-item-content">
+        <div class="sidebar-item-name">${author.name}</div>
+        <div class="sidebar-item-count">${author.tools.length} 个工具</div>
       </div>
     </div>
   `).join('');
+  
+  // 如果有选中的作者，显示对应的工具
+  if (selectedAuthor && authors[selectedAuthor]) {
+    const author = authors[selectedAuthor];
+    authorContentHeader.innerHTML = `
+      <h3>${author.name}</h3>
+      <div style="font-size: 14px; color: var(--gray); margin-top: 8px;">${author.role} · ${author.bio}</div>
+    `;
+    authorContentGrid.innerHTML = author.tools.map(tool => createToolCard(tool)).join('');
+    
+    // 绑定卡片点击事件
+    authorContentGrid.querySelectorAll('.tool-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const toolId = card.dataset.toolId;
+        showToolDetail(toolId);
+      });
+    });
+  } else {
+    authorContentHeader.innerHTML = '<h3>请选择作者</h3>';
+    authorContentGrid.innerHTML = '<div style="text-align: center; color: var(--gray); padding: 60px 20px;">请从左侧选择一个作者查看工具</div>';
+  }
+}
+
+// 选择作者
+function selectAuthor(author) {
+  selectedAuthor = author;
+  showAuthorView();
 }
 
 // 获取类别图标
@@ -3843,37 +3893,22 @@ function selectTag(tag) {
   showTagView();
 }
 
-// 显示类别工具
+// 显示类别工具（保持兼容性）
 function showCategoryTools(category) {
-  const categoryTools = toolsData.filter(tool => tool.category === category);
-  const toolsGrid = document.getElementById('toolsGrid');
-  const aggregatedView = document.getElementById('toolsAggregatedView');
-  
-  // 切换到网格视图
-  document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-  document.querySelector('[data-filter="all"]').classList.add('active');
-  
-  if (toolsGrid) toolsGrid.style.display = 'grid';
-  if (aggregatedView) aggregatedView.style.display = 'none';
-  
-  renderToolsGrid(categoryTools);
+  selectCategory(category);
 }
 
-// 显示作者工具
+// 显示作者工具（保持兼容性）
 function showAuthorTools(author) {
-  const authorTools = toolsData.filter(tool => tool.author === author);
-  const toolsGrid = document.getElementById('toolsGrid');
-  const aggregatedView = document.getElementById('toolsAggregatedView');
-  
-  // 切换到网格视图
-  document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-  document.querySelector('[data-filter="all"]').classList.add('active');
-  
-  if (toolsGrid) toolsGrid.style.display = 'grid';
-  if (aggregatedView) aggregatedView.style.display = 'none';
-  
-  renderToolsGrid(authorTools);
+  selectAuthor(author);
 }
+
+// 将函数暴露到全局作用域
+window.showCategoryTools = showCategoryTools;
+window.showAuthorTools = showAuthorTools;
+window.selectTag = selectTag;
+window.selectCategory = selectCategory;
+window.selectAuthor = selectAuthor;
 
 // 显示上传弹窗
 function showUploadModal() {
@@ -4062,6 +4097,9 @@ async function showToolDetail(toolId) {
   modal.classList.add('show');
 }
 
+// 将 showToolDetail 暴露到全局作用域
+window.showToolDetail = showToolDetail;
+
 // 隐藏工具详情弹窗
 function hideToolDetailModal() {
   const modal = document.getElementById('toolDetailModal');
@@ -4069,6 +4107,9 @@ function hideToolDetailModal() {
     modal.classList.remove('show');
   }
 }
+
+// 将 hideToolDetailModal 暴露到全局作用域
+window.hideToolDetailModal = hideToolDetailModal;
 
 // 检查工具README文件
 async function checkToolReadme(toolId) {
