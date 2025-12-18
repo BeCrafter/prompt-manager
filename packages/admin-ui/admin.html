@@ -328,27 +328,17 @@
 
       <!-- 工具详情弹窗 -->
       <div id="toolDetailModal" class="tool-detail-modal">
-        <div class="tool-detail-modal-content">
-          <div class="tool-detail-modal-header">
-            <h3 id="toolDetailTitle">
-              <svg class="modal-title-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#666666" stroke-width="2">
-                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
-              </svg>
-              <span class="modal-title-text" id="toolDetailName">工具详情</span>
-            </h3>
-            <button class="tool-detail-modal-close" id="toolDetailClose">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
+        <div class="tool-detail-content">
+          <div class="tool-detail-header">
+            <h2 class="tool-detail-title" id="toolDetailName">工具详情</h2>
+            <button class="tool-detail-close" id="toolDetailClose" aria-label="关闭">×</button>
           </div>
-          <div class="tool-detail-modal-body">
+          <div class="tool-detail-body">
             <div class="tool-detail-info" id="toolDetailInfo">
               <!-- 工具基本信息将通过JavaScript动态加载 -->
             </div>
-            <div class="tool-detail-content" id="toolDetailContent">
-              <div class="tool-detail-loading">加载中...</div>
+            <div class="tool-detail-markdown" id="toolDetailContent">
+              <div class="tool-detail-loading"></div>
             </div>
           </div>
         </div>

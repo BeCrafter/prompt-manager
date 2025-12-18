@@ -32,6 +32,9 @@
   },
   "dependencies": {
     "codemirror": "5.65.2",
-    "js-yaml": "^4.1.0"
+    "highlight.js": "^11.11.1",
+    "js-yaml": "^4.1.0",
+    "marked": "^17.0.1",
+    "mermaid": "^11.12.2"
   }
 }

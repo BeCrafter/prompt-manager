@@ -3,6 +3,8 @@
 // 导入样式
 import '../css/main.css';
 import '../css/recommended-prompts.css';
+import '../css/markdown.css';
+import 'highlight.js/styles/github.css';
 
 // 导入 CodeMirror 相关功能
 import { initCodeMirror } from './codemirror';
@@ -12,6 +14,11 @@ import CodeMirror from 'codemirror';
 import 'codemirror/mode/markdown/markdown';
 import 'codemirror/addon/edit/closebrackets';
 import 'codemirror/addon/edit/matchbrackets';
+
+// 导入 markdown 渲染相关库
+import { marked } from 'marked';
+import hljs from 'highlight.js';
+import mermaid from 'mermaid';
 
 // 应用状态
 let currentToken = localStorage.getItem('prompt-admin-token');
@@ -4177,29 +4184,53 @@ async function showToolDetail(toolId) {
   
   if (!modal || !toolName || !toolInfo || !toolContent) return;
   
-  // 设置工具名称
-  toolName.textContent = tool.name;
+  // 设置工具名称（带版本号）
+  toolName.innerHTML = `
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; width: 100%; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 28px;">🛠️</span>
+        <span style="font-size: 24px; font-weight: 600;">${escapeHtml(tool.name)}</span>
+      </div>
+      <span style="background: rgba(255, 255, 255, 0.25); color: white; padding: 3px 10px; border-radius: 10px; font-size: 12px; font-weight: 500;">v${escapeHtml(tool.version)}</span>
+    </div>
+  `;
   
   // 设置工具基本信息
+  const tags = Array.isArray(tool.tags) ? tool.tags : [];
   toolInfo.innerHTML = `
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-      <div>
-        <strong>版本:</strong> ${tool.version}
+    <div style="display: flex; align-items: center; gap: 42px; margin-bottom: 16px; flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="color: #667eea; font-size: 18px;">👤</span>
+        <div>
+          <div style="font-size: 12px; color: #6c757d; margin-bottom: 2px;">作者</div>
+          <strong style="font-size: 14px;">${escapeHtml(tool.author)}</strong>
+        </div>
       </div>
-      <div>
-        <strong>类别:</strong> ${tool.category}
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="color: #667eea; font-size: 18px;">📂</span>
+        <div>
+          <div style="font-size: 12px; color: #6c757d; margin-bottom: 2px;">类别</div>
+          <strong style="font-size: 14px;">${escapeHtml(tool.category)}</strong>
+        </div>
       </div>
-      <div>
-        <strong>作者:</strong> ${tool.author}
+      ${tags.length > 0 ? `
+      <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 200px;">
+        <span style="color: #667eea; font-size: 18px;">🏷️</span>
+        <div style="flex: 1;">
+          <div style="font-size: 12px; color: #6c757d; margin-bottom: 6px;">标签</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+            ${tags.map(tag => `<span style="background: #e7f0ff; color: #0969da; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">${escapeHtml(tag)}</span>`).join('')}
+          </div>
+        </div>
       </div>
-      <div>
-        <strong>标签:</strong> ${tool.tags.join(', ')}
-      </div>
+      ` : ''}
     </div>
-    <div style="margin-top: 12px;">
-      <strong>描述:</strong><br>
-      ${tool.description}
+    ${tool.description ? `
+    <div style="padding: 16px; background: white; border-radius: 8px; border: 1px solid #e0e0e0;">
+      <div style="font-size: 12px; color: #6c757d; margin-bottom: 6px;">描述</div>
+      <div style="font-size: 14px; line-height: 1.6; color: #24292f;">${escapeHtml(tool.description)}</div>
     </div>
+    ` : ''}
   `;
   
   // 检查是否有README文件
@@ -4207,16 +4238,26 @@ async function showToolDetail(toolId) {
   
   if (hasReadme) {
     // 加载README内容
-    toolContent.innerHTML = '<div class="tool-detail-loading">加载文档中...</div>';
-    const readmeContent = await loadToolReadme(toolId);
-    renderMarkdownContent(toolContent, readmeContent);
+    toolContent.innerHTML = '<div class="tool-detail-loading"></div>';
+    try {
+      const readmeContent = await loadToolReadme(toolId);
+      await renderMarkdownContent(toolContent, readmeContent);
+    } catch (error) {
+      toolContent.innerHTML = `
+        <div class="markdown-error">
+          <div style="font-size: 32px; margin-bottom: 12px;">⚠️</div>
+          <h3>文档加载失败</h3>
+          <p>${escapeHtml(error.message)}</p>
+        </div>
+      `;
+    }
   } else {
     // 显示无文档提示
     toolContent.innerHTML = `
-      <div style="text-align: center; padding: 60px 20px; color: var(--gray);">
-        <div style="font-size: 48px; margin-bottom: 16px;">📄</div>
-        <h3>暂无文档</h3>
-        <p>该工具暂未提供详细的说明文档</p>
+      <div style="text-align: center; padding: 80px 20px; color: #6c757d;">
+        <div style="font-size: 64px; margin-bottom: 20px; opacity: 0.5;">📄</div>
+        <h3 style="font-size: 20px; margin-bottom: 12px; color: #24292f;">暂无文档</h3>
+        <p style="font-size: 14px; color: #6c757d;">该工具暂未提供详细的说明文档</p>
       </div>
     `;
   }
@@ -4286,49 +4327,71 @@ async function loadToolReadme(toolId) {
   }
 }
 
-// 渲染Markdown内容
-function renderMarkdownContent(container, markdown) {
-  // 简单的Markdown渲染（实际应该使用专业的Markdown解析库）
-  let html = markdown
-    .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-    .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-    .replace(/^\*\*(.*)\*\*/gim, '<strong>$1</strong>')
-    .replace(/^\* (.*$)/gim, '<li>$1</li>')
-    .replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>')
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/^/, '<p>')
-    .replace(/$/, '</p>');
-  
-  // 处理列表
-  html = html.replace(/<li>/g, '<ul><li>').replace(/<\/li>/g, '</li></ul>');
-  html = html.replace(/<\/ul><ul>/g, '');
-  
-  // 处理Mermaid图表
-  html = html.replace(/```mermaid\n([\s\S]*?)\n```/g, '<div class="mermaid">$1</div>');
-  
-  container.innerHTML = html;
-  
-  // 渲染Mermaid图表（需要引入mermaid库）
-  renderMermaidDiagrams(container);
-}
+// 初始化 mermaid
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'default',
+  securityLevel: 'loose',
+  fontFamily: '"SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+});
 
-// 渲染Mermaid图表
-function renderMermaidDiagrams(container) {
-  const mermaidElements = container.querySelectorAll('.mermaid');
-  mermaidElements.forEach(element => {
-    // 这里应该使用mermaid.js来渲染图表
-    // 现在只是显示一个占位符
-    const diagramCode = element.textContent;
-    element.innerHTML = `
-      <div style="background: var(--light); padding: 20px; border-radius: 8px; text-align: center; color: var(--gray);">
-        <div style="font-size: 24px; margin-bottom: 8px;">📊</div>
-        <div>图表: ${diagramCode.split('\n')[0]}</div>
-        <div style="font-size: 12px; margin-top: 8px;">需要引入 mermaid.js 来渲染图表</div>
-      </div>
-    `;
-  });
+// 配置 marked 渲染器
+marked.setOptions({
+  highlight: function(code, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return hljs.highlight(code, { language: lang }).value;
+      } catch (err) {
+        console.error('代码高亮失败:', err);
+      }
+    }
+    return hljs.highlightAuto(code).value;
+  },
+  breaks: true,
+  gfm: true
+});
+
+// 自定义渲染器以支持 mermaid
+const renderer = new marked.Renderer();
+const originalCodeRenderer = renderer.code.bind(renderer);
+
+renderer.code = function(code, language) {
+  if (language === 'mermaid') {
+    const id = 'mermaid-' + Math.random().toString(36).substr(2, 9);
+    return `<div class="mermaid-wrapper"><pre class="mermaid" id="${id}">${code}</pre></div>`;
+  }
+  return originalCodeRenderer(code, language);
+};
+
+// 渲染Markdown内容
+async function renderMarkdownContent(container, markdown) {
+  try {
+    // 使用 marked 渲染 markdown
+    const html = await marked.parse(markdown, { renderer });
+    container.innerHTML = `<div class="markdown-body">${html}</div>`;
+    
+    // 代码高亮
+    container.querySelectorAll('pre code').forEach((block) => {
+      hljs.highlightElement(block);
+    });
+    
+    // 渲染 Mermaid 图表
+    const mermaidElements = container.querySelectorAll('.mermaid');
+    if (mermaidElements.length > 0) {
+      for (const element of mermaidElements) {
+        try {
+          const { svg } = await mermaid.render(element.id, element.textContent);
+          element.innerHTML = svg;
+        } catch (err) {
+          console.error('Mermaid 渲染失败:', err);
+          element.innerHTML = `<div class="mermaid-error">图表渲染失败: ${err.message}</div>`;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Markdown 渲染失败:', error);
+    container.innerHTML = `<div class="markdown-error">文档渲染失败: ${error.message}</div>`;
+  }
 }
 
 // 设置导航事件
