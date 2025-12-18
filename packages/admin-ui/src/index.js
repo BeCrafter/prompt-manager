@@ -2181,10 +2181,37 @@ function toggleNewFolderModal(show) {
   }
 }
 
+// 切换工具卡片meta tab
+function switchMetaTab(toolId, tabType) {
+  const tabsContainer = document.querySelector(`.tool-card[data-tool-id="${toolId}"] .tool-card-meta-tabs`);
+  const panelsContainer = document.querySelector(`.tool-card[data-tool-id="${toolId}"] .tool-card-meta-content`);
+  
+  if (!tabsContainer || !panelsContainer) return;
+  
+  // 切换tab状态
+  const tabs = tabsContainer.querySelectorAll('.tool-card-meta-tab');
+  tabs.forEach(tab => {
+    tab.classList.remove('active');
+    if (tab.classList.contains(`${tabType}-tab`)) {
+      tab.classList.add('active');
+    }
+  });
+  
+  // 切换面板状态
+  const panels = panelsContainer.querySelectorAll('.tool-card-meta-panel');
+  panels.forEach(panel => {
+    panel.classList.remove('active');
+    if (panel.classList.contains(tabType)) {
+      panel.classList.add('active');
+    }
+  });
+}
+
 // 将函数挂载到全局window对象，以便HTML中的内联事件可以访问
 window.toggleNewFolderModal = toggleNewFolderModal;
 window.handleNewFolderKeydown = handleNewFolderKeydown;
 window.createNewFolder = createNewFolder;
+window.switchMetaTab = switchMetaTab;
 
 // 处理目录名输入框的键盘事件
 function handleNewFolderKeydown(event) {
@@ -3246,7 +3273,893 @@ function switchNav(navType) {
     if (promptsSidebar) promptsSidebar.style.display = 'none';
     if (promptsArea) promptsArea.style.display = 'none';
     if (toolsArea) toolsArea.style.display = 'flex';
+    
+    // 初始化工具页面
+    initToolsPage();
   }
+}
+
+// 工具管理相关代码
+// 工具数据状态
+let toolsData = [];
+let currentFilter = 'all';
+let currentSearch = '';
+let selectedTag = null;
+
+// 初始化工具页面
+function initToolsPage() {
+  // 如果已经初始化过，不再重复初始化
+  if (document.querySelector('.tools-initialized')) return;
+  
+  // 标记已初始化
+  document.querySelector('.tools-area').classList.add('tools-initialized');
+  
+  // 绑定事件监听器
+  bindToolsEvents();
+  
+  // 加载工具数据
+  loadToolsData();
+}
+
+// 绑定工具页面事件
+function bindToolsEvents() {
+  // 搜索功能
+  const searchInput = document.getElementById('toolsSearchInput');
+  const searchClear = document.getElementById('toolsSearchClear');
+  
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      currentSearch = e.target.value.trim();
+      searchClear.style.display = currentSearch ? 'block' : 'none';
+      filterAndRenderTools();
+    });
+  }
+  
+  if (searchClear) {
+    searchClear.addEventListener('click', () => {
+      searchInput.value = '';
+      currentSearch = '';
+      searchClear.style.display = 'none';
+      filterAndRenderTools();
+    });
+  }
+  
+  // 过滤器按钮
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const filter = btn.dataset.filter;
+      if (currentFilter === filter) return;
+      
+      // 更新按钮状态
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      // 切换过滤器和视图
+      currentFilter = filter;
+      switchToolsView(filter);
+    });
+  });
+  
+  // 上传按钮
+  const uploadBtn = document.getElementById('toolsUploadBtn');
+  if (uploadBtn) {
+    uploadBtn.addEventListener('click', showUploadModal);
+  }
+  
+  // 上传弹窗事件
+  bindUploadModalEvents();
+  
+  // 工具详情弹窗事件
+  bindToolDetailModalEvents();
+}
+
+// 绑定上传弹窗事件
+function bindUploadModalEvents() {
+  const modal = document.getElementById('toolsUploadModal');
+  const closeBtn = document.getElementById('toolsUploadCloseBtn');
+  const cancelBtn = document.getElementById('toolsUploadCancelBtn');
+  const confirmBtn = document.getElementById('toolsUploadConfirmBtn');
+  const selectFileBtn = document.getElementById('selectFileBtn');
+  const fileInput = document.getElementById('fileInput');
+  const uploadArea = document.getElementById('uploadArea');
+  
+  if (closeBtn) {
+    closeBtn.addEventListener('click', hideUploadModal);
+  }
+  
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', hideUploadModal);
+  }
+  
+  if (selectFileBtn) {
+    selectFileBtn.addEventListener('click', () => {
+      fileInput.click();
+    });
+  }
+  
+  if (fileInput) {
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        validateAndPreviewFile(file);
+      }
+    });
+  }
+  
+  // 拖拽上传
+  if (uploadArea) {
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+    
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        validateAndPreviewFile(files[0]);
+      }
+    });
+  }
+}
+
+// 绑定工具详情弹窗事件
+function bindToolDetailModalEvents() {
+  const modal = document.getElementById('toolDetailModal');
+  const closeBtn = document.getElementById('toolDetailClose');
+  
+  if (closeBtn) {
+    closeBtn.addEventListener('click', hideToolDetailModal);
+  }
+  
+  // 点击弹窗外部关闭
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      hideToolDetailModal();
+    }
+  });
+}
+
+// 加载工具数据
+async function loadToolsData() {
+  try {
+    // 显示加载状态
+    const toolsGrid = document.getElementById('toolsGrid');
+    const toolsEmpty = document.getElementById('toolsEmpty');
+    
+    if (toolsGrid) toolsGrid.style.display = 'none';
+    if (toolsEmpty) toolsEmpty.style.display = 'flex';
+    if (toolsEmpty) {
+      toolsEmpty.innerHTML = `
+        <div class="tools-empty-icon">⏳</div>
+        <div class="tools-empty-text">正在加载工具数据...</div>
+        <div class="tools-empty-hint">请稍候</div>
+      `;
+    }
+    
+    let data;
+    try {
+      // 尝试从API获取数据
+      const response = await fetch(`${API_HOST}/tool/list`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const apiData = await response.json();
+      data = apiData.tools || apiData;
+    } catch (apiError) {
+      console.warn('API调用失败，使用模拟数据:', apiError);
+      // 使用模拟数据
+      data = [
+        {
+          id: "chrome-devtools",
+          name: "Chrome DevTools MCP",
+          description: "基于 chrome-devtools-mcp 的浏览器自动化工具，完全复用官方实现。支持页面导航、元素操作、性能分析、网络监控、控制台监控等功能。支持 keepAlive 参数保持浏览器状态，便于连续操作和调试。",
+          version: "1.0.0",
+          category: "utility",
+          author: "Prompt Manager",
+          tags: ["browser", "automation", "chrome-devtools", "performance", "network", "debugging"],
+          scenarios: ["网页自动化操作", "性能分析和优化", "网络请求监控"],
+          limitations: ["仅支持 Chrome/Chromium 浏览器", "首次使用需要安装浏览器"]
+        },
+        {
+          id: "file-reader",
+          name: "File Reader",
+          description: "统一文件读取工具，支持本地和远程文件，自动识别文件类型并转换为模型友好格式",
+          version: "1.0.0",
+          category: "utility",
+          author: "Prompt Manager",
+          tags: ["file", "reader", "http", "local", "remote"],
+          scenarios: ["读取本地文本文件", "下载并读取远程文件", "解析JSON/XML/YAML文件"],
+          limitations: ["远程文件大小限制为10MB", "需要配置URL白名单"]
+        },
+        {
+          id: "pdf-reader",
+          name: "PDF Reader",
+          description: "PDF 分页阅读工具，支持按页码提取文本和图片，智能缓存避免重复解析",
+          version: "2.1.0",
+          category: "utility",
+          author: "鲁班",
+          tags: ["pdf", "reader", "text", "image"],
+          scenarios: ["PDF文本提取", "PDF图片提取", "分页阅读PDF"],
+          limitations: ["需要有效的PDF文件路径", "仅支持PDF格式文件"]
+        }
+      ];
+    }
+    
+    // 处理数据，确保格式一致
+    toolsData = data.map(tool => ({
+      id: tool.id || tool.name,
+      name: tool.name || '未知工具',
+      description: tool.description || '暂无描述',
+      version: tool.version || '1.0.0',
+      category: tool.category || 'utility',
+      author: tool.author || 'Unknown',
+      tags: Array.isArray(tool.tags) ? tool.tags : [],
+      scenarios: Array.isArray(tool.scenarios) ? tool.scenarios : [],
+      limitations: Array.isArray(tool.limitations) ? tool.limitations : []
+    }));
+    
+    filterAndRenderTools();
+  } catch (error) {
+    console.error('加载工具数据失败:', error);
+    showMessage('加载工具数据失败: ' + error.message, 'error');
+    
+    // 显示错误状态
+    const toolsEmpty = document.getElementById('toolsEmpty');
+    if (toolsEmpty) {
+      toolsEmpty.innerHTML = `
+        <div class="tools-empty-icon">❌</div>
+        <div class="tools-empty-text">加载失败</div>
+        <div class="tools-empty-hint">无法连接到服务器，请检查网络连接</div>
+      `;
+    }
+  }
+}
+
+// 切换工具视图
+function switchToolsView(filter) {
+  const toolsGrid = document.getElementById('toolsGrid');
+  const aggregatedView = document.getElementById('toolsAggregatedView');
+  const toolsEmpty = document.getElementById('toolsEmpty');
+  
+  // 隐藏所有视图
+  if (toolsGrid) toolsGrid.style.display = 'none';
+  if (aggregatedView) aggregatedView.style.display = 'none';
+  if (toolsEmpty) toolsEmpty.style.display = 'none';
+  
+  // 隐藏所有聚合视图
+  document.querySelectorAll('.aggregated-view').forEach(view => {
+    view.style.display = 'none';
+  });
+  
+  if (filter === 'all') {
+    // 显示网格视图
+    if (toolsGrid) toolsGrid.style.display = 'grid';
+    filterAndRenderTools();
+  } else {
+    // 显示聚合视图
+    if (aggregatedView) aggregatedView.style.display = 'block';
+    
+    if (filter === 'category') {
+      showCategoryView();
+    } else if (filter === 'tag') {
+      showTagView();
+    } else if (filter === 'author') {
+      showAuthorView();
+    }
+  }
+}
+
+// 过滤和渲染工具
+function filterAndRenderTools() {
+  const toolsGrid = document.getElementById('toolsGrid');
+  const toolsEmpty = document.getElementById('toolsEmpty');
+  
+  if (!toolsGrid || !toolsData.length) {
+    if (toolsEmpty) toolsEmpty.style.display = 'flex';
+    return;
+  }
+  
+  // 过滤工具
+  let filteredTools = toolsData.filter(tool => {
+    const matchesSearch = !currentSearch || 
+      tool.name.toLowerCase().includes(currentSearch.toLowerCase()) ||
+      tool.description.toLowerCase().includes(currentSearch.toLowerCase());
+    
+    return matchesSearch;
+  });
+  
+  if (filteredTools.length === 0) {
+    toolsGrid.style.display = 'none';
+    if (toolsEmpty) toolsEmpty.style.display = 'flex';
+  } else {
+    toolsGrid.style.display = 'grid';
+    if (toolsEmpty) toolsEmpty.style.display = 'none';
+    renderToolsGrid(filteredTools);
+  }
+}
+
+// 渲染工具网格
+function renderToolsGrid(tools) {
+  const toolsGrid = document.getElementById('toolsGrid');
+  if (!toolsGrid) return;
+  
+  toolsGrid.innerHTML = tools.map(tool => createToolCard(tool)).join('');
+  
+  // 绑定卡片点击事件
+  toolsGrid.querySelectorAll('.tool-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const toolId = card.dataset.toolId;
+      showToolDetail(toolId);
+    });
+  });
+}
+
+// 创建工具卡片
+function createToolCard(tool) {
+  const metaHtml = (tool.scenarios && tool.scenarios.length > 0) || (tool.limitations && tool.limitations.length > 0) ? `
+    <div class="tool-card-meta">
+      <div class="tool-card-meta-tabs ${(tool.scenarios && tool.scenarios.length > 0 && tool.limitations && tool.limitations.length > 0) ? '' : 'single-tab ' + 
+        (tool.scenarios && tool.scenarios.length > 0 ? 'scenarios-only' : 'limitations-only')}">
+        ${tool.scenarios && tool.scenarios.length > 0 ? `
+          <button class="tool-card-meta-tab scenarios-tab ${!tool.limitations || tool.limitations.length === 0 ? 'active' : ''}" 
+                  onclick="event.stopPropagation(); switchMetaTab('${tool.id}', 'scenarios')">
+            🎯 使用场景
+          </button>
+        ` : ''}
+        ${tool.limitations && tool.limitations.length > 0 ? `
+          <button class="tool-card-meta-tab limitations-tab ${!tool.scenarios || tool.scenarios.length === 0 ? 'active' : ''}" 
+                  onclick="event.stopPropagation(); switchMetaTab('${tool.id}', 'limitations')">
+            ⚠️ 使用限制
+          </button>
+        ` : ''}
+      </div>
+      <div class="tool-card-meta-content">
+        ${tool.scenarios && tool.scenarios.length > 0 ? `
+          <div class="tool-card-meta-panel scenarios active" id="meta-scenarios-${tool.id}">
+            <div class="tool-card-meta-list">
+              ${tool.scenarios.map(scenario => `<span class="tool-card-meta-item">${scenario}</span>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+        ${tool.limitations && tool.limitations.length > 0 ? `
+          <div class="tool-card-meta-panel limitations ${!tool.scenarios || tool.scenarios.length === 0 ? 'active' : ''}" id="meta-limitations-${tool.id}">
+            <div class="tool-card-meta-list">
+              ${tool.limitations.map(limitation => `<span class="tool-card-meta-item">${limitation}</span>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  ` : '';
+
+  const tagsHtml = tool.tags && tool.tags.length > 0 ? `
+    <div class="tool-card-category-row">
+      <span class="tool-card-category">${tool.category}</span>
+    </div>
+    <div class="tool-card-tags-row" data-tool-id="${tool.id}">
+      <div class="tool-card-tags-container">
+        ${tool.tags.map(tag => `<span class="tool-card-tag">${tag}</span>`).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  return `
+    <div class="tool-card" data-tool-id="${tool.id}">
+      <div class="tool-card-header">
+        <h3 class="tool-card-title">
+          <div class="tool-card-icon">${tool.name.charAt(0).toUpperCase()}</div>
+          ${tool.name}
+        </h3>
+        <span class="tool-card-version">v${tool.version}</span>
+      </div>
+      
+      <p class="tool-card-description">${tool.description}</p>
+      
+      ${tagsHtml}
+      
+      ${metaHtml}
+      
+      <div class="tool-card-footer">
+        <div class="tool-card-author">${tool.author}</div>
+        <div class="tool-card-actions">
+          <button class="tool-card-action" onclick="event.stopPropagation(); showToolDetail('${tool.id}')">详情</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// 显示类别视图
+function showCategoryView() {
+  const categoryView = document.getElementById('categoryView');
+  const categoryGrid = document.getElementById('categoryGrid');
+  
+  if (!categoryView || !categoryGrid) return;
+  
+  categoryView.style.display = 'block';
+  
+  // 按类别分组
+  const categories = {};
+  toolsData.forEach(tool => {
+    if (!categories[tool.category]) {
+      categories[tool.category] = [];
+    }
+    categories[tool.category].push(tool);
+  });
+  
+  // 渲染类别卡片
+  categoryGrid.innerHTML = Object.entries(categories).map(([category, tools]) => `
+    <div class="category-card" onclick="showCategoryTools('${category}')">
+      <div class="category-icon">${getCategoryIcon(category)}</div>
+      <div class="category-name">${category}</div>
+      <div class="category-count">${tools.length} 个工具</div>
+    </div>
+  `).join('');
+}
+
+// 显示标签视图
+function showTagView() {
+  const tagView = document.getElementById('tagView');
+  const tagCloud = document.getElementById('tagCloud');
+  const tagToolsList = document.getElementById('tagToolsList');
+  
+  if (!tagView || !tagCloud || !tagToolsList) return;
+  
+  tagView.style.display = 'block';
+  
+  // 收集所有标签
+  const allTags = new Set();
+  toolsData.forEach(tool => {
+    tool.tags.forEach(tag => allTags.add(tag));
+  });
+  
+  // 渲染标签云
+  tagCloud.innerHTML = Array.from(allTags).map(tag => `
+    <span class="tag-item ${selectedTag === tag ? 'active' : ''}" onclick="selectTag('${tag}')">${tag}</span>
+  `).join('');
+  
+  // 如果有选中的标签，显示对应的工具
+  if (selectedTag) {
+    const tagTools = toolsData.filter(tool => tool.tags.includes(selectedTag));
+    tagToolsList.innerHTML = tagTools.map(tool => createToolCard(tool)).join('');
+    
+    // 绑定卡片点击事件
+    tagToolsList.querySelectorAll('.tool-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const toolId = card.dataset.toolId;
+        showToolDetail(toolId);
+      });
+    });
+  } else {
+    tagToolsList.innerHTML = '<div style="text-align: center; color: var(--gray); padding: 40px;">请选择一个标签查看相关工具</div>';
+  }
+}
+
+// 显示作者视图
+function showAuthorView() {
+  const authorView = document.getElementById('authorView');
+  const authorGrid = document.getElementById('authorGrid');
+  
+  if (!authorView || !authorGrid) return;
+  
+  authorView.style.display = 'block';
+  
+  // 按作者分组
+  const authors = {};
+  toolsData.forEach(tool => {
+    if (!authors[tool.author]) {
+      authors[tool.author] = {
+        name: tool.author,
+        tools: [],
+        avatar: getAuthorAvatar(tool.author),
+        bio: getAuthorBio(tool.author),
+        role: getAuthorRole(tool.author)
+      };
+    }
+    authors[tool.author].tools.push(tool);
+  });
+  
+  // 渲染作者卡片
+  authorGrid.innerHTML = Object.values(authors).map(author => `
+    <div class="author-card" onclick="showAuthorTools('${author.name}')">
+      <div class="author-avatar">${author.avatar}</div>
+      <div class="author-name">${author.name}</div>
+      <div class="author-role">${author.role}</div>
+      <div class="author-bio">${author.bio}</div>
+      <div class="author-stats">
+        <div class="author-stat">
+          <div class="author-stat-value">${author.tools.length}</div>
+          <div class="author-stat-label">工具</div>
+        </div>
+        <div class="author-stat">
+          <div class="author-stat-value">${getTotalDownloads(author.tools)}</div>
+          <div class="author-stat-label">下载</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// 获取类别图标
+function getCategoryIcon(category) {
+  const icons = {
+    'utility': '🔧',
+    'file': '📁',
+    'document': '📄',
+    'network': '🌐',
+    'development': '💻',
+    'automation': '⚡'
+  };
+  return icons[category] || '📦';
+}
+
+// 获取作者头像
+function getAuthorAvatar(author) {
+  const avatars = {
+    'Prompt Manager': 'PM',
+    'Document Team': 'DT',
+    'Development Team': 'DT'
+  };
+  return avatars[author] || author.charAt(0).toUpperCase();
+}
+
+// 获取作者简介
+function getAuthorBio(author) {
+  const bios = {
+    'Prompt Manager': '专注于提供高质量的提示词管理工具和解决方案',
+    'Document Team': '专注于文档处理和内容管理工具的开发',
+    'Development Team': '专注于开发工具和自动化解决方案'
+  };
+  return bios[author] || '开发者';
+}
+
+// 获取作者角色
+function getAuthorRole(author) {
+  const roles = {
+    'Prompt Manager': '核心开发团队',
+    'Document Team': '文档专家',
+    'Development Team': '开发工程师'
+  };
+  return roles[author] || '开发者';
+}
+
+// 获取总下载量（模拟数据）
+function getTotalDownloads(tools) {
+  return Math.floor(Math.random() * 10000) + 1000;
+}
+
+// 选择标签
+function selectTag(tag) {
+  selectedTag = selectedTag === tag ? null : tag;
+  showTagView();
+}
+
+// 显示类别工具
+function showCategoryTools(category) {
+  const categoryTools = toolsData.filter(tool => tool.category === category);
+  const toolsGrid = document.getElementById('toolsGrid');
+  const aggregatedView = document.getElementById('toolsAggregatedView');
+  
+  // 切换到网格视图
+  document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelector('[data-filter="all"]').classList.add('active');
+  
+  if (toolsGrid) toolsGrid.style.display = 'grid';
+  if (aggregatedView) aggregatedView.style.display = 'none';
+  
+  renderToolsGrid(categoryTools);
+}
+
+// 显示作者工具
+function showAuthorTools(author) {
+  const authorTools = toolsData.filter(tool => tool.author === author);
+  const toolsGrid = document.getElementById('toolsGrid');
+  const aggregatedView = document.getElementById('toolsAggregatedView');
+  
+  // 切换到网格视图
+  document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelector('[data-filter="all"]').classList.add('active');
+  
+  if (toolsGrid) toolsGrid.style.display = 'grid';
+  if (aggregatedView) aggregatedView.style.display = 'none';
+  
+  renderToolsGrid(authorTools);
+}
+
+// 显示上传弹窗
+function showUploadModal() {
+  const modal = document.getElementById('toolsUploadModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    resetUploadModal();
+  }
+}
+
+// 隐藏上传弹窗
+function hideUploadModal() {
+  const modal = document.getElementById('toolsUploadModal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+}
+
+// 重置上传弹窗
+function resetUploadModal() {
+  const fileInput = document.getElementById('fileInput');
+  const confirmBtn = document.getElementById('toolsUploadConfirmBtn');
+  const uploadProgress = document.getElementById('uploadProgress');
+  const uploadContent = document.querySelector('.upload-content');
+  
+  if (fileInput) fileInput.value = '';
+  if (confirmBtn) confirmBtn.disabled = true;
+  if (uploadProgress) uploadProgress.style.display = 'none';
+  if (uploadContent) uploadContent.style.display = 'flex';
+}
+
+// 验证并预览文件
+function validateAndPreviewFile(file) {
+  const confirmBtn = document.getElementById('toolsUploadConfirmBtn');
+  const uploadTitle = document.querySelector('.upload-title');
+  const uploadSubtitle = document.querySelector('.upload-subtitle');
+  
+  // 验证文件类型
+  if (!file.name.endsWith('.zip')) {
+    showMessage('请选择ZIP格式的文件', 'error');
+    return;
+  }
+  
+  // 验证文件大小（限制为10MB）
+  if (file.size > 10 * 1024 * 1024) {
+    showMessage('文件大小不能超过10MB', 'error');
+    return;
+  }
+  
+  // 更新UI
+  if (uploadTitle) uploadTitle.textContent = `已选择: ${file.name}`;
+  if (uploadSubtitle) uploadSubtitle.textContent = `大小: ${(file.size / 1024).toFixed(2)} KB`;
+  if (confirmBtn) confirmBtn.disabled = false;
+  
+  // 绑定确认上传事件
+  if (confirmBtn) {
+    confirmBtn.onclick = () => uploadFile(file);
+  }
+}
+
+// 上传文件
+async function uploadFile(file) {
+  const confirmBtn = document.getElementById('toolsUploadConfirmBtn');
+  const uploadProgress = document.getElementById('uploadProgress');
+  const progressFill = document.getElementById('progressFill');
+  const progressText = document.getElementById('progressText');
+  const uploadContent = document.querySelector('.upload-content');
+  
+  try {
+    // 禁用按钮
+    if (confirmBtn) confirmBtn.disabled = true;
+    
+    // 显示进度条
+    if (uploadContent) uploadContent.style.display = 'none';
+    if (uploadProgress) uploadProgress.style.display = 'block';
+    
+    // 模拟上传进度
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.random() * 30;
+      if (progress > 90) progress = 90;
+      
+      if (progressFill) progressFill.style.width = `${progress}%`;
+      if (progressText) progressText.textContent = `上传中... ${Math.round(progress)}%`;
+    }, 200);
+    
+    // 模拟API调用
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // 完成上传
+    clearInterval(interval);
+    if (progressFill) progressFill.style.width = '100%';
+    if (progressText) progressText.textContent = '上传完成！';
+    
+    // 验证ZIP文件内容
+    const isValid = await validateZipContent(file);
+    
+    if (isValid) {
+      showMessage('工具包上传成功！', 'success');
+      hideUploadModal();
+      // 重新加载工具数据
+      loadToolsData();
+    } else {
+      showMessage('工具包格式不正确，请确保包含README.md和{tool_name}.tool.js文件', 'error');
+      setTimeout(() => {
+        hideUploadModal();
+      }, 2000);
+    }
+    
+  } catch (error) {
+    console.error('上传失败:', error);
+    showMessage('上传失败，请重试', 'error');
+    setTimeout(() => {
+      hideUploadModal();
+    }, 2000);
+  }
+}
+
+// 验证ZIP文件内容（模拟）
+async function validateZipContent(file) {
+  // 这里应该实际解析ZIP文件并验证内容
+  // 现在模拟验证过程
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  // 模拟验证结果（随机成功或失败）
+  return Math.random() > 0.3; // 70%的成功率
+}
+
+// 显示工具详情
+async function showToolDetail(toolId) {
+  const tool = toolsData.find(t => t.id === toolId);
+  if (!tool) return;
+  
+  const modal = document.getElementById('toolDetailModal');
+  const toolName = document.getElementById('toolDetailName');
+  const toolInfo = document.getElementById('toolDetailInfo');
+  const toolContent = document.getElementById('toolDetailContent');
+  
+  if (!modal || !toolName || !toolInfo || !toolContent) return;
+  
+  // 设置工具名称
+  toolName.textContent = tool.name;
+  
+  // 设置工具基本信息
+  toolInfo.innerHTML = `
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+      <div>
+        <strong>版本:</strong> ${tool.version}
+      </div>
+      <div>
+        <strong>类别:</strong> ${tool.category}
+      </div>
+      <div>
+        <strong>作者:</strong> ${tool.author}
+      </div>
+      <div>
+        <strong>标签:</strong> ${tool.tags.join(', ')}
+      </div>
+    </div>
+    <div style="margin-top: 12px;">
+      <strong>描述:</strong><br>
+      ${tool.description}
+    </div>
+  `;
+  
+  // 检查是否有README文件
+  const hasReadme = await checkToolReadme(toolId);
+  
+  if (hasReadme) {
+    // 加载README内容
+    toolContent.innerHTML = '<div class="tool-detail-loading">加载文档中...</div>';
+    const readmeContent = await loadToolReadme(toolId);
+    renderMarkdownContent(toolContent, readmeContent);
+  } else {
+    // 显示无文档提示
+    toolContent.innerHTML = `
+      <div style="text-align: center; padding: 60px 20px; color: var(--gray);">
+        <div style="font-size: 48px; margin-bottom: 16px;">📄</div>
+        <h3>暂无文档</h3>
+        <p>该工具暂未提供详细的说明文档</p>
+      </div>
+    `;
+  }
+  
+  // 显示弹窗
+  modal.classList.add('show');
+}
+
+// 隐藏工具详情弹窗
+function hideToolDetailModal() {
+  const modal = document.getElementById('toolDetailModal');
+  if (modal) {
+    modal.classList.remove('show');
+  }
+}
+
+// 检查工具README文件
+async function checkToolReadme(toolId) {
+  try {
+    const response = await fetch(`${API_HOST}/tool/readme/${toolId}`);
+    return response.ok;
+  } catch (error) {
+    console.error('检查README文件失败:', error);
+    return false;
+  }
+}
+
+// 加载工具README内容
+async function loadToolReadme(toolId) {
+  try {
+    const response = await fetch(`${API_HOST}/tool/readme/${toolId}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    // 读取接口返回的content字段
+    const readmeContent = data.content || data;
+    
+    // 如果content是字符串，直接返回；如果是对象，尝试转换为字符串
+    if (typeof readmeContent === 'string') {
+      return readmeContent;
+    } else if (typeof readmeContent === 'object') {
+      return JSON.stringify(readmeContent, null, 2);
+    } else {
+      return String(readmeContent);
+    }
+  } catch (error) {
+    console.error('加载README内容失败:', error);
+    return `# ${toolId}
+
+## 文档加载失败
+无法加载工具文档，请稍后重试。
+
+**错误信息**: ${error.message}
+
+---
+*如果您是工具开发者，请确保工具目录中包含README.md文件。*
+`;
+  }
+}
+
+// 渲染Markdown内容
+function renderMarkdownContent(container, markdown) {
+  // 简单的Markdown渲染（实际应该使用专业的Markdown解析库）
+  let html = markdown
+    .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+    .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+    .replace(/^\*\*(.*)\*\*/gim, '<strong>$1</strong>')
+    .replace(/^\* (.*$)/gim, '<li>$1</li>')
+    .replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/^/, '<p>')
+    .replace(/$/, '</p>');
+  
+  // 处理列表
+  html = html.replace(/<li>/g, '<ul><li>').replace(/<\/li>/g, '</li></ul>');
+  html = html.replace(/<\/ul><ul>/g, '');
+  
+  // 处理Mermaid图表
+  html = html.replace(/```mermaid\n([\s\S]*?)\n```/g, '<div class="mermaid">$1</div>');
+  
+  container.innerHTML = html;
+  
+  // 渲染Mermaid图表（需要引入mermaid库）
+  renderMermaidDiagrams(container);
+}
+
+// 渲染Mermaid图表
+function renderMermaidDiagrams(container) {
+  const mermaidElements = container.querySelectorAll('.mermaid');
+  mermaidElements.forEach(element => {
+    // 这里应该使用mermaid.js来渲染图表
+    // 现在只是显示一个占位符
+    const diagramCode = element.textContent;
+    element.innerHTML = `
+      <div style="background: var(--light); padding: 20px; border-radius: 8px; text-align: center; color: var(--gray);">
+        <div style="font-size: 24px; margin-bottom: 8px;">📊</div>
+        <div>图表: ${diagramCode.split('\n')[0]}</div>
+        <div style="font-size: 12px; margin-top: 8px;">需要引入 mermaid.js 来渲染图表</div>
+      </div>
+    `;
+  });
 }
 
 // 设置导航事件

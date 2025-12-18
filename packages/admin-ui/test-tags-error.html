@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>标签展开功能错误测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .tool-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: white;
+        }
+        
+        .tool-card-category-row {
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .tool-card-category {
+            background: rgba(0,102,255,0.1);
+            color: #0066ff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .tool-card-tags-row {
+            position: relative;
+            height: 44px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+        
+        .tool-card-tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            line-height: 1.5;
+            max-height: 44px;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .tool-card-tag {
+            background: #f0f0f0;
+            color: #666;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .tool-card-tags-expand {
+            display: none;
+            background: none;
+            border: none;
+            color: #0066ff;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 4px 8px;
+        }
+        
+        .tool-card-tags-row.has-overflow .tool-card-tags-expand {
+            display: flex;
+            align-items: center;
+        }
+        
+        .tool-card-tags-overlay {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 12px;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-8px);
+            transition: all 0.2s ease;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .tool-card-tags-overlay.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        
+        .tool-card-tags-overlay-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .error-log {
+            background: #ffebee;
+            border: 1px solid #f8bbd9;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #c62828;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>标签展开功能错误测试</h1>
+        
+        <div class="tool-card">
+            <h3>工具测试 - 大量标签</h3>
+            <div class="tool-card-category-row">
+                <span class="tool-card-category">数据分析</span>
+            </div>
+            <div class="tool-card-tags-row" data-tool-id="test-tool">
+                <div class="tool-card-tags-container">
+                    <span class="tool-card-tag">Python</span>
+                    <span class="tool-card-tag">数据分析</span>
+                    <span class="tool-card-tag">机器学习</span>
+                    <span class="tool-card-tag">数据可视化</span>
+                    <span class="tool-card-tag">统计学</span>
+                    <span class="tool-card-tag">Pandas</span>
+                    <span class="tool-card-tag">NumPy</span>
+                    <span class="tool-card-tag">Matplotlib</span>
+                    <span class="tool-card-tag">Jupyter</span>
+                    <span class="tool-card-tag">深度学习</span>
+                </div>
+                <button class="tool-card-tags-expand" onclick="toggleTagsExpand('test-tool')">
+                    展开 <span style="font-size: 10px;">▼</span>
+                </button>
+                <div class="tool-card-tags-overlay" id="tags-overlay-test-tool">
+                    <div class="tool-card-tags-overlay-content">
+                        <span class="tool-card-tag">Python</span>
+                        <span class="tool-card-tag">数据分析</span>
+                        <span class="tool-card-tag">机器学习</span>
+                        <span class="tool-card-tag">数据可视化</span>
+                        <span class="tool-card-tag">统计学</span>
+                        <span class="tool-card-tag">Pandas</span>
+                        <span class="tool-card-tag">NumPy</span>
+                        <span class="tool-card-tag">Matplotlib</span>
+                        <span class="tool-card-tag">Jupyter</span>
+                        <span class="tool-card-tag">深度学习</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="error-log" id="error-log">
+            错误日志将显示在这里...
+        </div>
+    </div>
+
+    <script>
+        // 错误捕获
+        window.addEventListener('error', function(e) {
+            const errorLog = document.getElementById('error-log');
+            errorLog.innerHTML += `错误: ${e.message} 在 ${e.filename}:${e.lineno}<br>`;
+        });
+        
+        function toggleTagsExpand(toolId) {
+            try {
+                console.log('toggleTagsExpand called with toolId:', toolId);
+                
+                const tagsRow = document.querySelector(`.tool-card-tags-row[data-tool-id="${toolId}"]`);
+                const overlay = document.getElementById(`tags-overlay-${toolId}`);
+                
+                console.log('tagsRow:', tagsRow);
+                console.log('overlay:', overlay);
+                
+                if (!tagsRow || !overlay) {
+                    console.error('Elements not found:', { tagsRow, overlay });
+                    return;
+                }
+                
+                if (tagsRow.classList.contains('expanded')) {
+                    // 收起
+                    console.log('Collapsing...');
+                    tagsRow.classList.remove('expanded');
+                    overlay.classList.remove('show');
+                } else {
+                    // 展开
+                    console.log('Expanding...');
+                    tagsRow.classList.add('expanded');
+                    overlay.classList.add('show');
+                }
+            } catch (error) {
+                console.error('Error in toggleTagsExpand:', error);
+                const errorLog = document.getElementById('error-log');
+                errorLog.innerHTML += `toggleTagsExpand 错误: ${error.message}<br>`;
+            }
+        }
+        
+        function initializeTagsExpand() {
+            const tagsRows = document.querySelectorAll('.tool-card-tags-row');
+            
+            tagsRows.forEach(tagsRow => {
+                const container = tagsRow.querySelector('.tool-card-tags-container');
+                const expandBtn = tagsRow.querySelector('.tool-card-tags-expand');
+                
+                if (container && expandBtn) {
+                    // 临时移除max-height限制以获得真实高度
+                    const originalMaxHeight = container.style.maxHeight;
+                    container.style.maxHeight = 'none';
+                    const containerHeight = container.scrollHeight;
+                    container.style.maxHeight = originalMaxHeight;
+                    
+                    const maxHeight = 44;
+                    
+                    if (containerHeight > maxHeight) {
+                        tagsRow.classList.add('has-overflow');
+                        expandBtn.style.display = 'flex';
+                    } else {
+                        tagsRow.classList.remove('has-overflow');
+                        expandBtn.style.display = 'none';
+                    }
+                }
+            });
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeTagsExpand();
+        });
+    </script>
+</body>
+</html>

@@ -155,10 +155,177 @@
 
       <!-- 工具区域（默认隐藏） -->
       <div id="toolsArea" class="tools-area" style="display: none;">
-        <div class="tools-empty">
-          <div class="tools-empty-icon">🔧</div>
-          <div class="tools-empty-text">工具列表</div>
-          <div class="tools-empty-hint">敬请期待...</div>
+        <!-- 工具页面头部 -->
+        <div class="tools-header">
+          <div class="tools-header-left">
+            <h2 class="tools-title">工具管理</h2>
+            <div class="tools-search">
+              <input type="text" id="toolsSearchInput" placeholder="搜索工具名称或描述..." />
+              <button type="button" class="search-clear-btn" id="toolsSearchClear" style="display: none;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="tools-header-right">
+            <button type="button" class="btn btn-outline" id="toolsUploadBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              上传工具包
+            </button>
+            <div class="tools-filter">
+              <button type="button" class="filter-btn active" data-filter="all">
+                全部
+              </button>
+              <button type="button" class="filter-btn" data-filter="category">
+                类别
+              </button>
+              <button type="button" class="filter-btn" data-filter="tag">
+                标签
+              </button>
+              <button type="button" class="filter-btn" data-filter="author">
+                作者
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 工具内容区域 -->
+        <div class="tools-content">
+          <!-- 工具网格视图 -->
+          <div class="tools-grid" id="toolsGrid">
+            <!-- 工具卡片将通过JavaScript动态加载 -->
+          </div>
+          
+          <!-- 聚合视图（类别、标签、作者） -->
+          <div class="tools-aggregated-view" id="toolsAggregatedView" style="display: none;">
+            <!-- 类别聚合视图 -->
+            <div class="aggregated-view" id="categoryView" style="display: none;">
+              <div class="aggregated-header">
+                <h3>按类别浏览</h3>
+              </div>
+              <div class="category-grid" id="categoryGrid">
+                <!-- 类别卡片将通过JavaScript动态加载 -->
+              </div>
+            </div>
+
+            <!-- 标签聚合视图 -->
+            <div class="aggregated-view" id="tagView" style="display: none;">
+              <div class="aggregated-header">
+                <h3>按标签浏览</h3>
+              </div>
+              <div class="tag-cloud" id="tagCloud">
+                <!-- 标签将通过JavaScript动态加载 -->
+              </div>
+              <div class="tag-tools-list" id="tagToolsList">
+                <!-- 标签对应的工具列表将通过JavaScript动态加载 -->
+              </div>
+            </div>
+
+            <!-- 作者聚合视图 -->
+            <div class="aggregated-view" id="authorView" style="display: none;">
+              <div class="aggregated-header">
+                <h3>按作者浏览</h3>
+              </div>
+              <div class="author-grid" id="authorGrid">
+                <!-- 作者卡片将通过JavaScript动态加载 -->
+              </div>
+            </div>
+          </div>
+
+          <!-- 空状态 -->
+          <div class="tools-empty" id="toolsEmpty" style="display: none;">
+            <div class="tools-empty-icon">🔧</div>
+            <div class="tools-empty-text">暂无工具</div>
+            <div class="tools-empty-hint">请上传工具包或添加工具</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 工具上传弹窗 -->
+      <div id="toolsUploadModal" class="modal hidden">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>上传工具包</h3>
+              <button type="button" class="modal-close" id="toolsUploadCloseBtn">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" stroke-width="1.67" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div class="upload-area" id="uploadArea">
+                <div class="upload-content">
+                  <div class="upload-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="17 8 12 3 7 8"></polyline>
+                      <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                  </div>
+                  <div class="upload-text">
+                    <p class="upload-title">拖拽ZIP文件到此处或点击选择</p>
+                    <p class="upload-subtitle">支持包含 README.md 和 {tool_name}.tool.js 的ZIP格式工具包</p>
+                  </div>
+                  <input type="file" id="fileInput" accept=".zip" style="display: none;" />
+                  <button type="button" class="btn btn-outline" id="selectFileBtn">选择文件</button>
+                </div>
+                <div class="upload-progress" id="uploadProgress" style="display: none;">
+                  <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                  </div>
+                  <div class="progress-text" id="progressText">上传中...</div>
+                </div>
+              </div>
+              <div class="upload-requirements">
+                <h4>工具包要求：</h4>
+                <ul>
+                  <li>文件格式：.zip</li>
+                  <li>必须包含：README.md 文件</li>
+                  <li>必须包含：{tool_name}.tool.js 文件</li>
+                  <li>文件名不支持中文和特殊字符</li>
+                </ul>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-light" id="toolsUploadCancelBtn">取消</button>
+              <button type="button" class="btn btn-primary" id="toolsUploadConfirmBtn" disabled>上传</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 工具详情弹窗 -->
+      <div id="toolDetailModal" class="tool-detail-modal">
+        <div class="tool-detail-modal-content">
+          <div class="tool-detail-modal-header">
+            <h3 id="toolDetailTitle">
+              <svg class="modal-title-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#666666" stroke-width="2">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+              </svg>
+              <span class="modal-title-text" id="toolDetailName">工具详情</span>
+            </h3>
+            <button class="tool-detail-modal-close" id="toolDetailClose">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="tool-detail-modal-body">
+            <div class="tool-detail-info" id="toolDetailInfo">
+              <!-- 工具基本信息将通过JavaScript动态加载 -->
+            </div>
+            <div class="tool-detail-content" id="toolDetailContent">
+              <div class="tool-detail-loading">加载中...</div>
+            </div>
+          </div>
         </div>
       </div>
 
