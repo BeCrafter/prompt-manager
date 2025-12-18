@@ -4120,38 +4120,158 @@ async function uploadFile(file) {
     if (uploadContent) uploadContent.style.display = 'none';
     if (uploadProgress) uploadProgress.style.display = 'block';
     
-    // 模拟上传进度
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.random() * 30;
-      if (progress > 90) progress = 90;
-      
-      if (progressFill) progressFill.style.width = `${progress}%`;
-      if (progressText) progressText.textContent = `上传中... ${Math.round(progress)}%`;
-    }, 200);
+    // 创建FormData对象
+    const formData = new FormData();
+    formData.append('file', file);
     
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // 创建XMLHttpRequest对象进行上传
+    const xhr = new XMLHttpRequest();
     
-    // 完成上传
-    clearInterval(interval);
-    if (progressFill) progressFill.style.width = '100%';
-    if (progressText) progressText.textContent = '上传完成！';
+    // 监听上传进度
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        const percentComplete = (e.loaded / e.total) * 100;
+        if (progressFill) progressFill.style.width = `${percentComplete}%`;
+        if (progressText) progressText.textContent = `上传中... ${Math.round(percentComplete)}%`;
+      }
+    });
     
-    // 验证ZIP文件内容
-    const isValid = await validateZipContent(file);
+    // 处理响应
+    xhr.addEventListener('load', async () => {
+      if (xhr.status === 200) {
+        // 上传成功
+        if (progressFill) progressFill.style.width = '100%';
+        if (progressText) progressText.textContent = '上传完成！';
+        
+        try {
+          const response = JSON.parse(xhr.responseText);
+          
+          if (response.success) {
+            showMessage(`工具 ${response.toolName} 上传成功！`, 'success');
+            hideUploadModal();
+            // 重新加载工具数据
+            loadToolsData();
+          } else {
+            showMessage(`上传失败: ${response.error}`, 'error');
+            setTimeout(() => {
+              hideUploadModal();
+            }, 2000);
+          }
+        } catch (parseError) {
+          showMessage('服务器返回格式错误', 'error');
+          setTimeout(() => {
+            hideUploadModal();
+          }, 2000);
+        }
+      } else if (xhr.status === 409) {
+        // 工具已存在，需要确认是否覆盖
+        try {
+          const response = JSON.parse(xhr.responseText);
+          
+          if (response.error && response.canOverwrite) {
+            const shouldOverwrite = confirm(`工具 "${response.toolName}" 已存在，是否要覆盖？\n\n覆盖将删除原有文件并替换为新的工具包。`);
+            
+            if (shouldOverwrite) {
+              // 用户确认覆盖，重新上传并添加覆盖参数
+              formData.append('overwrite', 'true');
+              
+              const overwriteXhr = new XMLHttpRequest();
+              
+              overwriteXhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                  const percentComplete = (e.loaded / e.total) * 100;
+                  if (progressFill) progressFill.style.width = `${percentComplete}%`;
+                  if (progressText) progressText.textContent = `覆盖上传中... ${Math.round(percentComplete)}%`;
+                }
+              });
+              
+              overwriteXhr.addEventListener('load', () => {
+                if (overwriteXhr.status === 200) {
+                  try {
+                    const overwriteResponse = JSON.parse(overwriteXhr.responseText);
+                    
+                    if (overwriteResponse.success) {
+                      showMessage(`工具 ${overwriteResponse.toolName} 覆盖上传成功！`, 'success');
+                      hideUploadModal();
+                      // 重新加载工具数据
+                      loadToolsData();
+                    } else {
+                      showMessage(`覆盖上传失败: ${overwriteResponse.error}`, 'error');
+                      setTimeout(() => {
+                        hideUploadModal();
+                      }, 2000);
+                    }
+                  } catch (parseError) {
+                    showMessage('服务器返回格式错误', 'error');
+                    setTimeout(() => {
+                      hideUploadModal();
+                    }, 2000);
+                  }
+                } else {
+                  // 覆盖失败
+                  try {
+                    const errorResponse = JSON.parse(overwriteXhr.responseText);
+                    showMessage(`覆盖上传失败: ${errorResponse.error || '未知错误'}`, 'error');
+                  } catch {
+                    showMessage('覆盖上传失败', 'error');
+                  }
+                  setTimeout(() => {
+                    hideUploadModal();
+                  }, 2000);
+                }
+              });
+              
+              overwriteXhr.addEventListener('error', () => {
+                showMessage('覆盖上传请求失败', 'error');
+                setTimeout(() => {
+                  hideUploadModal();
+                }, 2000);
+              });
+              
+              overwriteXhr.open('POST', '/tool/upload');
+              overwriteXhr.setRequestHeader('Authorization', `Bearer ${currentToken}`);
+              overwriteXhr.send(formData);
+            } else {
+              // 用户取消覆盖
+              showMessage('上传已取消', 'info');
+              setTimeout(() => {
+                hideUploadModal();
+              }, 2000);
+            }
+          }
+        } catch (error) {
+          showMessage('处理响应失败', 'error');
+          setTimeout(() => {
+            hideUploadModal();
+          }, 2000);
+        }
+      } else {
+        // 上传失败
+        try {
+          const errorResponse = JSON.parse(xhr.responseText);
+          showMessage(`上传失败: ${errorResponse.error || '未知错误'}`, 'error');
+        } catch {
+          showMessage(`上传失败: HTTP ${xhr.status}`, 'error');
+        }
+        setTimeout(() => {
+          hideUploadModal();
+        }, 2000);
+      }
+    });
     
-    if (isValid) {
-      showMessage('工具包上传成功！', 'success');
-      hideUploadModal();
-      // 重新加载工具数据
-      loadToolsData();
-    } else {
-      showMessage('工具包格式不正确，请确保包含README.md和{tool_name}.tool.js文件', 'error');
+    xhr.addEventListener('error', () => {
+      showMessage('上传请求失败', 'error');
       setTimeout(() => {
         hideUploadModal();
       }, 2000);
+    });
+    
+    // 发送请求
+    xhr.open('POST', '/tool/upload');
+    if (currentToken) {
+      xhr.setRequestHeader('Authorization', `Bearer ${currentToken}`);
     }
+    xhr.send(formData);
     
   } catch (error) {
     console.error('上传失败:', error);
@@ -4162,14 +4282,10 @@ async function uploadFile(file) {
   }
 }
 
-// 验证ZIP文件内容（模拟）
+// 验证ZIP文件内容（已通过后端处理，这里不再需要模拟验证）
 async function validateZipContent(file) {
-  // 这里应该实际解析ZIP文件并验证内容
-  // 现在模拟验证过程
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // 模拟验证结果（随机成功或失败）
-  return Math.random() > 0.3; // 70%的成功率
+  // 此函数已不再需要，后端会处理验证
+  return true;
 }
 
 // 显示工具详情
