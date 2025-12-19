@@ -13,6 +13,43 @@
   --sidebar-bg: #f8f9fa;
   --editor-bg: #263238;
   --preview-bg: #f5f5f5;
+  --scrollbar-width: 6px;
+  --scrollbar-thumb-color: rgba(0, 0, 0, 0.15);
+  --scrollbar-thumb-hover-color: rgba(0, 0, 0, 0.25);
+}
+
+/* 全局滚动条样式 - 默认隐藏，悬停时显示 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*:hover {
+  scrollbar-color: var(--scrollbar-thumb-color) transparent;
+}
+
+/* Webkit 浏览器滚动条样式 */
+*::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+  height: var(--scrollbar-width);
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: calc(var(--scrollbar-width) / 2);
+  transition: background-color 0.2s ease;
+}
+
+*:hover::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb-color);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover-color);
 }
 
 * {
@@ -407,7 +444,6 @@ aside {
   flex-direction: column;
   height: 100%;
   overflow-y: auto;
-  scrollbar-width: none;
   flex-shrink: 0;
 }
 
@@ -774,8 +810,6 @@ aside {
 .group-content.expanded {
   max-height: 2400px;
   overflow: visible;
-  padding-top: 8px;
-  scrollbar-width: none;
 }
 
 .group-children {
@@ -1388,15 +1422,6 @@ aside {
   resize: vertical;
   overflow-y: auto;
   transition: border-color 0.2s ease;
-}
-
-.prompt-description::-webkit-scrollbar {
-  width: 6px;
-}
-
-.prompt-description::-webkit-scrollbar-thumb {
-  background: var(--gray-light);
-  border-radius: 3px;
 }
 
 .editor-controls {
@@ -2278,7 +2303,6 @@ body.modal-open {
   overflow: hidden;
   border: 1px solid var(--border);
   box-shadow: 0 8px 24px rgba(0,0,0,0.05);
-  scrollbar-width: none;
 }
 
 .workspace-pane.hidden {
@@ -2361,9 +2385,6 @@ body.modal-open {
   overflow: auto;
   background: white;
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-  scrollbar-width: thin;
-  scrollbar-color: var(--gray-light) transparent;
 }
 
 /* 预览模式下的 CodeMirror 样式调整 */
