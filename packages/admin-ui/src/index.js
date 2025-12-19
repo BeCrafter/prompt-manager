@@ -4228,7 +4228,7 @@ async function uploadFile(file) {
                 }, 2000);
               });
               
-              overwriteXhr.open('POST', '/tool/upload');
+              overwriteXhr.open('POST', `${API_HOST}/tool/upload`);
               overwriteXhr.setRequestHeader('Authorization', `Bearer ${currentToken}`);
               overwriteXhr.send(formData);
             } else {
@@ -4267,7 +4267,7 @@ async function uploadFile(file) {
     });
     
     // 发送请求
-    xhr.open('POST', '/tool/upload');
+    xhr.open('POST', `${API_HOST}/tool/upload`);
     if (currentToken) {
       xhr.setRequestHeader('Authorization', `Bearer ${currentToken}`);
     }
