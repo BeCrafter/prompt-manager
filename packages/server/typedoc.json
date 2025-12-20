@@ -1,0 +1,52 @@
+{
+  "entryPoints": [
+    "./index.js",
+    "./services/",
+    "./utils/",
+    "./mcp/",
+    "./api/",
+    "./toolm/"
+  ],
+  "out": "./docs/typedoc/",
+  "exclude": [
+    "node_modules/",
+    "dist/",
+    "coverage/",
+    "tests/",
+    "test-results/",
+    "**/*.test.js",
+    "**/*.spec.js"
+  ],
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "excludeInternal": true,
+  "hideGenerator": true,
+  "sort": ["source-order"],
+  "kindSortOrder": [
+    "Class",
+    "Interface",
+    "Type alias",
+    "Variable",
+    "Function",
+    "Enum",
+    "Namespace"
+  ],
+  "categorizeByGroup": true,
+  "defaultCategory": "Other",
+  "categoryOrder": [
+    "Services",
+    "Utils",
+    "MCP",
+    "API",
+    "Tools",
+    "*"
+  ],
+  "plugin": [
+    "typedoc-plugin-markdown",
+    "typedoc-plugin-mermaid"
+  ],
+  "readme": "none",
+  "gitRevision": "main",
+  "sourceLinkTemplate": "https://github.com/BeCrafter/prompt-manager/blob/{gitRevision}/{path}#L{line}",
+  "tsconfig": "./tsconfig.json"
+}

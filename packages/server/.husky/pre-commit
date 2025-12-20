@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# 运行lint-staged
+npx lint-staged
+
+# 运行测试
+npm run test
