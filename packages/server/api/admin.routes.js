@@ -8,6 +8,7 @@ import fs from 'fs';
 import fse from 'fs-extra';
 import yaml from 'js-yaml';
 import { fileURLToPath } from 'url';
+import { spawn } from 'child_process';
 import { logger } from '../utils/logger.js';
 import { util, GROUP_META_FILENAME } from '../utils/util.js';
 import { config } from '../utils/config.js';
@@ -474,6 +475,137 @@ router.post('/md-preview', adminAuthMiddleware, (req, res) => {
 
         res.json({ html });
     } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 执行终端命令
+router.post('/terminal/execute', adminAuthMiddleware, (req, res) => {
+    try {
+        const { command, cwd } = req.body;
+
+        if (!command) {
+            return res.status(400).json({ error: '命令是必需的' });
+        }
+
+        // 设置执行选项
+        const options = {
+            cwd: cwd || process.cwd(),
+            shell: true,
+            env: { ...process.env, FORCE_COLOR: '1' } // 启用颜色输出
+        };
+
+        let output = '';
+        let errorOutput = '';
+        let exitCode = null;
+
+        const child = spawn(command, [], options);
+
+        // 设置超时（5分钟）
+        const timeout = setTimeout(() => {
+            child.kill('SIGTERM');
+            res.status(408).json({ error: '命令执行超时' });
+        }, 5 * 60 * 1000);
+
+        // 监听标准输出
+        child.stdout.on('data', (data) => {
+            const chunk = data.toString();
+            output += chunk;
+        });
+
+        // 监听错误输出
+        child.stderr.on('data', (data) => {
+            const chunk = data.toString();
+            errorOutput += chunk;
+        });
+
+        // 监听进程结束
+        child.on('close', (code) => {
+            clearTimeout(timeout);
+            exitCode = code;
+
+            res.json({
+                success: true,
+                command,
+                output,
+                errorOutput,
+                exitCode,
+                cwd: options.cwd
+            });
+        });
+
+        // 监听错误
+        child.on('error', (error) => {
+            clearTimeout(timeout);
+            logger.error('终端命令执行错误:', error);
+            res.status(500).json({ error: `命令执行失败: ${error.message}` });
+        });
+
+    } catch (error) {
+        logger.error('终端命令执行异常:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 获取当前工作目录
+router.get('/terminal/cwd', adminAuthMiddleware, (req, res) => {
+    try {
+        res.json({
+            cwd: process.cwd(),
+            home: process.env.HOME || process.env.USERPROFILE
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 列出目录内容
+router.get('/terminal/ls', adminAuthMiddleware, (req, res) => {
+    try {
+        const { path: targetPath = '.' } = req.query;
+        const fullPath = path.resolve(targetPath);
+
+        // 检查路径是否存在
+        if (!fs.existsSync(fullPath)) {
+            return res.status(404).json({ error: '路径不存在' });
+        }
+
+        // 检查是否是目录
+        const stat = fs.statSync(fullPath);
+        if (!stat.isDirectory()) {
+            return res.status(400).json({ error: '路径不是目录' });
+        }
+
+        // 读取目录内容
+        const items = fs.readdirSync(fullPath).map(item => {
+            const itemPath = path.join(fullPath, item);
+            const itemStat = fs.statSync(itemPath);
+
+            return {
+                name: item,
+                path: itemPath,
+                type: itemStat.isDirectory() ? 'directory' : 'file',
+                size: itemStat.size,
+                modified: itemStat.mtime.toISOString()
+            };
+        });
+
+        // 排序：目录在前，文件在后，按名称排序
+        items.sort((a, b) => {
+            if (a.type !== b.type) {
+                return a.type === 'directory' ? -1 : 1;
+            }
+            return a.name.localeCompare(b.name);
+        });
+
+        res.json({
+            success: true,
+            path: fullPath,
+            items
+        });
+
+    } catch (error) {
+        logger.error('列出目录内容失败:', error);
         res.status(500).json({ error: error.message });
     }
 });

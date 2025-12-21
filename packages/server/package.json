@@ -10,7 +10,24 @@
     "dev": "node --watch ./server.js",
     "start": "node ./server.js",
     "example": "node --experimental-specifier-resolution=node ./example.js",
-    "test": "node ./test.js"
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "lint": "eslint . --ext .js,.mjs --fix",
+    "format": "prettier --write .",
+    "lint:check": "eslint . --ext .js,.mjs",
+    "format:check": "prettier --check .",
+    "docs": "jsdoc -c jsdoc.conf.json",
+    "prepare": "husky install"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
   },
   "keywords": [
     "mcp",
@@ -33,11 +50,22 @@
     "http-proxy-middleware": "^3.0.5",
     "js-yaml": "^4.1.0",
     "multer": "^2.0.2",
+    "node-pty": "^1.0.0",
+    "ws": "^8.18.0",
     "yaml": "^2.4.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "esbuild": "^0.27.0"
+    "esbuild": "^0.27.0",
+    "vitest": "^1.6.0",
+    "eslint": "^8.57.1",
+    "prettier": "^3.3.3",
+    "@vitest/ui": "^1.6.0",
+    "husky": "^9.1.6",
+    "lint-staged": "^15.2.10",
+    "jsdoc": "^4.0.3",
+    "@playwright/test": "^1.48.0",
+    "playwright": "^1.48.0"
   },
   "publishConfig": {
     "access": "public"

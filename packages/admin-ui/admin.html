@@ -6,6 +6,7 @@
   <title>Prompt Manager 后台</title>
   <link rel="stylesheet" href="./css/codemirror.css">
   <link rel="stylesheet" href="./css/codemirror-theme_xq-light.css">
+  <link rel="stylesheet" href="./css/terminal-fix.css">
   <style> 
     .hidden {
       display: none;
@@ -136,6 +137,14 @@
             </svg>
             <span>Tools</span>
           </button>
+          <button class="primary-nav-item" data-nav="terminal" title="Terminal">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="4 17 10 11 4 5"></polyline>
+              <line x1="12" x2="20" y1="19" y2="19"></line>
+            </svg>
+            <span>Terminal</span>
+          </button>
+          
         </div>
       </nav>
       
@@ -271,6 +280,28 @@
           </div>
         </div>
       </div>
+
+      <!-- 终端区域（默认隐藏） -->
+      <div id="terminalArea" class="terminal-area" style="display: none;">
+        <!-- 终端内容区域 -->
+        <div class="terminal-content">
+          <div class="terminal-output" id="terminalOutput">
+            <div class="terminal-welcome">
+              <div class="welcome-icon">🚀</div>
+              <div class="welcome-text">欢迎使用终端</div>
+              <div class="welcome-hint">输入命令并按回车键执行</div>
+            </div>
+          </div>
+          <div class="terminal-input-area">
+            <div class="terminal-prompt">
+              <span class="prompt-symbol">~/ $</span>
+              <input type="text" id="terminalInput" placeholder="输入命令..." autocomplete="off" />
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      
 
       <!-- 工具上传弹窗 -->
       <div id="toolsUploadModal" class="modal hidden">

@@ -19,9 +19,9 @@
     "url": "https://github.com/BeCrafter/prompt-manager/issues"
   },
   "scripts": {
-    "dev": "node --watch packages/server/server.js",
-    "help": "node packages/server/server.js --help",
-    "admin": "ADMIN_ENABLE=true ADMIN_REQUIRE_AUTH=true ADMIN_USERNAME=admin ADMIN_PASSWORD=admin123 node packages/server/server.js -p ./examples/prompts",
+    "dev": "cd packages/server && node --watch server.js",
+    "help": "cd packages/server && node server.js --help",
+    "admin": "ADMIN_ENABLE=true ADMIN_REQUIRE_AUTH=true ADMIN_USERNAME=admin ADMIN_PASSWORD=admin123 cd packages/server && node server.js -p ./examples/prompts",
     "admin:dev": "npm run dev --prefix packages/admin-ui",
     "admin:build": "npm run build --prefix packages/admin-ui",
     "desktop:dev": "bash scripts/build.sh dev",
@@ -56,6 +56,7 @@
     "js-yaml": "^4.1.0",
     "multer": "^2.0.2",
     "node-fetch": "^3.3.2",
+    "node-pty": "^1.0.0",
     "sharp": "^0.34.4",
     "tar": "^7.5.1",
     "to-ico": "^1.0.1",

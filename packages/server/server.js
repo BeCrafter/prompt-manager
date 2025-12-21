@@ -5,6 +5,7 @@ import { logger } from './utils/logger.js';
 import { util } from './utils/util.js';
 import { syncSystemTools } from './toolm/tool-sync.service.js';
 import { startLogCleanupTask } from './toolm/tool-logger.service.js';
+import { webSocketService } from './services/WebSocketService.js';
 
 // 动态导入 promptManager，以处理 Electron 打包后的路径问题
 let promptManager;
@@ -68,7 +69,7 @@ export async function startServer(options = {}) {
       startLogCleanupTask();
 
       return await new Promise((resolve, reject) => {
-        const server = app.listen(config.getPort(), () => {
+        const server = app.listen(config.getPort(), async () => {
           logger.info(`MCP服务启动成功  http://localhost:${config.getPort()}/mcp`);
           if (config.adminEnable) {
             logger.info(`管理员界面可通过 http://localhost:${config.getPort()}${config.adminPath} 访问`);
@@ -84,6 +85,16 @@ export async function startServer(options = {}) {
 
           // 保存服务器实例引用，以便后续可以关闭它
           serverInstance = server;
+          
+          // 启动WebSocket服务
+          try {
+            await webSocketService.start();
+            logger.info(`WebSocket服务启动成功，端口: 5622`);
+          } catch (wsError) {
+            logger.error('WebSocket服务启动失败:', wsError.message);
+            // WebSocket服务失败不影响主服务器运行
+          }
+          
           resolve(server);
         });
 
@@ -125,6 +136,14 @@ export async function stopServer() {
     }
   } catch (error) {
     logger.warn('清理MCP会话时出错:', error.message);
+  }
+
+  // 关闭WebSocket服务
+  try {
+    await webSocketService.stop();
+    logger.info('WebSocket服务已关闭');
+  } catch (error) {
+    logger.warn('关闭WebSocket服务时出错:', error.message);
   }
 
   await new Promise((resolve, reject) => {
