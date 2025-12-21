@@ -12,6 +12,16 @@ import { logger } from '../utils/logger.js';
 import path from 'path';
 import os from 'os';
 
+// 检查node-pty是否可用
+let PTY_AVAILABLE = true;
+try {
+  // 测试pty模块是否可用
+  pty.spawn;
+} catch (error) {
+  console.warn('node-pty模块不可用，终端功能将被禁用:', error.message);
+  PTY_AVAILABLE = false;
+}
+
 /**
  * 终端会话类
  */
@@ -170,6 +180,11 @@ export class TerminalService {
    * 创建新的终端会话
    */
   async createSession(options = {}) {
+    // 检查PTY是否可用
+    if (!PTY_AVAILABLE) {
+      throw new Error('Terminal functionality is disabled - node-pty module is not available');
+    }
+
     const sessionId = options.id || randomUUID();
     const sessionOptions = { ...this.defaultOptions, ...options };
     
