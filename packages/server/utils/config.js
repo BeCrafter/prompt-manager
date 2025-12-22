@@ -256,6 +256,13 @@ export class Config {
   }
 
   /**
+   * 设置服务器端口（用于动态端口分配）
+   */
+  setPort(port) {
+    this.port = port;
+  }
+
+  /**
    * 获取服务器名称
    */
   getServerName() {

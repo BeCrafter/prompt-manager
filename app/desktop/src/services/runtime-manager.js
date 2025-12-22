@@ -63,41 +63,89 @@ class RuntimeManager {
   async _setupPackagedEnvironment() {
     this.logger.info('Setting up packaged environment');
     
-    // 在打包的 Electron 应用中，资源文件位于 app.asar 中
-    const packagedRoot = path.join(process.resourcesPath, 'app.asar');
     const runtimeRoot = path.join(app.getPath('userData'), 'prompt-manager');
     
     this.logger.debug('Environment paths', { 
-      packagedRoot, 
       runtimeRoot,
       resourcesPath: process.resourcesPath,
-      isMountedVolume: process.resourcesPath.includes('/Volumes/')
+      appPath: app.getAppPath()
     });
     
-    // 简化逻辑：仅检查是否是挂载卷
-    const isFromMountedVolume = process.resourcesPath.includes('/Volumes/');
+    // 确保 runtimeRoot 存在
+    await fs.promises.mkdir(runtimeRoot, { recursive: true });
     
-    if (isFromMountedVolume) {
-      this.logger.debug('Detected mounted volume, attempting to find appropriate path');
-      
-      // 尝试主要路径
-      try {
-        await this._validatePackagedResources(packagedRoot);
-        this.logger.debug('Validated packaged resources from mounted volume path', { path: packagedRoot });
-      } catch (error) {
-        // 在挂载卷中，即使验证失败，我们也要继续执行
-        // 因为文件可能存在于挂载卷中，但由于权限问题无法验证
-        this.logger.warn('Could not validate packaged resources from mounted volume, continuing anyway', {
-          error: error.message
-        });
+    // 创建系统工具目录结构
+    const toolsDir = path.join(runtimeRoot, 'tools');
+    await fs.promises.mkdir(toolsDir, { recursive: true });
+    
+    // 检查并复制系统工具（如果存在）
+    const appPath = app.getAppPath();
+    const sourceToolsPath = path.join(appPath, 'runtime', 'toolbox');
+    
+    try {
+      // 检查源工具目录是否存在
+      const sourceExists = await this._pathExists(sourceToolsPath);
+      if (sourceExists) {
+        // 复制工具目录
+        await fs.promises.cp(sourceToolsPath, toolsDir, { recursive: true });
+        this.logger.info('Copied system tools to runtime directory');
+      } else {
+        this.logger.warn('System tools not found in packaged app, creating minimal directory structure');
+        
+        // 创建基本的工具目录结构
+        const toolDirs = ['chrome-devtools', 'file-reader', 'filesystem', 'ollama-remote', 'pdf-reader', 'playwright', 'todolist'];
+        for (const dir of toolDirs) {
+          const dirPath = path.join(toolsDir, dir);
+          await fs.promises.mkdir(dirPath, { recursive: true });
+          
+          // 在每个目录中创建一个空的 package.json 文件
+          const packageJsonPath = path.join(dirPath, 'package.json');
+          const emptyPackageJson = {
+            name: `prompt-manager-${dir}`,
+            version: "1.0.0",
+            description: `Placeholder for ${dir} tool`
+          };
+          
+          await fs.promises.writeFile(
+            packageJsonPath,
+            JSON.stringify(emptyPackageJson, null, 2),
+            'utf8'
+          );
+        }
+        
+        this.logger.info('Created minimal system tools directory structure');
       }
-    } else {
-      // 非挂载卷，使用正常验证流程
-      await this._validatePackagedResources(packagedRoot);
+    } catch (error) {
+      this.logger.warn('Failed to setup system tools directory', { error: error.message });
+      // 即使工具目录设置失败，也不影响主程序运行
     }
     
-    // 设置运行时目录（仅复制必要的文件，不包括 ASAR 包）
-    await this._setupRuntimeDirectory(packagedRoot, runtimeRoot);
+    // 复制必要的配置文件到运行时目录
+    const packageJsonPath = path.join(appPath, 'package.json');
+    const targetPackageJsonPath = path.join(runtimeRoot, 'package.json');
+    
+    try {
+      await fs.promises.copyFile(packageJsonPath, targetPackageJsonPath);
+      this.logger.debug('Copied package.json to runtime directory');
+    } catch (error) {
+      this.logger.warn('Failed to copy package.json, using fallback', { error: error.message });
+      
+      // 创建一个基本的 package.json
+      const basicPackageJson = {
+        name: 'prompt-manager-runtime',
+        version: '1.0.0',
+        dependencies: {
+          '@becrafter/prompt-manager-core': '^0.0.19',
+          '@modelcontextprotocol/sdk': '^1.20.2'
+        }
+      };
+      
+      await fs.promises.writeFile(
+        targetPackageJsonPath, 
+        JSON.stringify(basicPackageJson, null, 2), 
+        'utf8'
+      );
+    }
     
     this.runtimeRoot = runtimeRoot;
     return runtimeRoot;
@@ -290,6 +338,55 @@ class RuntimeManager {
     
     // 所有尝试都失败，返回默认值
     return { version: 'unknown' };
+  }
+
+  /**
+   * 检查文件或目录是否存在
+   * @param {string} targetPath - 目标路径
+   * @returns {Promise<boolean>} - 是否存在
+   */
+  async _pathExists(targetPath) {
+    const fs = require('fs/promises');
+    const { constants } = require('fs');
+    
+    try {
+      // 对于 ASAR 文件，使用多种方式验证存在性
+      if (targetPath.includes('.asar')) {
+        try {
+          // 方法1：尝试使用 fs.stat
+          const stats = await fs.stat(targetPath);
+          return stats.isFile() || stats.isDirectory();
+        } catch (statError) {
+          // 如果 stat 失败，尝试其他方法
+          this.logger.debug('ASAR stat failed', { 
+            path: targetPath, 
+            error: statError.message 
+          });
+        }
+        
+        try {
+          // 方法2：尝试使用 fs.access
+          await fs.access(targetPath, constants.F_OK);
+          return true;
+        } catch (accessError) {
+          this.logger.debug('ASAR access failed', { 
+            path: targetPath, 
+            error: accessError.message 
+          });
+          return false;
+        }
+      }
+      
+      // 普通文件检查
+      await fs.access(targetPath, constants.F_OK);
+      return true;
+    } catch (error) {
+      this.logger.debug('File access check failed', { 
+        path: targetPath, 
+        error: error.message 
+      });
+      return false;
+    }
   }
 
   async cleanup() {

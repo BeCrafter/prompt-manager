@@ -54,4 +54,4 @@ case "$1" in
 esac
 
 # 打印构建完成时间
-echo "Build completed! Time: $(date +'%Y-%m-%d %H:%M:%S')"
+echo -e "\nBuild completed! \n\nTime: $(date +'%Y-%m-%d %H:%M:%S')"

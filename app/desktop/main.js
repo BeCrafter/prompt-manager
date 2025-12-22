@@ -19,6 +19,7 @@ const AboutDialogManager = require('./src/ui/about-dialog-manager');
 const SplashManager = require('./src/ui/splash-manager');
 const IconManager = require('./src/utils/icon-manager');
 const RuntimeSync = require('./src/utils/runtime-sync');
+const SelfCheck = require('./src/utils/self-check');
 
 class PromptManagerApp {
   constructor() {
@@ -45,7 +46,22 @@ class PromptManagerApp {
       
       // 显示启动画面
       await this.splashManager.showSplash();
-      this.splashManager.updateStatus('正在初始化...', 20);
+      this.splashManager.updateStatus('正在初始化...', 10);
+      
+      // 运行应用自检
+      this.splashManager.updateStatus('正在检查应用环境...', 20);
+      const selfCheck = new SelfCheck(this.logger);
+      const selfCheckPassed = await selfCheck.run();
+      
+      if (!selfCheckPassed) {
+        const report = selfCheck.getReport();
+        this.logger.warn('Application self-check found issues:\n' + report);
+        
+        // 即使自检有问题，也继续启动，但记录警告
+        this.splashManager.updateStatus('应用环境检查完成（发现一些问题）...', 25);
+      } else {
+        this.splashManager.updateStatus('应用环境检查完成...', 25);
+      }
       
       // 同步环境配置
       await RuntimeSync.syncRuntime();

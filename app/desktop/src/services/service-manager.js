@@ -36,6 +36,46 @@ class ServiceManager extends EventEmitter {
       // 启动新服务
       await module.startServer();
       
+      // 增强的服务器验证机制
+      let isRunning = false;
+      let retryCount = 0;
+      const maxRetries = 5;
+      const retryDelay = 1000; // 1秒
+      
+      this.logger.info('Verifying server startup...');
+      
+      while (!isRunning && retryCount < maxRetries) {
+        try {
+          this.logger.debug(`Server verification attempt ${retryCount + 1}/${maxRetries}`);
+          isRunning = await module.isServerRunning();
+          
+          if (!isRunning) {
+            retryCount++;
+            if (retryCount < maxRetries) {
+              this.logger.debug(`Server not running, waiting ${retryDelay}ms before next attempt...`);
+              await new Promise(resolve => setTimeout(resolve, retryDelay));
+            }
+          }
+        } catch (error) {
+          retryCount++;
+          this.logger.debug(`Server check failed (attempt ${retryCount}/${maxRetries}):`, { 
+            error: error.message 
+          });
+          
+          if (retryCount < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+          }
+        }
+      }
+      
+      if (!isRunning) {
+        const errorMsg = `服务器启动失败：经过 ${maxRetries} 次重试后仍无法验证服务状态`;
+        this.logger.error(errorMsg);
+        throw new Error(errorMsg);
+      }
+      
+      this.logger.info('Server verification successful');
+      
       // 获取服务器状态
       this.serverState = module.getServerState();
       this.currentModule = module;
@@ -58,6 +98,7 @@ class ServiceManager extends EventEmitter {
       
       // 更新状态
       stateManager.set('service', 'error');
+      this.serverState = { status: 'error', message: error.message };
       const failureCount = stateManager.incrementFailureCount();
       
       // 处理错误
