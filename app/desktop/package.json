@@ -13,8 +13,10 @@
     "build": "electron-builder"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.2",
     "electron": "39.0.0",
-    "electron-builder": "^24.13.3"
+    "electron-builder": "^24.13.3",
+    "electron-rebuild": "^3.2.9"
   },
   "dependencies": {
     "@becrafter/prompt-manager-core": "file:../../packages/server",

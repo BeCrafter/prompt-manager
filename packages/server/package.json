@@ -55,6 +55,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.2",
     "@playwright/test": "^1.48.0",
     "@vitest/ui": "^1.6.0",
     "esbuild": "^0.27.0",
