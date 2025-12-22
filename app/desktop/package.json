@@ -13,19 +13,30 @@
     "build": "electron-builder"
   },
   "devDependencies": {
-    "electron": "^39.0.0",
+    "electron": "39.0.0",
     "electron-builder": "^24.13.3"
   },
   "dependencies": {
     "@becrafter/prompt-manager-core": "file:../../packages/server",
     "@modelcontextprotocol/sdk": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "fs-extra": "^11.2.0",
     "http-proxy-middleware": "^3.0.5",
-    "tar": "^7.5.2"
+    "js-yaml": "^4.1.0",
+    "multer": "^2.0.2",
+    "node-pty": "^1.0.0",
+    "tar": "^7.5.2",
+    "ws": "^8.18.0",
+    "yaml": "^2.4.1",
+    "zod": "^3.23.8"
   },
   "build": {
     "appId": "com.becrafter.promptserver",
     "productName": "Prompt Manager",
     "icon": "assets/icons/icon.png",
+    "npmRebuild": true,
     "files": [
       "**/*",
       "assets/**/*",
@@ -39,7 +50,9 @@
       {
         "from": "../../packages/web/",
         "to": "web/",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "directories": {
@@ -50,7 +63,9 @@
       {
         "from": "../../packages/resources/tools/",
         "to": "runtime/toolbox/",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "../../env.example",
@@ -91,9 +106,7 @@
       "maintainer": "support@becrafter.com",
       "synopsis": "Menu bar desktop wrapper for Prompt Manager",
       "description": "Prompt Manager is a desktop application that provides a menu bar interface for managing prompts via MCP (Model Context Protocol).",
-      "desktop": {
-        "StartupNotify": "true"
-      },
+      "desktop": {},
       "artifactName": "${productName}-${version}.${ext}"
     }
   }

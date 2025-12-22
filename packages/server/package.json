@@ -17,8 +17,7 @@
     "format": "prettier --write .",
     "lint:check": "eslint . --ext .js,.mjs",
     "format:check": "prettier --check .",
-    "docs": "jsdoc -c jsdoc.conf.json",
-    "prepare": "husky install"
+    "docs": "jsdoc -c jsdoc.conf.json"
   },
   "lint-staged": {
     "*.js": [
