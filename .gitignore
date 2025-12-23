@@ -13,3 +13,4 @@ openspec
 **/node_modules/
 web/
 packages/server/package-lock.json
+packages/server/html/**

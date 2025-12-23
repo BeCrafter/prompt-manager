@@ -447,11 +447,14 @@ function setupUserMenu() {
   // 根据是否需要认证设置头像的可点击状态
   if (avatarBtn) {
     if (requireAuth) {
+      userMenu.parentElement.classList.remove('hidden');
       avatarBtn.classList.remove('no-auth');
       avatarBtn.setAttribute('aria-haspopup', 'true');
     } else {
+      userMenu.parentElement.classList.add('hidden');
       avatarBtn.classList.add('no-auth');
       avatarBtn.setAttribute('aria-haspopup', 'false');
+
     }
   }
   

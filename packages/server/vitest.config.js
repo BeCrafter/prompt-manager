@@ -12,6 +12,9 @@ export default defineConfig({
     // 全局配置
     globals: true,
     
+    // 设置文件
+    setupFiles: ['./tests/setup.js'],
+    
     // 测试文件匹配模式
     include: [
       'tests/**/*.test.js',

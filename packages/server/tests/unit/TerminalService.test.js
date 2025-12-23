@@ -6,11 +6,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TerminalService, TerminalSession } from '../../services/TerminalService.js';
 import pty from 'node-pty';
 
-// Mock node-pty
-vi.mock('node-pty', () => ({
-  spawn: vi.fn()
-}));
-
 describe('TerminalService', () => {
   let terminalService;
   

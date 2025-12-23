@@ -110,6 +110,24 @@ header {
   position: relative;
 }
 
+.github-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: #6c757d;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.github-link:hover {
+  color: #24292e;
+  background-color: rgba(36, 41, 46, 0.1);
+  text-decoration: none;
+}
+
 .user-profile {
   position: relative;
 }
