@@ -104,7 +104,16 @@ router.get('/prompts', adminAuthMiddleware, (req, res) => {
 
         // 应用启用状态过滤
         if (enabled) {
-            filteredPrompts = filteredPrompts.filter(prompt => prompt.enabled);
+            filteredPrompts = filteredPrompts.filter(prompt => {
+                // 检查提示词本身是否启用
+                const promptActive = prompt.enabled === true;
+                if (!promptActive) return false;
+                
+                // 检查目录状态 - util.getPromptsFromFiles() 已经正确处理了继承的启用状态
+                // groupEnabled 已经考虑了父目录的禁用状态
+                const groupActive = prompt.groupEnabled !== false;
+                return groupActive;
+            });
         }
 
         filteredPrompts.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-CN'));
