@@ -5,21 +5,38 @@
  * 支持Windows、macOS和Linux系统的原生终端命令
  */
 
-import pty from 'node-pty';
 import { spawn } from 'child_process';
 import { randomUUID } from 'crypto';
 import { logger } from '../utils/logger.js';
 import path from 'path';
 import os from 'os';
 
-// 检查node-pty是否可用
-let PTY_AVAILABLE = true;
-try {
-  // 测试pty模块是否可用
-  pty.spawn;
-} catch (error) {
-  console.warn('node-pty模块不可用，终端功能将被禁用:', error.message);
-  PTY_AVAILABLE = false;
+// 延迟加载 node-pty，避免编译错误
+let pty = null;
+let PTY_AVAILABLE = false;
+let PTY_LOAD_ERROR = null;
+
+/**
+ * 尝试加载 node-pty 模块
+ */
+async function tryLoadNodePty() {
+  try {
+    const ptyModule = await import('node-pty');
+    pty = ptyModule;
+    // 测试模块是否真正可用
+    if (pty && pty.default && pty.default.spawn) {
+      PTY_AVAILABLE = true;
+      logger.info('node-pty 模块加载成功');
+      return true;
+    }
+  } catch (error) {
+    PTY_LOAD_ERROR = error;
+    PTY_AVAILABLE = false;
+    logger.warn('node-pty 模块不可用，终端功能将被禁用:', error.message);
+    logger.warn('提示: 运行 "npm rebuild node-pty" 来修复此问题');
+    return false;
+  }
+  return false;
 }
 
 /**
@@ -37,6 +54,7 @@ class TerminalSession {
     this.size = options.size || { cols: 80, rows: 24 };
     this.environment = options.environment || process.env;
     this.isActive = true;
+    this.isFallback = options.isFallback || false; // 标记是否使用回退方案
     
     // 绑定PTY事件
     this.setupPtyEvents();
@@ -180,9 +198,14 @@ export class TerminalService {
    * 创建新的终端会话
    */
   async createSession(options = {}) {
+    // 首次使用时尝试加载 node-pty
+    if (pty === null && PTY_AVAILABLE === false) {
+      await tryLoadNodePty();
+    }
+
     // 检查PTY是否可用
     if (!PTY_AVAILABLE) {
-      throw new Error('Terminal functionality is disabled - node-pty module is not available');
+      throw new Error('Terminal functionality is disabled - node-pty module is not available. Run "npm rebuild node-pty" to fix this.');
     }
 
     const sessionId = options.id || randomUUID();
@@ -233,7 +256,7 @@ export class TerminalService {
 
     logger.debug(`Creating PTY with shell: ${shell}, args: ${args.join(' ')}, cwd: ${cwd}`);
 
-    return pty.spawn(shell, args, {
+    return pty.default.spawn(shell, args, {
       name: 'xterm-color',
       cols: options.size.cols,
       rows: options.size.rows,
@@ -444,6 +467,28 @@ export class TerminalService {
     
     logger.info('TerminalService shutdown');
   }
+}
+
+/**
+ * 获取 PTY 状态信息
+ */
+export function getPtyStatus() {
+  return {
+    available: PTY_AVAILABLE,
+    loadError: PTY_LOAD_ERROR ? PTY_LOAD_ERROR.message : null,
+    nodeVersion: process.version,
+    platform: process.platform
+  };
+}
+
+/**
+ * 尝试重新加载 PTY 模块
+ */
+export async function reloadPty() {
+  PTY_AVAILABLE = false;
+  PTY_LOAD_ERROR = null;
+  pty = null;
+  return await tryLoadNodePty();
 }
 
 // 创建单例实例

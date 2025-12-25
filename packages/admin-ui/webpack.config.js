@@ -23,7 +23,32 @@ module.exports = (env, argv) => {
       port: 9000,
       open: true,
       hot: true,
+      // 禁用缓存，确保每次修改都能立即生效
+      client: {
+        overlay: {
+          errors: true,
+          warnings: false,
+        },
+        logging: 'info',
+      },
+      // 添加额外的开发服务器选项
+      allowedHosts: 'all',
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+      // 监听文件变化的配置
+      watchFiles: {
+        paths: ['src/**/*', 'css/**/*'],
+        options: {
+          usePolling: false,
+        },
+      },
     },
+    
+    // 禁用 webpack 缓存
+    cache: false,
     
     module: {
       rules: [

@@ -8,6 +8,8 @@
   "scripts": {
     "build": "esbuild ./index.js --bundle --outdir=dist --format=esm --platform=node --target=node18",
     "dev": "node --watch ./server.js",
+    "dev:clean": "node ./dev-server.js",
+    "fix:pty": "npm rebuild node-pty",
     "start": "node ./server.js",
     "example": "node --experimental-specifier-resolution=node ./example.js",
     "test": "vitest run tests/unit",
@@ -50,7 +52,6 @@
     "http-proxy-middleware": "^3.0.5",
     "js-yaml": "^4.1.0",
     "multer": "^2.0.2",
-    "node-pty": "^1.0.0",
     "ws": "^8.18.0",
     "yaml": "^2.4.1",
     "zod": "^3.23.8"

@@ -20,6 +20,10 @@
   },
   "scripts": {
     "dev": "cd packages/server && node --watch server.js",
+    "dev:all": "bash scripts/dev-all.sh",
+    "dev:backend": "cd packages/server && npm run dev:clean",
+    "dev:frontend": "npm run dev --prefix packages/admin-ui",
+    "fix:pty": "cd packages/server && npm run fix:pty",
     "help": "cd packages/server && node server.js --help",
     "admin": "ADMIN_ENABLE=true ADMIN_REQUIRE_AUTH=true ADMIN_USERNAME=admin ADMIN_PASSWORD=admin123 cd packages/server && node server.js -p ./examples/prompts",
     "admin:dev": "npm run dev --prefix packages/admin-ui",
@@ -43,7 +47,9 @@
     "lint": "cd packages/server && npm run lint",
     "lint:check": "cd packages/server && npm run lint:check",
     "format": "cd packages/server && npm run format",
-    "format:check": "cd packages/server && npm run format:check"
+    "format:check": "cd packages/server && npm run format:check",
+    "check:env": "bash scripts/check-env.sh",
+    "setup:env": "node scripts/preinstall-check.js"
   },
   "keywords": [
     "mcp",
@@ -75,6 +81,6 @@
     "zod": "^3.23.8"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.0.0 <23.0.0"
   }
 }
