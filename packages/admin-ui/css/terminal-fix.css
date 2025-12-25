@@ -1,10 +1,14 @@
-/* 终端字体修复 - Warp终端样式 */
+/* 终端字体修复 - Warp终端样式（优化版） */
+
+/* ============================================
+   核心字体配置
+   ============================================ */
 
 /* 为xterm设置合适的等宽字体，解决字体重叠问题 */
 .xterm {
   font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
   font-size: 14px !important;
-  line-height: 1.25 !important;
+  line-height: 1.2 !important;
   letter-spacing: 0 !important;
   font-feature-settings: "liga" 0, "calt" 0 !important;
   -webkit-font-feature-settings: "liga" 0, "calt" 0 !important;
@@ -19,7 +23,7 @@
 .xterm .xterm-screen {
   font-family: inherit !important;
   font-size: inherit !important;
-  line-height: 1.25 !important;
+  line-height: 1.2 !important;
 }
 
 .xterm .xterm-viewport {
@@ -32,34 +36,22 @@
   image-rendering: pixelated !important;
   image-rendering: -moz-crisp-edges !important;
   image-rendering: crisp-edges !important;
+  /* 强制启用硬件加速 */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  /* 优化 Canvas 渲染质量 */
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
 }
 
 /* 字符测量元素使用相同字体 */
 .xterm-char-measure-element {
   font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
   font-size: 14px !important;
-  line-height: 1.25 !important;
+  line-height: 1.2 !important;
 }
 
 /* 行高设置 */
-.xterm-row {
-  height: 1.25em !important;
-  line-height: 1.25 !important;
-}
-
-/* 字符样式 */
-.xterm-char {
-  width: 0.6em !important;
-  height: 1.25em !important;
-}
-
-/* 确保输入框字体一致 */
-.xterm textarea {
-  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
-  font-size: 14px !important;
-}
-
-/* 修复行高和间距 */
 .xterm-rows {
   line-height: 1.2 !important;
 }
@@ -74,10 +66,20 @@
   height: 1.2em !important;
 }
 
+/* 确保输入框字体一致 */
+.xterm textarea {
+  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
+  font-size: 14px !important;
+}
+
 /* 修复中文字符显示 */
 .xterm-unicode {
   font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', 'PingFang SC', 'Microsoft YaHei', monospace !important;
 }
+
+/* ============================================
+   主题配置
+   ============================================ */
 
 /* 暗色主题优化 */
 .xterm.theme-dark {
@@ -85,8 +87,18 @@
   color: #f0f0f0 !important;
 }
 
-/* 光标样式优化 */
-.xterm .xterm-cursor {
+/* 浅色主题优化 */
+.xterm.theme-light {
+  background: #ffffff !important;
+  color: #1a1a1a !important;
+}
+
+/* ============================================
+   光标样式优化
+   ============================================ */
+
+/* 深色主题光标 */
+.xterm.theme-dark .xterm-cursor {
   background: #ffffff !important;
   border: none !important;
   width: 8px !important;
@@ -95,11 +107,17 @@
 
 /* 浅色主题光标 */
 .xterm.theme-light .xterm-cursor {
-  background: #333333 !important;
-  box-shadow: 0 0 4px rgba(51, 51, 51, 0.5) !important;
+  background: #1a1a1a !important;
+  border: none !important;
+  width: 8px !important;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3) !important;
 }
 
-/* xterm DOM渲染器选中效果 */
+/* ============================================
+   选中效果优化（改进对比度）
+   ============================================ */
+
+/* 默认选中效果 */
 .xterm .xterm-rows {
   position: relative;
 }
@@ -108,22 +126,21 @@
   position: relative;
 }
 
-/* 默认选中效果 */
 .xterm .xterm-rows > div.xterm-focus .xterm-selection,
 .xterm .xterm-rows .xterm-selection {
   background-color: rgba(74, 144, 226, 0.4) !important;
 }
 
-/* 浅色主题下的选中效果 - 使用更高优先级 */
+/* 浅色主题下的选中效果 - 更明显的对比度 */
 .xterm.theme-light .xterm-rows > div.xterm-focus .xterm-selection,
 .xterm.theme-light .xterm-rows .xterm-selection {
-  background-color: rgba(0, 123, 255, 0.5) !important;
+  background-color: rgba(0, 123, 255, 0.3) !important;
 }
 
 /* 深色主题下的选中效果 */
 .xterm.theme-dark .xterm-rows > div.xterm-focus .xterm-selection,
 .xterm.theme-dark .xterm-rows .xterm-selection {
-  background-color: rgba(74, 144, 226, 0.4) !important;
+  background-color: rgba(74, 144, 226, 0.5) !important;
 }
 
 /* xterm-selection span 选中样式 */
@@ -133,26 +150,12 @@
 
 /* 确保浅色主题下的选中文字可见 */
 .xterm.theme-light .xterm-selection span {
-  color: #333333 !important;
+  color: #1a1a1a !important;
 }
 
 /* 确保深色主题下的选中文字可见 */
 .xterm.theme-dark .xterm-selection span {
   color: #ffffff !important;
-}
-
-/* 光标样式优化 */
-.xterm .xterm-cursor {
-  background: #ffffff !important;
-  border: none !important;
-  width: 8px !important;
-  box-shadow: 0 0 4px rgba(255, 255, 255, 0.5) !important;
-}
-
-/* 浅色主题光标 */
-.xterm.theme-light .xterm-cursor {
-  background: #333333 !important;
-  box-shadow: 0 0 4px rgba(51, 51, 51, 0.5) !important;
 }
 
 /* 强制覆盖选中样式 - 浅色主题 */
@@ -161,7 +164,7 @@ body .xterm.theme-light .xterm-rows .xterm-selection,
 body .xterm.theme-light .xterm-rows > div .xterm-selection,
 body .xterm.theme-light .xterm-screen .xterm-selection,
 body div.xterm.theme-light .xterm-selection {
-  background-color: rgba(0, 123, 255, 0.5) !important;
+  background-color: rgba(0, 123, 255, 0.3) !important;
 }
 
 /* 强制覆盖选中样式 - 深色主题 */
@@ -170,39 +173,66 @@ body .xterm.theme-dark .xterm-rows .xterm-selection,
 body .xterm.theme-dark .xterm-rows > div .xterm-selection,
 body .xterm.theme-dark .xterm-screen .xterm-selection,
 body div.xterm.theme-dark .xterm-selection {
-  background-color: rgba(74, 144, 226, 0.4) !important;
+  background-color: rgba(74, 144, 226, 0.5) !important;
 }
 
-/* 选中文字颜色 */
+/* 选中文字颜色 - 浅色主题 */
 body .xterm.theme-light .xterm-selection span,
 body .xterm.theme-light .xterm-selection .xterm-char {
-  color: #333333 !important;
+  color: #1a1a1a !important;
 }
 
+/* 选中文字颜色 - 深色主题 */
 body .xterm.theme-dark .xterm-selection span,
 body .xterm.theme-dark .xterm-selection .xterm-char {
   color: #ffffff !important;
 }
 
-/* 滚动条样式 */
+/* ============================================
+   滚动条样式优化
+   ============================================ */
+
 .xterm .xterm-viewport::-webkit-scrollbar {
-  width: 10px !important;
+  width: 8px !important;
+  height: 8px !important;
 }
 
 .xterm .xterm-viewport::-webkit-scrollbar-track {
-  background: #1e1e1e !important;
+  background: transparent !important;
 }
 
 .xterm .xterm-viewport::-webkit-scrollbar-thumb {
-  background: #444 !important;
-  border-radius: 5px !important;
+  background: rgba(128, 128, 128, 0.4) !important;
+  border-radius: 4px !important;
+  transition: background-color 0.2s ease !important;
 }
 
 .xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
-  background: #555 !important;
+  background: rgba(128, 128, 128, 0.6) !important;
 }
 
-/* 响应式字体大小调整 */
+/* 浅色主题滚动条 */
+.xterm.theme-light .xterm-viewport::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2) !important;
+}
+
+.xterm.theme-light .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 深色主题滚动条 */
+.xterm.theme-dark .xterm-viewport::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.xterm.theme-dark .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* ============================================
+   响应式字体大小调整
+   ============================================ */
+
 @media (max-width: 768px) {
   .xterm {
     font-size: 12px !important;
@@ -223,45 +253,279 @@ body .xterm.theme-dark .xterm-selection .xterm-char {
   }
 }
 
-/* 高DPI屏幕优化 */
+/* ============================================
+   高DPI屏幕优化
+   ============================================ */
+
 @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
   .xterm .xterm-screen canvas {
+    /* 高DPI屏幕使用自动渲染以获得更好的清晰度 */
     image-rendering: auto !important;
+    /* 确保在高DPI屏幕上使用正确的缩放 */
+    transform: translateZ(0);
   }
 }
+
+/* Canvas 渲染器优化 - 确保正确的层级和定位 */
+.xterm .xterm-screen {
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* 确保 Canvas 渲染器优先于 DOM 元素 */
+.xterm .xterm-screen canvas {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* 隐藏 DOM 渲染元素（当使用 Canvas 时） */
+.xterm.xterm-canvas-mode .xterm-rows {
+  display: none !important;
+}
+
+/* ============================================
+   终端容器样式
+   ============================================ */
 
 /* 确保终端容器正确显示 */
 .terminal-content {
   background: #0a0a0a !important;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
+/* 浅色主题容器 */
+.terminal-content.theme-light {
+  background: #ffffff !important;
+}
+
+/* 旧版终端输出样式（兼容性） */
 .terminal-output {
   font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
   font-size: 14px !important;
-  line-height: 1.25 !important;
+  line-height: 1.2 !important;
   background: #0a0a0a !important;
   color: #f0f0f0 !important;
   font-weight: 400 !important;
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important;
+  padding: 10px;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .terminal-input-area {
   font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
   font-size: 14px !important;
   background: #0a0a0a !important;
-  line-height: 1.25 !important;
+  line-height: 1.2 !important;
+  padding: 10px;
+  border-top: 1px solid #333;
 }
 
 .terminal-prompt {
   font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
   font-size: 14px !important;
-  line-height: 1.25 !important;
+  line-height: 1.2 !important;
 }
 
 #terminalInput {
   font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
   font-size: 14px !important;
-  line-height: 1.25 !important;
+  line-height: 1.2 !important;
   font-weight: 400 !important;
+  background: transparent !important;
+  border: none !important;
+  color: inherit !important;
+  outline: none !important;
+  flex: 1;
+}
+
+/* ============================================
+   终端工具栏样式
+   ============================================ */
+
+.terminal-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.terminal-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.renderer-info {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: help;
+  transition: all 0.2s ease;
+}
+
+.renderer-info:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #666;
+  transition: background-color 0.3s ease;
+}
+
+.status-indicator.connected {
+  background: #4caf50;
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
+}
+
+.status-indicator.disconnected {
+  background: #f44336;
+  box-shadow: 0 0 8px rgba(244, 67, 54, 0.5);
+}
+
+.status-indicator.reconnecting {
+  background: #ff9800;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.terminal-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.terminal-actions .btn {
+  padding: 4px 8px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.terminal-actions .btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 1);
+}
+
+/* 浅色主题工具栏 */
+.theme-light .terminal-toolbar {
+  background: rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.theme-light .terminal-status {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.theme-light .terminal-actions .btn {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.theme-light .terminal-actions .btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: rgba(0, 0, 0, 1);
+}
+
+/* ============================================
+   终端加载和错误状态
+   ============================================ */
+
+.terminal-loading,
+.terminal-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #4caf50;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.terminal-error h3 {
+  margin: 0 0 8px 0;
+  color: #f44336;
+}
+
+.terminal-error p {
+  margin: 0 0 16px 0;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.terminal-error ul {
+  text-align: left;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+  padding-left: 20px;
+}
+
+.terminal-error button {
+  margin-top: 16px;
+  padding: 8px 16px;
+  background: #4caf50;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.terminal-error button:hover {
+  background: #45a049;
+}
+
+/* ============================================
+   终端容器样式
+   ============================================ */
+
+.xterm-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #0a0a0a;
+}
+
+.theme-light .xterm-container {
+  background: #ffffff;
 }

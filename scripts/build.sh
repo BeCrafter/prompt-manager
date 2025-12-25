@@ -13,8 +13,26 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # 项目根目录
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
+
+# 立即清理所有 npm 环境变量以避免与 nvm 冲突
+unset npm_config_prefix
+unset npm_config_cache
+unset npm_config_tmp
+unset npm_config_userconfig
+unset npm_config_globalconfig
+unset npm_config_localprefix
+
+# 清理 npm 环境变量函数
+unset_npm_config() {
+    unset npm_config_prefix
+    unset npm_config_cache
+    unset npm_config_tmp
+    unset npm_config_userconfig
+    unset npm_config_globalconfig
+    unset npm_config_localprefix
+}
 
 # 环境检查函数
 check_environment() {
@@ -78,14 +96,19 @@ echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}安装依赖${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo "Installing dependencies for app/desktop..."
-cd app/desktop
-npm install
+(cd app/desktop && unset_npm_config && npm install)
+
+# 重建 node-pty 以适配 Electron 的 Node.js 版本
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}重建 node-pty 模块${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo "Rebuilding node-pty for Electron..."
+(cd app/desktop && unset_npm_config && npx electron-rebuild -f -w node-pty)
 cd -
 
 # 安装 packages/admin-ui 依赖
 echo "Installing dependencies for packages/admin-ui..."
-cd packages/admin-ui
-npm install
+(cd packages/admin-ui && unset_npm_config && npm install)
 cd -
 
 # 清理缓存
@@ -98,7 +121,7 @@ if [ "$1" != "dev" ]; then
   echo -e "${BLUE}构建前端资源${NC}"
   echo -e "${BLUE}========================================${NC}"
   echo "Building admin-ui..."
-  npm run admin:build
+  unset_npm_config && npm run admin:build
 fi
 
 # 构建根目录环境
@@ -106,7 +129,14 @@ echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}构建根目录环境${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo "Building root environment..."
-npm install
+unset_npm_config && npm install
+
+# 重建根目录的 node-pty 以适配 Electron
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}重建根目录 node-pty 模块${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo "Rebuilding node-pty for Electron in root directory..."
+unset_npm_config && npx electron-rebuild -f -w node-pty --version=39.0.0
 
 # 根据参数执行 desktop 构建
 echo -e "${BLUE}========================================${NC}"
@@ -116,22 +146,22 @@ echo "Building desktop app..."
 
 case "$1" in
   "dev")
-    npm run dev --prefix app/desktop
+    unset_npm_config && npm run dev --prefix app/desktop
     ;;
   "build:all")
-    npm run build --prefix app/desktop -- --mac --win --linux
+    unset_npm_config && npm run build --prefix app/desktop -- --mac --win --linux
     ;;
   "build:mac")
-    npm run build --prefix app/desktop -- --mac
+    unset_npm_config && npm run build --prefix app/desktop -- --mac
     ;;
   "build:win")
-    npm run build --prefix app/desktop -- --win
+    unset_npm_config && npm run build --prefix app/desktop -- --win
     ;;
   "build:linux")
-    npm run build --prefix app/desktop -- --linux
+    unset_npm_config && npm run build --prefix app/desktop -- --linux
     ;;
   *)
-    npm run build --prefix app/desktop
+    unset_npm_config && npm run build --prefix app/desktop
     ;;
 esac
 

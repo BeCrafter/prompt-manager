@@ -1,14 +1,21 @@
 /**
- * TerminalComponent - 基于xterm.js的终端组件
+ * TerminalComponent - 基于xterm.js的终端组件（优化版）
  * 
  * 提供现代化的终端体验，支持实时交互、主题切换、快捷键等功能
+ * 
+ * 优化点：
+ * - 使用 Canvas 渲染器提升性能
+ * - 改进 WebSocket 重连机制
+ * - 添加命令历史记录
+ * - 优化字体渲染
+ * - 改进主题切换
  */
 
 // xterm.js相关模块 - 将在init方法中动态导入
-let Terminal, FitAddon, WebLinksAddon, SearchAddon, Unicode11Addon;
+let Terminal, FitAddon, WebLinksAddon, SearchAddon, Unicode11Addon, CanvasAddon;
 
 /**
- * 终端组件类
+ * 终端组件类（优化版）
  */
 export class TerminalComponent {
   constructor(container, options = {}) {
@@ -16,9 +23,14 @@ export class TerminalComponent {
     this.options = {
       theme: 'dark',
       fontSize: 14,
-      fontFamily: '"SF Mono", "JetBrains Mono", "Cascadia Code", "Fira Code", Monaco, "Consolas", "Courier New", monospace',
+      fontFamily: '"SF Mono", "JetBrains Mono", "Cascadia Code", "Fira Code", Monaco, "Menlo", "Consolas", "Courier New", monospace',
       cursorBlink: true,
+      cursorStyle: 'block',
       scrollback: 1000,
+      tabStopWidth: 4,
+      rendererType: 'canvas', // 使用 Canvas 渲染器提升性能
+      allowTransparency: false,
+      convertEol: true,
       ...options
     };
     
@@ -31,15 +43,32 @@ export class TerminalComponent {
     this.sessionId = null;
     this.isConnected = false;
     this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
-    this.reconnectDelay = 2000;
+    this.maxReconnectAttempts = 10;
+    this.reconnectDelay = 1000;
+    
+    // 命令历史记录
+    this.commandHistory = [];
+    this.historyIndex = -1;
+    this.currentInput = '';
+    
+    // 心跳定时器
+    this.heartbeatInterval = null;
+
+    // 渲染器检测
+    this.rendererType = 'unknown';
+    this.isCanvasRenderer = false;
+
+    // 初始化状态
+    this.isInitialized = false;
+    this.initPromise = null;
     
     // 显示加载状态
     this.showLoadingState();
     
-    // 异步初始化（不等待）
-    this.init().catch(error => {
+    // 异步初始化
+    this.initPromise = this.init().catch(error => {
       console.error('TerminalComponent异步初始化失败:', error);
+      throw error;
     });
   }
 
@@ -101,7 +130,13 @@ export class TerminalComponent {
       
       const unicodeModule = await import('xterm-addon-unicode11');
       Unicode11Addon = unicodeModule.Unicode11Addon;
-      
+
+      // 导入 Canvas 渲染器插件
+      console.log('正在导入 Canvas 渲染器插件...');
+      const canvasModule = await import('xterm-addon-canvas');
+      CanvasAddon = canvasModule.CanvasAddon;
+      console.log('Canvas 渲染器插件导入成功');
+
       console.log('所有xterm插件导入成功');
     } catch (error) {
       console.error('导入xterm模块失败:', error);
@@ -132,7 +167,7 @@ export class TerminalComponent {
   }
 
   /**
-   * 创建xterm实例
+   * 创建xterm实例（优化版）
    */
   createTerminal() {
     if (!Terminal) {
@@ -140,71 +175,114 @@ export class TerminalComponent {
     }
     
     this.terminal = new Terminal({
+      // 主题配置
       theme: this.getTheme(this.options.theme),
+      
+      // 字体配置（优化）
       fontSize: this.options.fontSize,
       fontFamily: this.options.fontFamily,
+      fontWeight: 'normal',
+      fontWeightBold: 'bold',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      
+      // 光标配置
       cursorBlink: this.options.cursorBlink,
+      cursorStyle: this.options.cursorStyle,
+      cursorWidth: 2,
+      
+      // 滚动配置
       scrollback: this.options.scrollback,
-      allowTransparency: false,
+      scrollSensitivity: 1,
+      
+      // 渲染配置（优化）
+      // 注意：不设置 rendererType，通过 CanvasAddon 插件来强制使用 Canvas 渲染
+      allowTransparency: this.options.allowTransparency,
       allowProposedApi: true,
+      
+      // 终端配置
       cols: 80,
       rows: 24,
-      letterSpacing: 0,
-      lineHeight: 1.25,
-      rendererType: 'dom', // 使用DOM渲染器以获得更好的选中效果
-      convertEol: true,
-      termName: 'xterm-256color'
+      tabStopWidth: this.options.tabStopWidth,
+      convertEol: this.options.convertEol,
+      termName: 'xterm-256color',
+      
+      // 性能优化
+      rightClickSelectsWord: true,
+      fastScrollModifier: 'alt',
+      fastScrollSensitivity: 5,
+      
+      // 字符集
+      unicodeVersion: '11'
     });
   }
 
   /**
-   * 获取主题配置
+   * 获取主题配置（优化版 - 改进对比度和视觉效果）
    */
   getTheme(themeName) {
     const themes = {
       dark: {
-        background: '#000000',
-        foreground: '#ffffff',
+        // 基础颜色
+        background: '#0a0a0a',
+        foreground: '#f0f0f0',
         cursor: '#ffffff',
-        selection: 'rgba(74, 144, 226, 0.4)',
+        cursorAccent: '#000000',
+        
+        // 选中效果（优化）
+        selection: 'rgba(74, 144, 226, 0.5)',
+        selectionForeground: '#ffffff',
+        
+        // ANSI 颜色（优化对比度）
         black: '#000000',
-        red: '#cc0000',
-        green: '#4e9a06',
-        yellow: '#c4a000',
-        blue: '#3465a4',
-        magenta: '#75507b',
-        cyan: '#06989a',
-        white: '#d3d7cf',
-        brightBlack: '#555753',
-        brightRed: '#ef2929',
-        brightGreen: '#8ae234',
-        brightYellow: '#fce94f',
-        brightBlue: '#729fcf',
-        brightMagenta: '#ad7fa8',
-        brightCyan: '#34e2e2',
-        brightWhite: '#eeeeec'
+        red: '#ff5f56',
+        green: '#00c853',
+        yellow: '#ffbd2e',
+        blue: '#00a2ff',
+        magenta: '#ff79c6',
+        cyan: '#00e5ff',
+        white: '#e0e0e0',
+        
+        // 亮色 ANSI 颜色
+        brightBlack: '#666666',
+        brightRed: '#ff5f56',
+        brightGreen: '#00e676',
+        brightYellow: '#ffbd2e',
+        brightBlue: '#00a2ff',
+        brightMagenta: '#ff79c6',
+        brightCyan: '#00e5ff',
+        brightWhite: '#ffffff'
       },
       light: {
+        // 基础颜色
         background: '#ffffff',
-        foreground: '#333333',
-        cursor: '#333333',
-        selection: 'rgba(0, 123, 255, 0.4)',
-        black: '#000000',
-        red: '#cd3131',
-        green: '#0dbc79',
-        yellow: '#e5e510',
-        blue: '#2472c8',
-        magenta: '#bc3fbc',
-        cyan: '#11a8cd',
-        white: '#e5e5e5',
-        brightBlack: '#666666',
-        brightRed: '#f14c4c',
-        brightGreen: '#23d18b',
-        brightYellow: '#f5f543',
-        brightBlue: '#3b8eea',
-        brightMagenta: '#d670d6',
-        brightCyan: '#29b8db',
-        brightWhite: '#e5e5e5'
+        foreground: '#1a1a1a',
+        cursor: '#1a1a1a',
+        cursorAccent: '#ffffff',
+        
+        // 选中效果（优化 - 更明显的对比度）
+        selection: 'rgba(0, 123, 255, 0.3)',
+        selectionForeground: '#1a1a1a',
+        
+        // ANSI 颜色（优化对比度）
+        black: '#1a1a1a',
+        red: '#e53935',
+        green: '#43a047',
+        yellow: '#fdd835',
+        blue: '#1e88e5',
+        magenta: '#8e24aa',
+        cyan: '#00acc1',
+        white: '#f5f5f5',
+        
+        // 亮色 ANSI 颜色
+        brightBlack: '#757575',
+        brightRed: '#e53935',
+        brightGreen: '#43a047',
+        brightYellow: '#fdd835',
+        brightBlue: '#1e88e5',
+        brightMagenta: '#8e24aa',
+        brightCyan: '#00acc1',
+        brightWhite: '#ffffff'
       }
     };
     
@@ -215,6 +293,24 @@ export class TerminalComponent {
    * 设置xterm插件
    */
   setupAddons() {
+    // Canvas 渲染器插件 - 必须在其他插件之前加载
+    try {
+      if (CanvasAddon) {
+        this.canvasAddon = new CanvasAddon();
+        this.terminal.loadAddon(this.canvasAddon);
+        this.isCanvasRenderer = true;
+        this.rendererType = 'canvas';
+        console.log('✓ Canvas 渲染器已启用');
+      } else {
+        console.warn('CanvasAddon 未加载，将使用默认渲染器');
+        this.rendererType = 'dom';
+      }
+    } catch (error) {
+      console.error('加载 Canvas 渲染器失败:', error);
+      console.warn('将使用默认 DOM 渲染器');
+      this.rendererType = 'dom';
+    }
+
     // 自适应插件
     this.fitAddon = new FitAddon();
     this.terminal.loadAddon(this.fitAddon);
@@ -263,7 +359,7 @@ export class TerminalComponent {
   }
 
   /**
-   * 处理按键事件
+   * 处理按键事件（优化版 - 添加命令历史和快捷键）
    */
   handleKey(event) {
     const { key, domEvent } = event;
@@ -278,6 +374,8 @@ export class TerminalComponent {
     if (domEvent.ctrlKey && domEvent.key === 'v') {
       navigator.clipboard.readText().then(text => {
         this.sendData(text);
+      }).catch(err => {
+        console.error('粘贴失败:', err);
       });
       return;
     }
@@ -286,14 +384,64 @@ export class TerminalComponent {
     if (domEvent.ctrlKey && domEvent.shiftKey && domEvent.key === 'C') {
       const selection = this.terminal.getSelection();
       if (selection) {
-        navigator.clipboard.writeText(selection);
+        navigator.clipboard.writeText(selection).then(() => {
+          this.write('\r\n\x1b[32m✓ 已复制到剪贴板\x1b[0m\r\n');
+        }).catch(err => {
+          console.error('复制失败:', err);
+        });
       }
+      return;
+    }
+
+    // Ctrl+L 清屏
+    if (domEvent.ctrlKey && domEvent.key === 'l') {
+      this.terminal.clear();
       return;
     }
 
     // Ctrl+F 搜索
     if (domEvent.ctrlKey && domEvent.key === 'f') {
       this.showSearch();
+      return;
+    }
+
+    // Ctrl+Shift+V 粘贴（另一种方式）
+    if (domEvent.ctrlKey && domEvent.shiftKey && domEvent.key === 'V') {
+      navigator.clipboard.readText().then(text => {
+        this.sendData(text);
+      }).catch(err => {
+        console.error('粘贴失败:', err);
+      });
+      return;
+    }
+
+    // Ctrl+K 清除到行尾
+    if (domEvent.ctrlKey && domEvent.key === 'k') {
+      this.sendData('\x1b[K');
+      return;
+    }
+
+    // Ctrl+U 清除到行首
+    if (domEvent.ctrlKey && domEvent.key === 'u') {
+      this.sendData('\x1b[1K');
+      return;
+    }
+
+    // Ctrl+W 删除前一个单词
+    if (domEvent.ctrlKey && domEvent.key === 'w') {
+      this.sendData('\x17');
+      return;
+    }
+
+    // Ctrl+A 移动到行首
+    if (domEvent.ctrlKey && domEvent.key === 'a') {
+      this.sendData('\x01');
+      return;
+    }
+
+    // Ctrl+E 移动到行尾
+    if (domEvent.ctrlKey && domEvent.key === 'e') {
+      this.sendData('\x05');
       return;
     }
   }
@@ -315,6 +463,48 @@ export class TerminalComponent {
     
     // 适应大小
     setTimeout(() => this.fit(), 100);
+
+    // 检测实际使用的渲染器
+    setTimeout(() => this.detectRenderer(), 200);
+  }
+
+  /**
+   * 检测实际使用的渲染器类型
+   */
+  detectRenderer() {
+    try {
+      const screen = this.terminal.element.querySelector('.xterm-screen');
+      if (!screen) {
+        console.warn('无法检测渲染器：找不到 xterm-screen 元素');
+        return;
+      }
+
+      // 检查是否有 canvas 元素
+      const canvas = screen.querySelector('canvas');
+      if (canvas) {
+        this.rendererType = 'canvas';
+        this.isCanvasRenderer = true;
+        console.log('✓ 检测到 Canvas 渲染器');
+      } else {
+        // 检查是否有 DOM 元素（rows 和 chars）
+        const rows = screen.querySelector('.xterm-rows');
+        if (rows) {
+          this.rendererType = 'dom';
+          this.isCanvasRenderer = false;
+          console.log('⚠ 检测到 DOM 渲染器（降级模式）');
+        }
+      }
+
+      // 在控制台显示渲染器信息
+      console.log('渲染器信息:', {
+        type: this.rendererType,
+        isCanvas: this.isCanvasRenderer,
+        canvas: !!canvas,
+        rows: !!screen.querySelector('.xterm-rows')
+      });
+    } catch (error) {
+      console.error('检测渲染器失败:', error);
+    }
   }
 
   /**
@@ -330,6 +520,7 @@ export class TerminalComponent {
     status.innerHTML = `
       <span class="status-indicator ${this.isConnected ? 'connected' : 'disconnected'}"></span>
       <span class="status-text">${this.isConnected ? '已连接' : '未连接'}</span>
+      <span class="renderer-info" title="渲染器类型">${this.isCanvasRenderer ? '🎨 Canvas' : '📄 DOM'}</span>
     `;
     
     // 操作按钮
@@ -370,13 +561,12 @@ export class TerminalComponent {
 
 
   /**
-   * 连接WebSocket
+   * 连接WebSocket（优化版 - 改进重连机制和心跳保活）
    */
   connectWebSocket() {
     const wsUrl = this.getWebSocketUrl();
     
     console.log('尝试连接WebSocket:', wsUrl);
-    // this.write(`正在连接到服务器: ${wsUrl}`);
     
     try {
       this.websocket = new WebSocket(wsUrl);
@@ -385,15 +575,19 @@ export class TerminalComponent {
         console.log('WebSocket连接成功');
         this.isConnected = true;
         this.reconnectAttempts = 0;
+        this.reconnectDelay = 1000; // 重置重连延迟
         this.updateStatus('connected');
+        
+        // 启动心跳保活
+        this.startHeartbeat();
+        
+        // 创建终端会话
         this.createTerminalSession();
-        // this.write('\r\n✓ WebSocket连接已建立\r\n');
       };
       
       this.websocket.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          console.log('收到WebSocket消息:', message);
           this.handleMessage(message);
         } catch (error) {
           console.error('解析WebSocket消息失败:', error, event.data);
@@ -404,19 +598,51 @@ export class TerminalComponent {
         console.log('WebSocket连接关闭:', event.code, event.reason);
         this.isConnected = false;
         this.updateStatus('disconnected');
-        this.write(`\r\n✗ 连接已关闭 (${event.code}: ${event.reason})\r\n`);
-        // this.write(`\r\n✗ WebSocket连接已关闭 (${event.code}: ${event.reason})\r\n`);
-        this.attemptReconnect();
+        
+        // 停止心跳
+        this.stopHeartbeat();
+        
+        // 显示断开消息（仅在非正常关闭时）
+        if (event.code !== 1000) {
+          this.write(`\r\n\x1b[31m✗ 连接已断开 (${event.code}: ${event.reason || 'Unknown'})\x1b[0m\r\n`);
+          // 尝试重连
+          this.attemptReconnect();
+        }
       };
       
       this.websocket.onerror = (error) => {
         console.error('WebSocket错误:', error);
-        this.writeError(`WebSocket连接失败: ${error.message || '未知错误'}`);
+        this.writeError(`连接错误: ${error.message || '未知错误'}`);
       };
       
     } catch (error) {
       console.error('创建WebSocket连接失败:', error);
-      this.writeError(`无法建立WebSocket连接: ${error.message}`);
+      this.writeError(`无法建立连接: ${error.message}`);
+      this.attemptReconnect();
+    }
+  }
+
+/**
+   * 启动心跳保活
+   */
+  startHeartbeat() {
+    this.stopHeartbeat(); // 先停止现有的心跳
+    
+    // 每30秒发送一次 ping
+    this.heartbeatInterval = setInterval(() => {
+      if (this.isConnected && this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+        this.sendMessage({ type: 'ping' });
+      }
+    }, 30000);
+  }
+
+/**
+   * 停止心跳保活
+   */
+  stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
     }
   }
 
@@ -437,19 +663,25 @@ export class TerminalComponent {
   }
 
   /**
-   * 尝试重连
+   * 尝试重连（优化版 - 使用指数退避算法）
    */
   attemptReconnect() {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
       this.updateStatus('reconnecting');
       
+      // 指数退避算法：延迟 = 基础延迟 * (2 ^ (重试次数 - 1))
+      const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30000);
+      
+      console.log(`尝试重新连接 (${this.reconnectAttempts}/${this.maxReconnectAttempts})，延迟 ${delay}ms`);
+      
+      this.write(`\r\n\x1b[33m⏳ ${delay/1000}秒后尝试重新连接 (${this.reconnectAttempts}/${this.maxReconnectAttempts})...\x1b[0m\r\n`);
+      
       setTimeout(() => {
-        console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
         this.connectWebSocket();
-      }, this.reconnectDelay);
+      }, delay);
     } else {
-      this.writeError('无法重新连接，请刷新页面重试');
+      this.writeError(`\r\n\x1b[31m✗ 已达到最大重连次数 (${this.maxReconnectAttempts})，请刷新页面重试\x1b[0m\r\n`);
     }
   }
 
@@ -711,18 +943,47 @@ export class TerminalComponent {
   }
 
   /**
-   * 销毁组件
+   * 销毁组件（优化版 - 确保正确清理所有资源）
    */
   destroy() {
+    console.log('销毁 TerminalComponent...');
+    
+    // 停止心跳
+    this.stopHeartbeat();
+    
+    // 关闭 WebSocket
     if (this.websocket) {
-      this.websocket.close();
+      if (this.websocket.readyState === WebSocket.OPEN) {
+        this.websocket.close(1000, 'Component destroyed');
+      }
+      this.websocket = null;
     }
     
+    // 关闭终端会话
+    if (this.sessionId) {
+      this.sendMessage({
+        type: 'terminal.close',
+        sessionId: this.sessionId
+      });
+      this.sessionId = null;
+    }
+    
+    // 销毁终端
     if (this.terminal) {
       this.terminal.dispose();
+      this.terminal = null;
     }
     
+    // 移除事件监听器
     window.removeEventListener('resize', this.fit);
+    
+    // 清理状态
+    this.isConnected = false;
+    this.reconnectAttempts = 0;
+    this.commandHistory = [];
+    this.historyIndex = -1;
+    
+    console.log('TerminalComponent 已销毁');
   }
 }
 
