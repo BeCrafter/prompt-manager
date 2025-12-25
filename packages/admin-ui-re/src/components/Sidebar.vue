@@ -120,6 +120,13 @@
           <span>我的收藏</span>
         </a-menu-item>
         
+        <a-menu-item key="tools" class="menu-item-tools">
+          <template #icon>
+            <ToolOutlined />
+          </template>
+          <span>工具管理</span>
+        </a-menu-item>
+        
         <a-menu-divider />
         
         <a-sub-menu
@@ -232,10 +239,11 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   CheckCircleOutlined,
-  StopOutlined
+  StopOutlined,
+  ToolOutlined
 } from '@ant-design/icons-vue';import { api } from '../services/api';
 
-const emit = defineEmits(['new-prompt', 'select-prompt', 'edit-prompt']);
+const emit = defineEmits(['new-prompt', 'select-prompt', 'edit-prompt', 'tools-manager']);
 
 const collapsed = ref(false);
 const searchValue = ref('');
@@ -299,6 +307,8 @@ const handleMenuSelect = ({ key }) => {
     emit('select-prompt', { type: 'recent' });
   } else if (key === 'favorites') {
     emit('select-prompt', { type: 'favorites' });
+  } else if (key === 'tools') {
+    emit('tools-manager');
   }
 };
 
@@ -590,7 +600,8 @@ onMounted(() => {
 
 .menu-item-all,
 .menu-item-recent,
-.menu-item-favorites {
+.menu-item-favorites,
+.menu-item-tools {
   margin: 4px 12px;
   border-radius: 8px;
   display: flex;
@@ -602,6 +613,7 @@ onMounted(() => {
 .menu-item-all:hover,
 .menu-item-recent:hover,
 .menu-item-favorites:hover,
+.menu-item-tools:hover,
 :deep(.ant-menu-item:hover) {
   background-color: #f8f9ff !important;
 }
@@ -761,7 +773,8 @@ onMounted(() => {
   
   .menu-item-all,
   .menu-item-recent,
-  .menu-item-favorites {
+  .menu-item-favorites,
+  .menu-item-tools {
     margin: 4px 8px;
     padding-left: 24px !important;
   }

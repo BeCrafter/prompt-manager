@@ -20,19 +20,24 @@
         @select-prompt="handleSelectPrompt"
         @edit-prompt="handleEditPrompt"
         @search="handleSearch"
+        @tools-manager="handleToolsManager"
       />
       
       <!-- 右侧内容区域 -->
       <a-layout-content class="editor-container">
         <CustomBlankContent 
-          v-if="!currentPrompt" 
+          v-if="!currentPrompt && !showToolsManager" 
           @new-prompt="handleNewPrompt"
           @select-prompt="handleSelectPrompt"
         />
         <PromptEditor 
-          v-else 
+          v-else-if="currentPrompt && !showToolsManager" 
           :prompt="currentPrompt" 
           @back="handleBackToList" 
+        />
+        <ToolsManager 
+          v-else-if="showToolsManager"
+          @back="handleBackToList"
         />
       </a-layout-content>
     </a-layout>
@@ -46,10 +51,12 @@ import Header from './Header.vue';
 import Sidebar from './Sidebar.vue';
 import CustomBlankContent from './CustomBlankContent.vue';
 import PromptEditor from './PromptEditor.vue';
+import ToolsManager from './ToolsManager.vue';
 
 const emit = defineEmits(['logout']);
 
 const currentPrompt = ref(null);
+const showToolsManager = ref(false);
 
 const handleLogout = () => {
   emit('logout');
@@ -83,6 +90,12 @@ const handleEditPrompt = (prompt) => {
 
 const handleBackToList = () => {
   currentPrompt.value = null;
+  showToolsManager.value = false;
+};
+
+const handleToolsManager = () => {
+  currentPrompt.value = null;
+  showToolsManager.value = true;
 };
 
 const handleSearch = (value) => {

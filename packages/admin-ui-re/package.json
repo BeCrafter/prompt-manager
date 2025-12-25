@@ -34,9 +34,12 @@
   },
   "dependencies": {
     "@ant-design/icons-vue": "^7.0.1",
+    "@types/dompurify": "^3.0.5",
     "ant-design-vue": "^4.2.6",
     "codemirror": "5.65.2",
+    "dompurify": "^3.3.1",
     "js-yaml": "^4.1.0",
+    "marked": "^17.0.1",
     "vue": "^3.5.25"
   }
 }
