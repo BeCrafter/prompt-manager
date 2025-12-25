@@ -1,6 +1,6 @@
 {
   "name": "@becrafter/prompt-manager",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "description": "Remote MCP Server for managing prompts",
   "publishConfig": {
     "access": "public"
@@ -19,9 +19,9 @@
     "url": "https://github.com/BeCrafter/prompt-manager/issues"
   },
   "scripts": {
-    "dev": "node --watch packages/server/server.js",
-    "help": "node packages/server/server.js --help",
-    "admin": "ADMIN_ENABLE=true ADMIN_REQUIRE_AUTH=true ADMIN_USERNAME=admin ADMIN_PASSWORD=admin123 node packages/server/server.js -p ./examples/prompts",
+    "dev": "cd packages/server && node --watch server.js",
+    "help": "cd packages/server && node server.js --help",
+    "admin": "ADMIN_ENABLE=true ADMIN_REQUIRE_AUTH=true ADMIN_USERNAME=admin ADMIN_PASSWORD=admin123 cd packages/server && node server.js -p ./examples/prompts",
     "admin:dev": "npm run dev --prefix packages/admin-ui",
     "admin:build": "npm run build --prefix packages/admin-ui",
     "desktop:dev": "bash scripts/build.sh dev",
@@ -32,7 +32,18 @@
     "desktop:build:linux": "bash scripts/build.sh build:linux",
     "postinstall": "node ./scripts/postinstall.js",
     "build:core": "npm run build --prefix packages/server",
-    "build:icons": "node ./scripts/build-icons.js"
+    "build:icons": "node ./scripts/build-icons.js",
+    "test": "npm run test:server && npm run test:server:integration && npm run test:upload",
+    "test:server": "cd packages/server && npm run test",
+    "test:server:watch": "cd packages/server && npm run test:watch",
+    "test:server:coverage": "cd packages/server && npm run test:coverage",
+    "test:server:integration": "cd packages/server && npm run test:integration",
+    "test:e2e": "node test/e2e/test-packaged-app.js",
+    "test:upload": "node test/integration/test_upload.js",
+    "lint": "cd packages/server && npm run lint",
+    "lint:check": "cd packages/server && npm run lint:check",
+    "format": "cd packages/server && npm run format",
+    "format:check": "cd packages/server && npm run format:check"
   },
   "keywords": [
     "mcp",
@@ -56,6 +67,7 @@
     "js-yaml": "^4.1.0",
     "multer": "^2.0.2",
     "node-fetch": "^3.3.2",
+    "node-pty": "^1.0.0",
     "sharp": "^0.34.4",
     "tar": "^7.5.1",
     "to-ico": "^1.0.1",

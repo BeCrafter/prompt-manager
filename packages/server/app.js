@@ -132,6 +132,17 @@ app.get(config.adminPath, sendIndexHtml);
 app.get(config.adminPath + '/', sendIndexHtml);
 
 
+// 健康检查端点
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    port: config.getPort(),
+    version: config.getServerVersion()
+  });
+});
+
 // 注册后台API
 app.use('/adminapi', adminRouter);
 

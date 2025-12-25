@@ -210,17 +210,22 @@ class PromptManager {
    * 
    * @param {string} currentPath  - 当前目录路径
    * @param {string} relativePath - 相对于当前目录的路径
+   * @param {boolean} inheritedEnabled - 从父目录继承的启用状态
    * @returns {Array} 所有prompt文件
    */
-  async scanPromptFiles(currentPath, relativePath = '') {
+  async scanPromptFiles(currentPath, relativePath = '', inheritedEnabled = true) {
     const promptFiles = [];
+    let currentEnabled = inheritedEnabled;
 
     if (relativePath) {
       // console.log('读取组元数据:', "{relativePath:", relativePath, ", currentPath:", currentPath, "}");
       const meta = this.readGroupMeta(path.join(currentPath, relativePath));
-      if (meta.enabled === false) {
-        return [];
-      }
+      currentEnabled = currentEnabled && (meta.enabled !== false);
+    }
+
+    // 如果当前目录被禁用，直接返回空数组
+    if (!currentEnabled) {
+      return [];
     }
     
     try {
@@ -232,8 +237,8 @@ class PromptManager {
         const itemRelativePath = relativePath ? path.join(relativePath, item.name) : item.name; // 文件的相对路径，相对于当前目录，如：xxx/xxx.yaml
 
         if (item.isDirectory()) {
-          // 递归扫描子目录
-          const subFiles = await this.scanPromptFiles(itemPath, itemRelativePath);
+          // 递归扫描子目录，传递当前目录的启用状态
+          const subFiles = await this.scanPromptFiles(itemPath, itemRelativePath, currentEnabled);
           promptFiles.push(...subFiles);
         } else if (item.isFile()) {
           // 检查文件扩展名
@@ -361,10 +366,33 @@ class PromptManager {
         promptData = YAML.parse(content);
       }
 
+      // 检查提示词本身是否启用
       if (promptData.enabled !== true) {
         logger.debug(`skipped loading prompt: ${promptData.name} -> disabled`);
         return null;
       }
+
+      // 检查目录启用状态
+      const fileDir = path.dirname(filePath);
+      const relativeDir = path.dirname(relativePath);
+      if (relativeDir && relativeDir !== '.') {
+        // 检查从根目录到当前文件路径的所有目录的启用状态
+        const dirParts = relativeDir.split(path.sep);
+        let currentPath = this.promptsDir;
+        let inheritedEnabled = true;
+        
+        for (const dirPart of dirParts) {
+          currentPath = path.join(currentPath, dirPart);
+          const meta = this.readGroupMeta(currentPath);
+          inheritedEnabled = inheritedEnabled && (meta.enabled !== false);
+          
+          if (!inheritedEnabled) {
+            logger.debug(`skipped loading prompt: ${promptData.name} -> parent directory disabled`);
+            return null;
+          }
+        }
+      }
+      
       logger.debug(`loaded prompt: ${promptData.name} -> ${filePath}`);
 
       // 验证prompt数据结构
@@ -479,3 +507,6 @@ class PromptManager {
 
 // 创建全局PromptManager实例
 export const promptManager = new PromptManager(config.getPromptsDir());
+
+// 导出PromptManager类供测试使用
+export { PromptManager };

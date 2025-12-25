@@ -41,21 +41,43 @@ class Logger {
 
     const formattedMessage = this.formatMessage(level, message, meta);
     
-    // 始终输出到控制台
-    if (level === 'error') {
-      process.stderr.write(formattedMessage);
-    } else {
-      process.stdout.write(formattedMessage);
-    }
+    try {
+      // 始终输出到控制台，但先检查流是否可写
+      if (level === 'error') {
+        if (process.stderr && process.stderr.writable) {
+          process.stderr.write(formattedMessage);
+        } else {
+          // 如果 stderr 不可用，使用 console.error 作为后备
+          console.error(formattedMessage.trim());
+        }
+      } else {
+        if (process.stdout && process.stdout.writable) {
+          process.stdout.write(formattedMessage);
+        } else {
+          // 如果 stdout 不可用，使用 console.log 作为后备
+          console.log(formattedMessage.trim());
+        }
+      }
 
-    // 写入日志文件
-    if (this.logStream) {
-      const shouldWrite = level === 'error' || 
-                         (this.debugEnabled && ['debug', 'warn'].includes(level)) ||
-                         (!this.debugEnabled && ['info'].includes(level));
-      
-      if (shouldWrite) {
-        this.logStream.write(formattedMessage);
+      // 写入日志文件，检查流是否可写
+      if (this.logStream && this.logStream.writable) {
+        const shouldWrite = level === 'error' || 
+                           (this.debugEnabled && ['debug', 'warn'].includes(level)) ||
+                           (!this.debugEnabled && ['info'].includes(level));
+        
+        if (shouldWrite) {
+          this.logStream.write(formattedMessage);
+        }
+      }
+    } catch (error) {
+      // 静默处理写入错误，避免应用崩溃
+      // 只在调试模式下记录错误
+      if (this.debugEnabled) {
+        try {
+          console.error(`Logger write error: ${error.message}`);
+        } catch (e) {
+          // 如果连 console.error 都失败，就放弃
+        }
       }
     }
   }

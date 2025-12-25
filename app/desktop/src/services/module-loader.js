@@ -51,38 +51,140 @@ class ModuleLoader {
   async _loadModuleInternal(serverRoot) {
     this.logger.info('Loading server module', { serverRoot });
     
-    // 简化路径查找逻辑，优先查找 app.asar 包中的核心库
-    const pathsToCheck = [
-      // 1. 优先从 app.asar 包中的 node_modules 加载（打包应用中）
-      path.join(process.resourcesPath, 'app.asar', 'node_modules', '@becrafter', 'prompt-manager-core', 'index.js'),
-      // 2. 尝试从 serverRoot 的 packages/server 加载（开发环境）
-      path.join(serverRoot, 'packages', 'server', 'index.js'),
-      // 3. 尝试从 serverRoot 的 node_modules 加载
-      path.join(serverRoot, 'node_modules', '@becrafter', 'prompt-manager-core', 'index.js'),
-    ];
+    // 判断是否为打包环境
+    const isPackaged = this._isPackagedEnvironment();
+    this.logger.debug('Environment check', { isPackaged, serverRoot });
+    
+    // 根据环境类型决定路径优先级
+    let pathsToCheck;
+    
+    if (isPackaged) {
+      // 打包环境：优先从 ASAR 包中加载
+      pathsToCheck = [
+        // 1. 优先从 app.asar 包中的 node_modules 加载
+        path.join(process.resourcesPath, 'app.asar', 'node_modules', '@becrafter', 'prompt-manager-core', 'index.js'),
+        // 2. 尝试从 app.asar 直接加载
+        path.join(process.resourcesPath, 'app.asar', 'packages', 'server', 'index.js'),
+        // 3. 尝试从应用目录的 packages/server 加载
+        path.join(process.resourcesPath, 'packages', 'server', 'index.js'),
+        // 4. 备用：从 serverRoot 加载
+        path.join(serverRoot, 'packages', 'server', 'index.js'),
+      ];
+    } else {
+      // 开发环境：优先从项目目录加载
+      pathsToCheck = [
+        // 1. 优先从 serverRoot 的 packages/server 加载（开发环境）
+        path.join(serverRoot, 'packages', 'server', 'index.js'),
+        // 2. 尝试从 serverRoot 的 node_modules 加载
+        path.join(serverRoot, 'node_modules', '@becrafter', 'prompt-manager-core', 'index.js'),
+        // 3. 尝试从当前目录的 node_modules 加载
+        path.join(__dirname, '..', '..', '..', 'node_modules', '@becrafter', 'prompt-manager-core', 'index.js'),
+        // 4. 最后尝试从 ASAR 路径（以防万一）
+        path.join(process.resourcesPath, 'app.asar', 'node_modules', '@becrafter', 'prompt-manager-core', 'index.js'),
+      ];
+    }
+    
+    let lastError = null;
     
     for (const libPath of pathsToCheck) {
-      if (await this._pathExists(libPath)) {
-        const entryUrl = pathToFileURL(libPath);
-        // 添加版本参数以防止缓存
-        entryUrl.searchParams.set('v', Date.now().toString());
-        
-        const module = await import(entryUrl.href);
-        this._validateServerModule(module);
-        this.logger.info('Server module loaded successfully');
-        return module;
+      try {
+        if (await this._pathExists(libPath)) {
+          this.logger.info('Found server module at path', { path: libPath });
+          
+          const entryUrl = pathToFileURL(libPath);
+          // 添加版本参数以防止缓存
+          entryUrl.searchParams.set('v', Date.now().toString());
+          
+          const module = await import(entryUrl.href);
+          this._validateServerModule(module);
+          this.logger.info('Server module loaded successfully');
+          return module;
+        }
+      } catch (error) {
+        lastError = error;
+        this.logger.debug('Failed to load from path', { path: libPath, error: error.message });
+        continue;
       }
     }
     
-    // 如果所有路径都没有找到，抛出错误
-    throw new Error(`Could not find core library in any of the expected paths: ${pathsToCheck.join(', ')}`);
+    // 所有路径都失败，抛出详细的错误信息
+    const errorMsg = `Could not find core library in any of the expected paths: ${pathsToCheck.join(', ')}`;
+    this.logger.error(errorMsg, { lastError: lastError?.message });
+    throw new Error(errorMsg);
+  }
+
+  /**
+   * 判断是否为打包环境
+   */
+  _isPackagedEnvironment() {
+    // 检查是否在 Electron 的打包环境中
+    const appPath = process.resourcesPath || '';
+    const isElectronPackaged = appPath.includes('Electron.app') || 
+                              appPath.includes('app.asar') ||
+                              process.defaultApp !== true;
+    
+    // 检查开发环境标志
+    const isDevelopment = process.env.NODE_ENV === 'development' ||
+                         process.env.ELECTRON_IS_DEV === '1' ||
+                         __dirname.includes('node_modules');
+    
+    return isElectronPackaged && !isDevelopment;
   }
 
   async _pathExists(targetPath) {
     try {
+      // 对于 ASAR 文件，使用多种方式验证存在性
+      if (targetPath.includes('.asar')) {
+        try {
+          // 方法1：尝试使用 fs.stat（最可靠的方式）
+          const stats = await fs.promises.stat(targetPath);
+          if (stats.isFile() || stats.isDirectory()) {
+            return true;
+          }
+        } catch (statError) {
+          // 如果 stat 失败，尝试其他方法
+          this.logger.debug('ASAR stat failed, trying alternative methods', { 
+            path: targetPath, 
+            error: statError.message 
+          });
+        }
+        
+        try {
+          // 方法2：尝试读取文件的前几个字节
+          const buffer = Buffer.alloc(1);
+          const fd = await fs.promises.open(targetPath, 'r');
+          await fd.read(buffer, 0, 1, 0);
+          await fd.close();
+          return true;
+        } catch (readError) {
+          // 如果读取失败，尝试最后的方法
+          this.logger.debug('ASAR read failed', { 
+            path: targetPath, 
+            error: readError.message 
+          });
+        }
+        
+        try {
+          // 方法3：尝试使用 fs.access（标准方法）
+          await fs.promises.access(targetPath, constants.F_OK);
+          return true;
+        } catch (accessError) {
+          this.logger.debug('ASAR access failed', { 
+            path: targetPath, 
+            error: accessError.message 
+          });
+          return false;
+        }
+      }
+      
+      // 普通文件检查
       await fs.promises.access(targetPath, constants.F_OK);
       return true;
     } catch (error) {
+      this.logger.debug('File access check failed', { 
+        path: targetPath, 
+        error: error.message 
+      });
       return false;
     }
   }

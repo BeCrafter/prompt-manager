@@ -1,0 +1,267 @@
+/* 终端字体修复 - Warp终端样式 */
+
+/* 为xterm设置合适的等宽字体，解决字体重叠问题 */
+.xterm {
+  font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
+  font-size: 14px !important;
+  line-height: 1.25 !important;
+  letter-spacing: 0 !important;
+  font-feature-settings: "liga" 0, "calt" 0 !important;
+  -webkit-font-feature-settings: "liga" 0, "calt" 0 !important;
+  -moz-font-feature-settings: "liga" 0, "calt" 0 !important;
+  font-weight: 400 !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
+}
+
+/* 确保字符渲染正确，防止重叠 */
+.xterm .xterm-screen {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: 1.25 !important;
+}
+
+.xterm .xterm-viewport {
+  font-family: inherit !important;
+}
+
+/* 修复canvas渲染的字体 */
+.xterm .xterm-screen canvas {
+  font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
+  image-rendering: pixelated !important;
+  image-rendering: -moz-crisp-edges !important;
+  image-rendering: crisp-edges !important;
+}
+
+/* 字符测量元素使用相同字体 */
+.xterm-char-measure-element {
+  font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
+  font-size: 14px !important;
+  line-height: 1.25 !important;
+}
+
+/* 行高设置 */
+.xterm-row {
+  height: 1.25em !important;
+  line-height: 1.25 !important;
+}
+
+/* 字符样式 */
+.xterm-char {
+  width: 0.6em !important;
+  height: 1.25em !important;
+}
+
+/* 确保输入框字体一致 */
+.xterm textarea {
+  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
+  font-size: 14px !important;
+}
+
+/* 修复行高和间距 */
+.xterm-rows {
+  line-height: 1.2 !important;
+}
+
+.xterm-row {
+  height: 1.2em !important;
+  line-height: 1.2 !important;
+}
+
+.xterm-char {
+  width: 0.6em !important;
+  height: 1.2em !important;
+}
+
+/* 修复中文字符显示 */
+.xterm-unicode {
+  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', 'PingFang SC', 'Microsoft YaHei', monospace !important;
+}
+
+/* 暗色主题优化 */
+.xterm.theme-dark {
+  background: #0a0a0a !important;
+  color: #f0f0f0 !important;
+}
+
+/* 光标样式优化 */
+.xterm .xterm-cursor {
+  background: #ffffff !important;
+  border: none !important;
+  width: 8px !important;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.5) !important;
+}
+
+/* 浅色主题光标 */
+.xterm.theme-light .xterm-cursor {
+  background: #333333 !important;
+  box-shadow: 0 0 4px rgba(51, 51, 51, 0.5) !important;
+}
+
+/* xterm DOM渲染器选中效果 */
+.xterm .xterm-rows {
+  position: relative;
+}
+
+.xterm .xterm-rows > div {
+  position: relative;
+}
+
+/* 默认选中效果 */
+.xterm .xterm-rows > div.xterm-focus .xterm-selection,
+.xterm .xterm-rows .xterm-selection {
+  background-color: rgba(74, 144, 226, 0.4) !important;
+}
+
+/* 浅色主题下的选中效果 - 使用更高优先级 */
+.xterm.theme-light .xterm-rows > div.xterm-focus .xterm-selection,
+.xterm.theme-light .xterm-rows .xterm-selection {
+  background-color: rgba(0, 123, 255, 0.5) !important;
+}
+
+/* 深色主题下的选中效果 */
+.xterm.theme-dark .xterm-rows > div.xterm-focus .xterm-selection,
+.xterm.theme-dark .xterm-rows .xterm-selection {
+  background-color: rgba(74, 144, 226, 0.4) !important;
+}
+
+/* xterm-selection span 选中样式 */
+.xterm .xterm-selection span {
+  background-color: inherit !important;
+}
+
+/* 确保浅色主题下的选中文字可见 */
+.xterm.theme-light .xterm-selection span {
+  color: #333333 !important;
+}
+
+/* 确保深色主题下的选中文字可见 */
+.xterm.theme-dark .xterm-selection span {
+  color: #ffffff !important;
+}
+
+/* 光标样式优化 */
+.xterm .xterm-cursor {
+  background: #ffffff !important;
+  border: none !important;
+  width: 8px !important;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.5) !important;
+}
+
+/* 浅色主题光标 */
+.xterm.theme-light .xterm-cursor {
+  background: #333333 !important;
+  box-shadow: 0 0 4px rgba(51, 51, 51, 0.5) !important;
+}
+
+/* 强制覆盖选中样式 - 浅色主题 */
+body .xterm.theme-light .xterm-selection,
+body .xterm.theme-light .xterm-rows .xterm-selection,
+body .xterm.theme-light .xterm-rows > div .xterm-selection,
+body .xterm.theme-light .xterm-screen .xterm-selection,
+body div.xterm.theme-light .xterm-selection {
+  background-color: rgba(0, 123, 255, 0.5) !important;
+}
+
+/* 强制覆盖选中样式 - 深色主题 */
+body .xterm.theme-dark .xterm-selection,
+body .xterm.theme-dark .xterm-rows .xterm-selection,
+body .xterm.theme-dark .xterm-rows > div .xterm-selection,
+body .xterm.theme-dark .xterm-screen .xterm-selection,
+body div.xterm.theme-dark .xterm-selection {
+  background-color: rgba(74, 144, 226, 0.4) !important;
+}
+
+/* 选中文字颜色 */
+body .xterm.theme-light .xterm-selection span,
+body .xterm.theme-light .xterm-selection .xterm-char {
+  color: #333333 !important;
+}
+
+body .xterm.theme-dark .xterm-selection span,
+body .xterm.theme-dark .xterm-selection .xterm-char {
+  color: #ffffff !important;
+}
+
+/* 滚动条样式 */
+.xterm .xterm-viewport::-webkit-scrollbar {
+  width: 10px !important;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-track {
+  background: #1e1e1e !important;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-thumb {
+  background: #444 !important;
+  border-radius: 5px !important;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: #555 !important;
+}
+
+/* 响应式字体大小调整 */
+@media (max-width: 768px) {
+  .xterm {
+    font-size: 12px !important;
+  }
+  
+  .xterm-char-measure-element {
+    font-size: 12px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .xterm {
+    font-size: 11px !important;
+  }
+  
+  .xterm-char-measure-element {
+    font-size: 11px !important;
+  }
+}
+
+/* 高DPI屏幕优化 */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .xterm .xterm-screen canvas {
+    image-rendering: auto !important;
+  }
+}
+
+/* 确保终端容器正确显示 */
+.terminal-content {
+  background: #0a0a0a !important;
+}
+
+.terminal-output {
+  font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
+  font-size: 14px !important;
+  line-height: 1.25 !important;
+  background: #0a0a0a !important;
+  color: #f0f0f0 !important;
+  font-weight: 400 !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}
+
+.terminal-input-area {
+  font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
+  font-size: 14px !important;
+  background: #0a0a0a !important;
+  line-height: 1.25 !important;
+}
+
+.terminal-prompt {
+  font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
+  font-size: 14px !important;
+  line-height: 1.25 !important;
+}
+
+#terminalInput {
+  font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
+  font-size: 14px !important;
+  line-height: 1.25 !important;
+  font-weight: 400 !important;
+}

@@ -121,7 +121,7 @@ export class Config {
 
     // 其他配置
     this.serverName = process.env.MCP_SERVER_NAME || 'prompt-manager';
-    this.serverVersion = process.env.MCP_SERVER_VERSION || '0.1.2';
+    this.serverVersion = process.env.MCP_SERVER_VERSION || '0.1.4';
     this.logLevel = process.env.LOG_LEVEL || 'info';
     this.maxPrompts = parseInt(process.env.MAX_PROMPTS) || 1000;
     this.recursiveScan = process.env.RECURSIVE_SCAN !== 'false'; // 默认启用递归扫描
@@ -253,6 +253,13 @@ export class Config {
    */
   getPort() {
     return this.port;
+  }
+
+  /**
+   * 设置服务器端口（用于动态端口分配）
+   */
+  setPort(port) {
+    this.port = port;
   }
 
   /**

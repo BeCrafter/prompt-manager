@@ -27,8 +27,22 @@ const __dirname = path.dirname(__filename);
 export async function syncSystemTools() {
   logger.info('开始同步系统工具到沙箱环境...');
   
-  // 系统工具源目录
-  const toolsDir = path.join(__dirname, '..', '..', 'resources', 'tools');
+  // 判断是否为打包环境
+  const isPackaged = process.resourcesPath && 
+                    (process.resourcesPath.includes('app.asar') || 
+                     process.resourcesPath.includes('Electron.app'));
+  
+  let toolsDir;
+  
+  if (isPackaged) {
+    // 打包环境：工具位于 runtime/toolbox/
+    toolsDir = path.join(process.resourcesPath, 'runtime', 'toolbox');
+    logger.debug('打包环境，使用工具目录:', { toolsDir });
+  } else {
+    // 开发环境：工具位于 resources/tools/
+    toolsDir = path.join(__dirname, '..', '..', 'resources', 'tools');
+    logger.debug('开发环境，使用工具目录:', { toolsDir });
+  }
   
   // 目标沙箱目录
   const toolboxDir = path.join(os.homedir(), '.prompt-manager', 'toolbox');
@@ -39,7 +53,31 @@ export async function syncSystemTools() {
   // 检查源目录是否存在
   if (!await pathExists(toolsDir)) {
     logger.warn(`系统工具目录不存在，跳过同步: ${toolsDir}`);
-    return;
+    
+    // 在打包环境中，如果工具目录不存在，尝试从其他可能的位置查找
+    if (isPackaged) {
+      // 尝试其他可能的路径
+      const alternativePaths = [
+        path.join(process.resourcesPath, 'app.asar', 'runtime', 'toolbox'),
+        path.join(process.resourcesPath, '..', 'runtime', 'toolbox'),
+        path.join(__dirname, '..', '..', 'resources', 'tools') // 回退到开发路径
+      ];
+      
+      for (const altPath of alternativePaths) {
+        if (await pathExists(altPath)) {
+          toolsDir = altPath;
+          logger.info(`找到替代工具目录: ${toolsDir}`);
+          break;
+        }
+      }
+      
+      if (!await pathExists(toolsDir)) {
+        logger.warn('所有可能的工具目录都不存在，跳过工具同步');
+        return;
+      }
+    } else {
+      return;
+    }
   }
   
   try {

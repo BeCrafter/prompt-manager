@@ -2,12 +2,16 @@
 
 // 导入样式
 import '../css/main.css';
+import '../css/terminal-fix.css';
 import '../css/recommended-prompts.css';
 import '../css/markdown.css';
 import 'highlight.js/styles/github.css';
 
 // 导入 CodeMirror 相关功能
 import { initCodeMirror } from './codemirror';
+
+// 导入终端组件
+import { TerminalComponent } from './components/TerminalComponent.js';
 
 // 导入 CodeMirror 5 组件用于预览编辑器
 import CodeMirror from 'codemirror';
@@ -21,6 +25,8 @@ import hljs from 'highlight.js';
 import mermaid from 'mermaid';
 
 // 应用状态
+
+
 let currentToken = localStorage.getItem('prompt-admin-token');
 let currentPrompt = null;
 let currentPromptObject = null;
@@ -67,6 +73,9 @@ const groupManageActionLoading = new Set();
 let requireAuth = false;
 // 当前激活的导航项
 let currentNav = 'prompts';
+
+// 终端组件实例
+let terminalComponent = null;
 
 const API_HOST = 'http://localhost:5621';
 
@@ -438,11 +447,14 @@ function setupUserMenu() {
   // 根据是否需要认证设置头像的可点击状态
   if (avatarBtn) {
     if (requireAuth) {
+      userMenu.parentElement.classList.remove('hidden');
       avatarBtn.classList.remove('no-auth');
       avatarBtn.setAttribute('aria-haspopup', 'true');
     } else {
+      userMenu.parentElement.classList.add('hidden');
       avatarBtn.classList.add('no-auth');
       avatarBtn.setAttribute('aria-haspopup', 'false');
+
     }
   }
   
@@ -2551,6 +2563,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       setupNavigation();
       // 页面加载后显示自定义的空白内容区域，不显示编辑器
       showCustomBlankContent();
+      
+      
             // 初始化推荐词功能（内联函数定义）
       let recommendedPrompts = [];
       let currentRecommendedPromptIndex = 0;
@@ -3283,20 +3297,427 @@ function switchNav(navType) {
   const promptsSidebar = document.getElementById('promptsSidebar');
   const promptsArea = document.getElementById('promptsArea');
   const toolsArea = document.getElementById('toolsArea');
-  
+  const terminalArea = document.getElementById('terminalArea');
   if (navType === 'prompts') {
     // 显示提示词区域
     if (promptsSidebar) promptsSidebar.style.display = 'flex';
     if (promptsArea) promptsArea.style.display = 'flex';
     if (toolsArea) toolsArea.style.display = 'none';
+    if (terminalArea) terminalArea.style.display = 'none';
   } else if (navType === 'tools') {
     // 显示工具区域
     if (promptsSidebar) promptsSidebar.style.display = 'none';
     if (promptsArea) promptsArea.style.display = 'none';
     if (toolsArea) toolsArea.style.display = 'flex';
+    if (terminalArea) terminalArea.style.display = 'none';
     
     // 初始化工具页面
     initToolsPage();
+  } else if (navType === 'terminal') {
+    // 显示终端区域
+    if (promptsSidebar) promptsSidebar.style.display = 'none';
+    if (promptsArea) promptsArea.style.display = 'none';
+    if (toolsArea) toolsArea.style.display = 'none';
+    if (terminalArea) terminalArea.style.display = 'flex';
+    
+    // 初始化终端页面
+    initTerminalPage();
+  }
+}
+
+// 终端管理相关代码
+// 终端状态
+let terminalHistory = [];
+let terminalHistoryIndex = -1;
+let terminalCwd = '/';
+
+// 初始化终端页面
+async function initTerminalPage() {
+  // 如果已经初始化过，不再重复初始化
+  if (document.querySelector('.terminal-initialized')) return;
+
+  // 标记已初始化
+  document.querySelector('.terminal-area').classList.add('terminal-initialized');
+
+  // 获取终端容器
+  const terminalContainer = document.querySelector('.terminal-content');
+  if (!terminalContainer) {
+    console.error('Terminal container not found');
+    return;
+  }
+
+  console.log('开始初始化新的终端组件...');
+
+  // 创建新的终端组件
+  try {
+    // 清空现有内容
+    terminalContainer.innerHTML = '';
+    
+    // 创建终端容器
+    const terminalElement = document.createElement('div');
+    terminalElement.className = 'xterm-container';
+    terminalContainer.appendChild(terminalElement);
+
+    console.log('终端容器已创建，正在初始化TerminalComponent...');
+
+    // 显示加载消息
+    const loadingMsg = document.createElement('div');
+    loadingMsg.style.cssText = 'color: blue; padding: 10px; background: #e3f2fd; border-radius: 4px; margin: 10px 0;';
+    loadingMsg.textContent = '正在加载新版终端组件...';
+    terminalContainer.appendChild(loadingMsg);
+
+    // 初始化终端组件
+    const savedTheme = localStorage.getItem('terminal-theme') || 'dark';
+    
+    // 等待一小段时间让加载消息显示
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    terminalComponent = new TerminalComponent(terminalElement, {
+      theme: savedTheme,
+      fontSize: 14,
+      fontFamily: 'Consolas, "Courier New", monospace',
+      cursorBlink: true,
+      scrollback: 1000
+    });
+
+    // 等待初始化完成
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // 移除加载消息
+    loadingMsg.remove();
+
+    console.log('Terminal component initialized successfully');
+    
+    // 显示成功消息
+    const successMsg = document.createElement('div');
+    successMsg.style.cssText = 'color: green; padding: 10px; background: #e8f5e8; border-radius: 4px; margin: 10px 0;';
+    successMsg.textContent = '✓ 新版终端已加载，支持实时交互功能';
+    terminalContainer.appendChild(successMsg);
+    
+    // 3秒后移除成功消息
+    setTimeout(() => {
+      if (successMsg.parentNode) {
+        successMsg.remove();
+      }
+    }, 3000);
+    
+  } catch (error) {
+    console.error('Failed to initialize terminal component:', error);
+    console.error('Error stack:', error.stack);
+    
+    // 移除加载消息（如果存在）
+    const loadingMsg = terminalContainer.querySelector('div[style*="color: blue"]');
+    if (loadingMsg) loadingMsg.remove();
+    
+    // 显示错误信息
+    const errorMsg = document.createElement('div');
+    errorMsg.style.cssText = 'color: red; padding: 10px; background: #ffeaea; border-radius: 4px; margin: 10px 0;';
+    errorMsg.textContent = `✗ 新版终端初始化失败: ${error.message}，回退到旧版终端`;
+    terminalContainer.appendChild(errorMsg);
+    
+    // 回退到旧的终端实现
+    setTimeout(() => {
+      if (errorMsg.parentNode) {
+        errorMsg.remove();
+      }
+      initLegacyTerminal();
+    }, 3000); // 延迟3秒让用户看到错误信息
+  }
+}
+
+// 回退到旧的终端实现
+function initLegacyTerminal() {
+  const terminalContainer = document.querySelector('.terminal-content');
+  if (terminalContainer) {
+    // 恢复原始的HTML结构
+    terminalContainer.innerHTML = `
+      <div class="terminal-output" id="terminalOutput">
+        <div class="terminal-welcome">
+          <div>欢迎使用终端！输入 "help" 查看可用命令。</div>
+        </div>
+      </div>
+      <div class="terminal-input-area">
+        <div class="terminal-prompt">
+          <span class="prompt-symbol">$</span>
+          <span class="prompt-path">~</span>
+          <span class="prompt-separator">›</span>
+        </div>
+        <input type="text" id="terminalInput" placeholder="输入命令..." autocomplete="off" />
+      </div>
+    `;
+    
+    // 绑定旧的事件监听器
+    bindTerminalEvents();
+    
+    // 获取初始工作目录
+    getTerminalCwd();
+  }
+}
+
+// 获取终端工作目录
+async function getTerminalCwd() {
+  try {
+    const cwdInfo = await apiCall('/terminal/cwd');
+    terminalCwd = cwdInfo.cwd;
+  } catch (error) {
+    console.warn('获取工作目录失败，使用默认值:', error);
+    terminalCwd = '/';
+  }
+  
+  // 更新提示符
+  updateTerminalPrompt();
+  
+  // 添加欢迎信息
+  appendToTerminalOutput(`当前工作目录: ${terminalCwd}`);
+}
+
+// 绑定终端事件
+function bindTerminalEvents() {
+  const terminalInput = document.getElementById('terminalInput');
+  const terminalClearBtn = document.getElementById('terminalClearBtn');
+
+  if (terminalInput) {
+    terminalInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const command = terminalInput.value.trim();
+        if (command) {
+          executeTerminalCommand(command);
+          terminalInput.value = '';
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        navigateTerminalHistory('up');
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        navigateTerminalHistory('down');
+      }
+    });
+
+    // 自动聚焦到输入框
+    terminalInput.focus();
+  }
+
+  if (terminalClearBtn) {
+    terminalClearBtn.addEventListener('click', clearTerminalOutput);
+  }
+}
+
+// 执行终端命令
+async function executeTerminalCommand(command) {
+  // 添加命令到输出
+  appendToTerminalOutput(`$ ${command}`);
+
+  // 添加到历史记录
+  terminalHistory.push(command);
+  terminalHistoryIndex = terminalHistory.length;
+
+  // 处理本地命令（不需要网络请求的）
+  const args = command.split(' ');
+  const cmd = args[0].toLowerCase();
+
+  // 本地处理一些简单的命令
+  switch (cmd) {
+    case 'help':
+      showTerminalHelp();
+      return;
+    case 'clear':
+      clearTerminalOutput();
+      return;
+    case 'history':
+      showTerminalHistory();
+      return;
+    case 'pwd':
+      appendToTerminalOutput(terminalCwd);
+      return;
+    case 'ls':
+      await showTerminalLs(args.slice(1));
+      return;
+  }
+
+  // 其他命令通过API执行
+  try {
+    const response = await apiCall('/terminal/execute', {
+      method: 'POST',
+      body: JSON.stringify({
+        command: command,
+        cwd: terminalCwd
+      })
+    });
+
+    // 显示标准输出
+    if (response.output) {
+      appendToTerminalOutput(response.output);
+    }
+
+    // 显示错误输出
+    if (response.errorOutput) {
+      appendToTerminalOutput(response.errorOutput, 'error');
+    }
+
+    // 显示退出状态
+    if (response.exitCode !== 0) {
+      appendToTerminalOutput(`命令执行失败，退出代码: ${response.exitCode}`, 'error');
+    }
+
+    // 更新当前工作目录（如果命令改变了它）
+    if (response.cwd && response.cwd !== terminalCwd) {
+      terminalCwd = response.cwd;
+      updateTerminalPrompt();
+    }
+
+  } catch (error) {
+    console.error('执行终端命令失败:', error);
+    appendToTerminalOutput(`命令执行失败: ${error.message}`, 'error');
+  }
+}
+
+// 显示帮助信息
+function showTerminalHelp() {
+  const helpText = `
+可用的命令：
+  help     - 显示此帮助信息
+  clear    - 清空终端输出
+  pwd      - 显示当前工作目录
+  ls       - 列出目录内容
+  echo     - 输出文本
+  date     - 显示当前日期和时间
+  whoami   - 显示当前用户
+  history  - 显示命令历史
+
+快捷键：
+  ↑/↓     - 导航命令历史
+  Enter   - 执行命令
+  `;
+  appendToTerminalOutput(helpText);
+}
+
+// 显示命令历史
+function showTerminalHistory() {
+  if (terminalHistory.length === 0) {
+    appendToTerminalOutput('命令历史为空');
+    return;
+  }
+
+  terminalHistory.forEach((cmd, index) => {
+    appendToTerminalOutput(`${(index + 1).toString().padStart(3, ' ')}  ${cmd}`);
+  });
+}
+
+// 导航命令历史
+function navigateTerminalHistory(direction) {
+  const terminalInput = document.getElementById('terminalInput');
+
+  if (terminalHistory.length === 0) return;
+
+  if (direction === 'up') {
+    if (terminalHistoryIndex > 0) {
+      terminalHistoryIndex--;
+      terminalInput.value = terminalHistory[terminalHistoryIndex];
+    }
+  } else if (direction === 'down') {
+    if (terminalHistoryIndex < terminalHistory.length - 1) {
+      terminalHistoryIndex++;
+      terminalInput.value = terminalHistory[terminalHistoryIndex];
+    } else {
+      terminalHistoryIndex = terminalHistory.length;
+      terminalInput.value = '';
+    }
+  }
+
+  // 将光标移到末尾
+  setTimeout(() => {
+    terminalInput.setSelectionRange(terminalInput.value.length, terminalInput.value.length);
+  }, 0);
+}
+
+// 更新终端提示符
+function updateTerminalPrompt() {
+  const terminalPrompt = document.querySelector('.terminal-prompt');
+  if (terminalPrompt) {
+    const promptSymbol = terminalPrompt.querySelector('.prompt-symbol');
+    if (promptSymbol) {
+      const cwdDisplay = terminalCwd === '/' ? '/' : terminalCwd.split('/').pop() || terminalCwd;
+      promptSymbol.textContent = `${cwdDisplay}$ `;
+    }
+  }
+}
+
+// 显示目录内容（通过API）
+async function showTerminalLs(args) {
+  try {
+    const targetPath = args[0] || '.';
+    const response = await apiCall(`/terminal/ls?path=${encodeURIComponent(targetPath)}`);
+
+    if (response.success && response.items) {
+      const output = response.items.map(item => {
+        const type = item.type === 'directory' ? 'd' : '-';
+        const size = item.type === 'file' ? formatFileSize(item.size) : '';
+        const name = item.type === 'directory' ? `${item.name}/` : item.name;
+        return `${type} ${name}${size ? ` (${size})` : ''}`;
+      }).join('\n');
+
+      appendToTerminalOutput(output || '目录为空');
+    } else {
+      appendToTerminalOutput('无法读取目录内容', 'error');
+    }
+  } catch (error) {
+    appendToTerminalOutput(`ls: ${error.message}`, 'error');
+  }
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+// 添加内容到终端输出
+function appendToTerminalOutput(content, type = 'normal') {
+  const terminalOutput = document.getElementById('terminalOutput');
+
+  if (!terminalOutput) return;
+
+  const outputLine = document.createElement('div');
+  outputLine.className = `terminal-line terminal-${type}`;
+
+  // 处理多行内容
+  const lines = content.split('\n');
+  lines.forEach((line, index) => {
+    if (index > 0) {
+      outputLine.appendChild(document.createElement('br'));
+    }
+    outputLine.appendChild(document.createTextNode(line));
+  });
+
+  terminalOutput.appendChild(outputLine);
+
+  // 自动滚动到底部
+  terminalOutput.scrollTop = terminalOutput.scrollHeight;
+}
+
+// 清空终端输出
+function clearTerminalOutput() {
+  // 优先使用新的 TerminalComponent
+  if (terminalComponent && terminalComponent.clear) {
+    terminalComponent.clear();
+    return;
+  }
+
+  // 回退到旧的终端实现
+  const terminalOutput = document.getElementById('terminalOutput');
+  if (terminalOutput) {
+    // 保留欢迎信息
+    const welcomeMessage = `
+      <div class="terminal-welcome">
+        <div class="welcome-icon">🚀</div>
+        <div class="welcome-text">终端已清空</div>
+        <div class="welcome-hint">输入命令并按回车键执行</div>
+      </div>
+    `;
+    terminalOutput.innerHTML = welcomeMessage;
   }
 }
 
@@ -3487,41 +3908,7 @@ async function loadToolsData() {
     } catch (apiError) {
       console.warn('API调用失败，使用模拟数据:', apiError);
       // 使用模拟数据
-      data = [
-        {
-          id: "chrome-devtools",
-          name: "Chrome DevTools MCP",
-          description: "基于 chrome-devtools-mcp 的浏览器自动化工具，完全复用官方实现。支持页面导航、元素操作、性能分析、网络监控、控制台监控等功能。支持 keepAlive 参数保持浏览器状态，便于连续操作和调试。",
-          version: "1.0.0",
-          category: "utility",
-          author: "Prompt Manager",
-          tags: ["browser", "automation", "chrome-devtools", "performance", "network", "debugging"],
-          scenarios: ["网页自动化操作", "性能分析和优化", "网络请求监控"],
-          limitations: ["仅支持 Chrome/Chromium 浏览器", "首次使用需要安装浏览器"]
-        },
-        {
-          id: "file-reader",
-          name: "File Reader",
-          description: "统一文件读取工具，支持本地和远程文件，自动识别文件类型并转换为模型友好格式",
-          version: "1.0.0",
-          category: "utility",
-          author: "Prompt Manager",
-          tags: ["file", "reader", "http", "local", "remote"],
-          scenarios: ["读取本地文本文件", "下载并读取远程文件", "解析JSON/XML/YAML文件"],
-          limitations: ["远程文件大小限制为10MB", "需要配置URL白名单"]
-        },
-        {
-          id: "pdf-reader",
-          name: "PDF Reader",
-          description: "PDF 分页阅读工具，支持按页码提取文本和图片，智能缓存避免重复解析",
-          version: "2.1.0",
-          category: "utility",
-          author: "鲁班",
-          tags: ["pdf", "reader", "text", "image"],
-          scenarios: ["PDF文本提取", "PDF图片提取", "分页阅读PDF"],
-          limitations: ["需要有效的PDF文件路径", "仅支持PDF格式文件"]
-        }
-      ];
+      data = [];
     }
     
     // 处理数据，确保格式一致
