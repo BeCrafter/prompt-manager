@@ -165,9 +165,8 @@ class PromptManagerApp {
    * 注册全局快捷键
    */
   registerGlobalShortcuts() {
-    // macOS 使用 Cmd+Shift+P (Command+Shift+P) 来快速切换到应用
-    // Windows/Linux 使用 Ctrl+Shift+P
-    const showAccelerator = process.platform === 'darwin' ? 'Command+Shift+P' : 'Ctrl+Shift+P';
+    // 注册显示应用的快捷键
+    const showAccelerator = process.platform === 'darwin' ? 'Option+Command+P' : 'Alt+Shift+P';
     
     const ret = globalShortcut.register(showAccelerator, () => {
       this.logger.info('Global shortcut triggered:', showAccelerator);
@@ -180,10 +179,8 @@ class PromptManagerApp {
       this.logger.info('Global shortcut registered successfully:', showAccelerator);
     }
 
-    // 注册隐藏到后台的快捷键
-    // macOS 使用 Cmd+Shift+H (Command+Shift+H)
-    // Windows/Linux 使用 Ctrl+Shift+H
-    const hideAccelerator = process.platform === 'darwin' ? 'Command+Shift+H' : 'Ctrl+Shift+H';
+    // 注册隐藏应用的快捷键
+    const hideAccelerator = process.platform === 'darwin' ? 'Option+Command+H' : 'Alt+Shift+H';
     
     const hideRet = globalShortcut.register(hideAccelerator, () => {
       this.logger.info('Hide shortcut triggered:', hideAccelerator);
@@ -196,7 +193,7 @@ class PromptManagerApp {
       this.logger.info('Hide shortcut registered successfully:', hideAccelerator);
     }
 
-    // 在应用退出时取消快捷键
+    // 应用退出时注销所有全局快捷键
     app.on('will-quit', () => {
       globalShortcut.unregisterAll();
       this.logger.info('All global shortcuts unregistered');
