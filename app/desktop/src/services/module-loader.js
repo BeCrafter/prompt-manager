@@ -95,14 +95,20 @@ class ModuleLoader {
           // 添加版本参数以防止缓存
           entryUrl.searchParams.set('v', Date.now().toString());
           
+          this.logger.debug('Attempting to import module', { url: entryUrl.href });
           const module = await import(entryUrl.href);
+          this.logger.debug('Module imported successfully', { moduleKeys: Object.keys(module) });
           this._validateServerModule(module);
           this.logger.info('Server module loaded successfully');
           return module;
         }
       } catch (error) {
         lastError = error;
-        this.logger.debug('Failed to load from path', { path: libPath, error: error.message });
+        this.logger.error('Failed to load from path', { 
+          path: libPath, 
+          error: error.message,
+          stack: error.stack 
+        });
         continue;
       }
     }
@@ -117,22 +123,29 @@ class ModuleLoader {
    * 判断是否为打包环境
    */
   _isPackagedEnvironment() {
-    // 检查是否在 Electron 的打包环境中
-    const appPath = process.resourcesPath || '';
-    const isElectronPackaged = appPath.includes('Electron.app') || 
-                              appPath.includes('app.asar') ||
-                              process.defaultApp !== true;
-    
-    // 检查开发环境标志
+    // 优先检查开发环境标志
     const isDevelopment = process.env.NODE_ENV === 'development' ||
                          process.env.ELECTRON_IS_DEV === '1' ||
-                         __dirname.includes('node_modules');
+                         __dirname.includes('node_modules') ||
+                         process.defaultApp === true;
     
-    return isElectronPackaged && !isDevelopment;
+    // 如果是开发环境，直接返回 false
+    if (isDevelopment) {
+      return false;
+    }
+    
+    // 检查是否在 Electron 的打包环境中
+    const appPath = process.resourcesPath || '';
+    const isElectronPackaged = appPath.includes('app.asar') ||
+                              !appPath.includes('Electron.app');
+    
+    return isElectronPackaged;
   }
 
   async _pathExists(targetPath) {
     try {
+      this.logger.debug('Checking if path exists', { path: targetPath });
+      
       // 对于 ASAR 文件，使用多种方式验证存在性
       if (targetPath.includes('.asar')) {
         try {
@@ -177,9 +190,10 @@ class ModuleLoader {
         }
       }
       
-      // 普通文件检查
-      await fs.promises.access(targetPath, constants.F_OK);
-      return true;
+      // 普通文件检查 - 使用 fs.stat 而不是 fs.access
+      const stats = await fs.promises.stat(targetPath);
+      this.logger.debug('File check successful', { path: targetPath, isFile: stats.isFile() });
+      return stats.isFile();
     } catch (error) {
       this.logger.debug('File access check failed', { 
         path: targetPath, 

@@ -229,8 +229,8 @@ export class TerminalComponent {
         cursor: '#ffffff',
         cursorAccent: '#000000',
         
-        // 选中效果（优化）
-        selection: 'rgba(74, 144, 226, 0.5)',
+        // 选中效果（优化 - 更明显的对比度）
+        selection: 'rgba(100, 181, 246, 0.45)',
         selectionForeground: '#ffffff',
         
         // ANSI 颜色（优化对比度）
@@ -261,8 +261,8 @@ export class TerminalComponent {
         cursorAccent: '#ffffff',
         
         // 选中效果（优化 - 更明显的对比度）
-        selection: 'rgba(0, 123, 255, 0.3)',
-        selectionForeground: '#1a1a1a',
+        selection: 'rgba(24, 144, 255, 0.3)',
+        selectionForeground: '#000000',
         
         // ANSI 颜色（优化对比度）
         black: '#1a1a1a',

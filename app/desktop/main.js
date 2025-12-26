@@ -3,7 +3,7 @@
  * 重构后的主程序，遵循SRP、KISS、DRY、YAGNI原则
  */
 
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, globalShortcut } = require('electron');
 const path = require('path');
 
 // 导入管理器模块
@@ -156,6 +156,92 @@ class PromptManagerApp {
         this.trayManager.initialize(this.stateManager);
       }
     });
+
+    // 注册全局快捷键
+    this.registerGlobalShortcuts();
+  }
+
+  /**
+   * 注册全局快捷键
+   */
+  registerGlobalShortcuts() {
+    // macOS 使用 Cmd+Shift+P (Command+Shift+P) 来快速切换到应用
+    // Windows/Linux 使用 Ctrl+Shift+P
+    const showAccelerator = process.platform === 'darwin' ? 'Command+Shift+P' : 'Ctrl+Shift+P';
+    
+    const ret = globalShortcut.register(showAccelerator, () => {
+      this.logger.info('Global shortcut triggered:', showAccelerator);
+      this.bringToFront();
+    });
+
+    if (!ret) {
+      this.logger.warn('Failed to register global shortcut:', showAccelerator);
+    } else {
+      this.logger.info('Global shortcut registered successfully:', showAccelerator);
+    }
+
+    // 注册隐藏到后台的快捷键
+    // macOS 使用 Cmd+Shift+H (Command+Shift+H)
+    // Windows/Linux 使用 Ctrl+Shift+H
+    const hideAccelerator = process.platform === 'darwin' ? 'Command+Shift+H' : 'Ctrl+Shift+H';
+    
+    const hideRet = globalShortcut.register(hideAccelerator, () => {
+      this.logger.info('Hide shortcut triggered:', hideAccelerator);
+      this.sendToBackground();
+    });
+
+    if (!hideRet) {
+      this.logger.warn('Failed to register hide shortcut:', hideAccelerator);
+    } else {
+      this.logger.info('Hide shortcut registered successfully:', hideAccelerator);
+    }
+
+    // 在应用退出时取消快捷键
+    app.on('will-quit', () => {
+      globalShortcut.unregisterAll();
+      this.logger.info('All global shortcuts unregistered');
+    });
+  }
+
+  /**
+   * 将应用带到前台
+   */
+  bringToFront() {
+    // 显示 Dock 图标 (macOS)
+    if (process.platform === 'darwin') {
+      app.dock.show();
+    }
+
+    // 打开管理后台窗口
+    const state = this.stateManager.get();
+    const serverAddress = state.server?.address || 'http://127.0.0.1:5621';
+    const adminUrl = state.server?.adminPath ? 
+      `${serverAddress}${state.server.adminPath}` : 
+      `${serverAddress}/admin`;
+
+    // 如果服务正在运行，打开管理后台
+    if (this.stateManager.isServiceRunning()) {
+      this.trayManager.openAdminWindow(adminUrl);
+    } else {
+      // 如果服务未运行，启动服务
+      this.logger.info('Service not running, starting service...');
+      this.startService();
+    }
+  }
+
+  /**
+   * 将应用隐藏到后台
+   */
+  sendToBackground() {
+    // 关闭所有窗口
+    this.trayManager.adminWindowManager.closeAdminWindow();
+
+    // 隐藏 Dock 图标 (macOS)
+    if (process.platform === 'darwin') {
+      app.dock.hide();
+    }
+
+    this.logger.info('Application sent to background');
   }
 
   async startService() {

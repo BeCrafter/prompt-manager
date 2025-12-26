@@ -55,12 +55,14 @@ check_environment() {
     if [ "$NODE_MAJOR" -lt 22 ]; then
         echo -e "${RED}✗ Node.js 版本过低！${NC}"
         echo -e "${YELLOW}当前版本: $NODE_VERSION${NC}"
-        echo -e "${YELLOW}要求版本: v22.x${NC}"
+        echo -e "${YELLOW}要求版本: >=22.0.0 <23.0.0${NC}"
         exit 1
     elif [ "$NODE_MAJOR" -ge 23 ]; then
-        echo -e "${YELLOW}⚠ Node.js 版本可能过高！${NC}"
+        echo -e "${RED}✗ Node.js 版本过高！${NC}"
         echo -e "${YELLOW}当前版本: $NODE_VERSION${NC}"
-        echo -e "${YELLOW}建议版本: v22.20.0${NC}"
+        echo -e "${YELLOW}要求版本: >=22.0.0 <23.0.0${NC}"
+        echo -e "${YELLOW}建议使用 Node.js v22.20.0${NC}"
+        exit 1
     else
         echo -e "${GREEN}✓ Node.js 版本符合要求${NC}"
     fi
@@ -109,6 +111,11 @@ cd -
 # 安装 packages/admin-ui 依赖
 echo "Installing dependencies for packages/admin-ui..."
 (cd packages/admin-ui && unset_npm_config && npm install)
+cd -
+
+# 安装 packages/server 依赖（核心服务依赖）
+echo "Installing dependencies for packages/server..."
+(cd packages/server && unset_npm_config && npm install)
 cd -
 
 # 清理缓存

@@ -134,13 +134,15 @@
 /* 浅色主题下的选中效果 - 更明显的对比度 */
 .xterm.theme-light .xterm-rows > div.xterm-focus .xterm-selection,
 .xterm.theme-light .xterm-rows .xterm-selection {
-  background-color: rgba(0, 123, 255, 0.3) !important;
+  background-color: rgba(24, 144, 255, 0.25) !important;
+  border: 1px solid rgba(24, 144, 255, 0.4) !important;
 }
 
 /* 深色主题下的选中效果 */
 .xterm.theme-dark .xterm-rows > div.xterm-focus .xterm-selection,
 .xterm.theme-dark .xterm-rows .xterm-selection {
-  background-color: rgba(74, 144, 226, 0.5) !important;
+  background-color: rgba(100, 181, 246, 0.35) !important;
+  border: 1px solid rgba(100, 181, 246, 0.5) !important;
 }
 
 /* xterm-selection span 选中样式 */
@@ -148,14 +150,18 @@
   background-color: inherit !important;
 }
 
-/* 确保浅色主题下的选中文字可见 */
+/* 确保浅色主题下的选中文字可见 - 使用深色文字增强对比 */
 .xterm.theme-light .xterm-selection span {
-  color: #1a1a1a !important;
+  color: #000000 !important;
+  font-weight: 600 !important;
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.5) !important;
 }
 
-/* 确保深色主题下的选中文字可见 */
+/* 确保深色主题下的选中文字可见 - 使用浅色文字增强对比 */
 .xterm.theme-dark .xterm-selection span {
   color: #ffffff !important;
+  font-weight: 600 !important;
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.8) !important;
 }
 
 /* 强制覆盖选中样式 - 浅色主题 */
@@ -164,7 +170,8 @@ body .xterm.theme-light .xterm-rows .xterm-selection,
 body .xterm.theme-light .xterm-rows > div .xterm-selection,
 body .xterm.theme-light .xterm-screen .xterm-selection,
 body div.xterm.theme-light .xterm-selection {
-  background-color: rgba(0, 123, 255, 0.3) !important;
+  background-color: rgba(24, 144, 255, 0.25) !important;
+  border: 1px solid rgba(24, 144, 255, 0.4) !important;
 }
 
 /* 强制覆盖选中样式 - 深色主题 */
@@ -173,19 +180,24 @@ body .xterm.theme-dark .xterm-rows .xterm-selection,
 body .xterm.theme-dark .xterm-rows > div .xterm-selection,
 body .xterm.theme-dark .xterm-screen .xterm-selection,
 body div.xterm.theme-dark .xterm-selection {
-  background-color: rgba(74, 144, 226, 0.5) !important;
+  background-color: rgba(100, 181, 246, 0.35) !important;
+  border: 1px solid rgba(100, 181, 246, 0.5) !important;
 }
 
 /* 选中文字颜色 - 浅色主题 */
 body .xterm.theme-light .xterm-selection span,
 body .xterm.theme-light .xterm-selection .xterm-char {
-  color: #1a1a1a !important;
+  color: #000000 !important;
+  font-weight: 600 !important;
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.5) !important;
 }
 
 /* 选中文字颜色 - 深色主题 */
 body .xterm.theme-dark .xterm-selection span,
 body .xterm.theme-dark .xterm-selection .xterm-char {
   color: #ffffff !important;
+  font-weight: 600 !important;
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.8) !important;
 }
 
 /* ============================================
@@ -456,7 +468,41 @@ body .xterm.theme-dark .xterm-selection .xterm-char {
    终端加载和错误状态
    ============================================ */
 
-.terminal-loading,
+.terminal-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+  color: #e0e0e0;
+  font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Courier New', monospace;
+  z-index: 10;
+}
+
+.terminal-loading .loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top: 3px solid #4a9eff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 20px;
+  box-shadow: 0 0 20px rgba(74, 158, 255, 0.3);
+}
+
+.terminal-loading p {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  opacity: 0.9;
+  letter-spacing: 0.5px;
+}
+
 .terminal-error {
   display: flex;
   flex-direction: column;
@@ -464,16 +510,6 @@ body .xterm.theme-dark .xterm-selection .xterm-char {
   justify-content: center;
   padding: 40px 20px;
   text-align: center;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid rgba(255, 255, 255, 0.1);
-  border-top-color: #4caf50;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 16px;
 }
 
 @keyframes spin {
