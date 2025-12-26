@@ -836,11 +836,13 @@ export class TerminalComponent {
   }
 
   /**
-   * 更新状态
+   * 更新终端连接状态显示
+   * 
+   * @param {string} status - 连接状态，可选值：'connected'、'disconnected'、'reconnecting'
    */
   updateStatus(status) {
-    const indicator = document.querySelector('.status-indicator');
-    const text = document.querySelector('.status-text');
+    const indicator = this.container.querySelector('.status-indicator');
+    const text = this.container.querySelector('.status-text');
     
     if (indicator) {
       indicator.className = `status-indicator ${status}`;

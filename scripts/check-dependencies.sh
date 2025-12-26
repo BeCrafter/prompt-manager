@@ -43,7 +43,7 @@ NODE_MAJOR=$(echo $NODE_VERSION | cut -d'.' -f1 | sed 's/v//')
 if [ "$NODE_MAJOR" -lt 22 ]; then
     echo -e "${RED}✗ Node.js 版本过低！${NC}"
     echo -e "${YELLOW}当前版本: $NODE_VERSION${NC}"
-    echo -e "${YELLOW}要求版本: >=22.0.0${NC}"
+    echo -e "${YELLOW}要求版本: >=22.20.0${NC}"
     exit 1
 elif [ "$NODE_MAJOR" -ge 23 ]; then
     echo -e "${YELLOW}⚠ Node.js 版本高于推荐版本${NC}"

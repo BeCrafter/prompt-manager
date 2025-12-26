@@ -86,7 +86,7 @@
     "zod": "^3.23.8"
   },
   "engines": {
-    "node": ">=22.0.0 <23.0.0"
+    "node": ">=22.20.0 <23.0.0"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.2"

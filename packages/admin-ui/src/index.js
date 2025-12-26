@@ -7,6 +7,23 @@ import '../css/recommended-prompts.css';
 import '../css/markdown.css';
 import 'highlight.js/styles/github.css';
 
+// 导入组件
+import { LoginView } from './components/LoginView';
+import { HeaderView } from './components/HeaderView';
+import { PrimaryNav } from './components/PrimaryNav';
+import { SidebarView } from './components/SidebarView';
+import { ToolsArea } from './components/ToolsArea';
+import { TerminalView } from './components/TerminalView';
+import { PromptsArea } from './components/PromptsArea';
+import { NewFolderModal } from './components/NewFolderModal';
+import { ArgumentModal } from './components/ArgumentModal';
+import { DeletePromptModal } from './components/DeletePromptModal';
+import { ToolsUploadModal } from './components/ToolsUploadModal';
+import { ToolDetailModal } from './components/ToolDetailModal';
+import { RecommendedPromptModal } from './components/RecommendedPromptModal';
+import { SyncPromptModal } from './components/SyncPromptModal';
+import { LoadingOverlay } from './components/LoadingOverlay';
+
 // 导入 CodeMirror 相关功能
 import { initCodeMirror } from './codemirror';
 
@@ -82,6 +99,43 @@ const API_HOST = 'http://localhost:5621';
 // API 基础配置
 const API_BASE = `${API_HOST}/adminapi`;
 const API_SURGE = `${API_HOST}/surge/`;
+
+/**
+ * 初始化 DOM 组件
+ * 将拆分的 HTML 片段注入到页面中，并替换挂载点以保持原有 DOM 层级
+ */
+function initDOMComponents() {
+  const mountComponent = (wrapperId, html) => {
+    const wrapper = document.getElementById(wrapperId);
+    if (wrapper) {
+      const fragment = document.createRange().createContextualFragment(html);
+      wrapper.replaceWith(fragment);
+    }
+  };
+
+  mountComponent('login-wrapper', LoginView.getHTML());
+  mountComponent('header-wrapper', HeaderView.getHTML());
+  mountComponent('primary-nav-wrapper', PrimaryNav.getHTML());
+  mountComponent('sidebar-wrapper', SidebarView.getHTML());
+  mountComponent('tools-area-wrapper', ToolsArea.getHTML());
+  mountComponent('terminal-area-wrapper', TerminalView.getHTML());
+  mountComponent('prompts-area-wrapper', PromptsArea.getHTML());
+
+  // 注入弹窗和覆盖层到 body 末尾
+  const modalContainer = document.createElement('div');
+  modalContainer.id = 'modal-container';
+  modalContainer.innerHTML = `
+    ${NewFolderModal.getHTML()}
+    ${ArgumentModal.getHTML()}
+    ${DeletePromptModal.getHTML()}
+    ${ToolsUploadModal.getHTML()}
+    ${ToolDetailModal.getHTML()}
+    ${RecommendedPromptModal.getHTML()}
+    ${SyncPromptModal.getHTML()}
+    ${LoadingOverlay.getHTML()}
+  `;
+  document.body.appendChild(modalContainer);
+}
 
 // 提示组件
 function showMessage(message, type = 'success', options = {}) {
@@ -2066,7 +2120,7 @@ async function savePrompt() {
     originalText = (saveBtn.textContent || '保存').trim();
     saveBtn.disabled = true;
     saveBtn.classList.add('loading');
-    saveBtn.textContent = '保存中...';
+    // saveBtn.textContent = '保存中...';
   }
   
   try {
@@ -2549,6 +2603,9 @@ async function initApp() {
 
 // 启动应用
 document.addEventListener('DOMContentLoaded', async () => {
+  // 初始化 DOM 组件
+  initDOMComponents();
+
   try {
     await checkAuthRequirement();
     setupLoginEvents();

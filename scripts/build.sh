@@ -55,12 +55,12 @@ check_environment() {
     if [ "$NODE_MAJOR" -lt 22 ]; then
         echo -e "${RED}✗ Node.js 版本过低！${NC}"
         echo -e "${YELLOW}当前版本: $NODE_VERSION${NC}"
-        echo -e "${YELLOW}要求版本: >=22.0.0 <23.0.0${NC}"
+        echo -e "${YELLOW}要求版本: >=22.20.0 <23.0.0${NC}"
         exit 1
     elif [ "$NODE_MAJOR" -ge 23 ]; then
         echo -e "${RED}✗ Node.js 版本过高！${NC}"
         echo -e "${YELLOW}当前版本: $NODE_VERSION${NC}"
-        echo -e "${YELLOW}要求版本: >=22.0.0 <23.0.0${NC}"
+        echo -e "${YELLOW}要求版本: >=22.20.0 <23.0.0${NC}"
         echo -e "${YELLOW}建议使用 Node.js v22.20.0${NC}"
         exit 1
     else

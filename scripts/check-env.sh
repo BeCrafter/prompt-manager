@@ -36,7 +36,7 @@ check_node_version() {
     
     echo -e "${GREEN}✓ Node.js 版本: $NODE_VERSION${NC}"
     
-    # 检查是否符合要求 (>=22.0.0 <23.0.0)
+    # 检查是否符合要求 (>=22.20.0 <23.0.0)
     if [ "$NODE_MAJOR" -lt 22 ]; then
         echo -e "${YELLOW}⚠ Node.js 版本过低，建议使用 v22.x${NC}"
         echo -e "${YELLOW}当前版本: $NODE_VERSION${NC}"
