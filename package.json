@@ -1,6 +1,6 @@
 {
   "name": "@becrafter/prompt-manager",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Remote MCP Server for managing prompts",
   "publishConfig": {
     "access": "public"
