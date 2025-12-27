@@ -1,0 +1,6 @@
+name: "DeepSeek"
+provider: "deepseek"
+model: "deepseek-chat"
+apiEndpoint: "https://api.deepseek.com/v1/chat/completions"
+apiKey: ""
+enabled: true

@@ -97,6 +97,23 @@ export async function startServer(options = {}) {
       
       await promptManager.loadPrompts();
       
+      // 加载优化模板和模型
+      try {
+        const { templateManager } = await import('./services/template.service.js');
+        await templateManager.loadTemplates();
+        logger.info('优化模板加载完成');
+      } catch (error) {
+        logger.warn('加载优化模板失败，继续启动服务', { error: error.message });
+      }
+
+      try {
+        const { modelManager } = await import('./services/model.service.js');
+        await modelManager.loadModels();
+        logger.info('优化模型加载完成');
+      } catch (error) {
+        logger.warn('加载优化模型失败，继续启动服务', { error: error.message });
+      }
+      
       // 同步系统工具到沙箱环境
       try {
         await syncSystemTools();

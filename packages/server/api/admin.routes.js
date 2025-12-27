@@ -13,6 +13,9 @@ import { logger } from '../utils/logger.js';
 import { util, GROUP_META_FILENAME } from '../utils/util.js';
 import { config } from '../utils/config.js';
 import {adminAuthMiddleware} from '../middlewares/auth.middleware.js'
+import { templateManager } from '../services/template.service.js';
+import { modelManager } from '../services/model.service.js';
+import { optimizationService } from '../services/optimization.service.js';
 
 const router = express.Router();
 
@@ -615,6 +618,239 @@ router.get('/terminal/ls', adminAuthMiddleware, (req, res) => {
 
     } catch (error) {
         logger.error('列出目录内容失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ==================== 优化相关路由 ====================
+
+// 优化提示词（流式）
+router.post('/prompts/optimize', adminAuthMiddleware, async (req, res) => {
+    try {
+        const { prompt, templateId, modelId, sessionId } = req.body;
+
+        if (!prompt || !templateId || !modelId) {
+            return res.status(400).json({ error: '提示词、模板ID和模型ID是必需的' });
+        }
+
+        // 设置 SSE 响应头
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+
+        // 调用优化服务（流式）
+        await optimizationService.optimizePrompt(
+            prompt,
+            templateId,
+            modelId,
+            (chunk) => {
+                // 流式输出回调
+                res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+            },
+            sessionId
+        );
+
+        // 发送完成信号
+        res.write('data: [DONE]\n\n');
+        res.end();
+    } catch (error) {
+        logger.error('优化提示词失败:', error);
+        res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+        res.end();
+    }
+});
+
+// 迭代优化（流式）
+router.post('/prompts/optimize/iterate', adminAuthMiddleware, async (req, res) => {
+    try {
+        const { currentResult, templateId, modelId, sessionId } = req.body;
+
+        if (!currentResult || !templateId || !modelId || !sessionId) {
+            return res.status(400).json({ error: '当前结果、模板ID、模型ID和会话ID是必需的' });
+        }
+
+        // 设置 SSE 响应头
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+
+        // 调用迭代优化服务（流式）
+        await optimizationService.iterateOptimization(
+            currentResult,
+            templateId,
+            modelId,
+            (chunk) => {
+                // 流式输出回调
+                res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+            },
+            sessionId
+        );
+
+        // 发送完成信号
+        res.write('data: [DONE]\n\n');
+        res.end();
+    } catch (error) {
+        logger.error('迭代优化失败:', error);
+        res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+        res.end();
+    }
+});
+
+// 清除会话迭代信息
+router.delete('/prompts/optimize/session/:sessionId', adminAuthMiddleware, (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        optimizationService.clearSession(sessionId);
+        res.json({ message: '会话已清除' });
+    } catch (error) {
+        logger.error('清除会话失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 获取会话迭代信息
+router.get('/prompts/optimize/session/:sessionId', adminAuthMiddleware, (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        const sessionInfo = optimizationService.getSessionInfo(sessionId);
+        res.json(sessionInfo);
+    } catch (error) {
+        logger.error('获取会话信息失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ==================== 模板管理路由 ====================
+
+// 获取所有模板
+router.get('/optimization/templates', adminAuthMiddleware, (req, res) => {
+    try {
+        const templates = templateManager.getTemplates();
+        res.json(templates);
+    } catch (error) {
+        logger.error('获取模板列表失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 创建模板
+router.post('/optimization/templates', adminAuthMiddleware, async (req, res) => {
+    try {
+        const template = await templateManager.createTemplate(req.body);
+        res.json(template);
+    } catch (error) {
+        logger.error('创建模板失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 更新模板
+router.put('/optimization/templates/:id', adminAuthMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const template = await templateManager.updateTemplate(id, req.body);
+        res.json(template);
+    } catch (error) {
+        logger.error('更新模板失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 删除模板
+router.delete('/optimization/templates/:id', adminAuthMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        await templateManager.deleteTemplate(id);
+        res.json({ message: '模板删除成功' });
+    } catch (error) {
+        logger.error('删除模板失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ==================== 模型管理路由 ====================
+
+// 获取所有模型
+router.get('/optimization/models', adminAuthMiddleware, (req, res) => {
+    try {
+        const models = modelManager.getModels();
+        res.json(models);
+    } catch (error) {
+        logger.error('获取模型列表失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 创建模型
+router.post('/optimization/models', adminAuthMiddleware, async (req, res) => {
+    try {
+        const model = await modelManager.createModel(req.body);
+        res.json(model);
+    } catch (error) {
+        logger.error('创建模型失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 更新模型
+router.put('/optimization/models/:id', adminAuthMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const model = await modelManager.updateModel(id, req.body);
+        res.json(model);
+    } catch (error) {
+        logger.error('更新模型失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 删除模型
+router.delete('/optimization/models/:id', adminAuthMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        await modelManager.deleteModel(id);
+        res.json({ message: '模型删除成功' });
+    } catch (error) {
+        logger.error('删除模型失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 测试模型连接
+router.post('/optimization/models/:id/test', adminAuthMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await optimizationService.testModel(id);
+        res.json(result);
+    } catch (error) {
+        logger.error('测试模型连接失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ==================== 优化配置路由 ====================
+
+// 获取优化配置（预留接口，可用于全局配置）
+router.get('/optimization/config', adminAuthMiddleware, (req, res) => {
+    try {
+        res.json({
+            maxIterations: 10,
+            encryptionEnabled: true
+        });
+    } catch (error) {
+        logger.error('获取优化配置失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 更新优化配置（预留接口）
+router.put('/optimization/config', adminAuthMiddleware, (req, res) => {
+    try {
+        res.json({ message: '配置更新成功' });
+    } catch (error) {
+        logger.error('更新优化配置失败:', error);
         res.status(500).json({ error: error.message });
     }
 });

@@ -5,6 +5,7 @@ import '../css/main.css';
 import '../css/terminal-fix.css';
 import '../css/recommended-prompts.css';
 import '../css/markdown.css';
+import '../css/optimization.css';
 import 'highlight.js/styles/github.css';
 
 // 导入组件
@@ -23,6 +24,11 @@ import { ToolDetailModal } from './components/ToolDetailModal';
 import { RecommendedPromptModal } from './components/RecommendedPromptModal';
 import { SyncPromptModal } from './components/SyncPromptModal';
 import { LoadingOverlay } from './components/LoadingOverlay';
+import { OptimizationDrawer } from './components/OptimizationDrawer';
+import { TemplateListModal } from './components/TemplateListModal';
+import { TemplateEditorModal } from './components/TemplateEditorModal';
+import { ModelConfigModal } from './components/ModelConfigModal';
+import { OptimizationConfigModal } from './components/OptimizationConfigModal';
 
 // 导入 CodeMirror 相关功能
 import { initCodeMirror } from './codemirror';
@@ -72,6 +78,12 @@ let pendingDeletePromptPath = null;
 let promptGroupBtnEl = null;
 let promptGroupLabelEl = null;
 let promptGroupDropdownEl = null;
+// 优化功能状态
+let optimizationSessionId = null;
+let optimizationResult = '';
+let isOptimizing = false;
+let currentTemplates = [];
+let currentModels = [];
 let promptGroupSearchInput = null;
 let promptGroupCascaderEl = null;
 let promptGroupSearchResultsEl = null;
@@ -133,6 +145,11 @@ function initDOMComponents() {
     ${RecommendedPromptModal.getHTML()}
     ${SyncPromptModal.getHTML()}
     ${LoadingOverlay.getHTML()}
+    ${OptimizationDrawer.getHTML()}
+    ${TemplateListModal.getHTML()}
+    ${TemplateEditorModal.getHTML()}
+    ${ModelConfigModal.getHTML()}
+    ${OptimizationConfigModal.getHTML()}
   `;
   document.body.appendChild(modalContainer);
 }
@@ -2594,12 +2611,1065 @@ async function initApp() {
     // 重新加载配置后，根据认证要求设置登录界面的显示
     updateLoginDisplay();
 
+    // 初始化优化功能
+    initOptimization();
+
   } catch (err) {
     console.error('初始化错误:', err);
     document.getElementById('loginError').textContent = '资源加载失败，请刷新重试';
     throw err;
   }
 }
+
+// ==================== 优化功能初始化 ====================
+
+function initOptimization() {
+  // 绑定 AI 优化按钮事件
+  const aiOptimizeBtn = document.getElementById('aiOptimizeBtn');
+  if (aiOptimizeBtn) {
+    aiOptimizeBtn.addEventListener('click', openOptimizationDrawer);
+  }
+
+  // 绑定优化抽屉事件
+  setupOptimizationDrawerEvents();
+
+  // 加载模板和模型列表
+  loadTemplates();
+  loadModels();
+}
+
+// ==================== 优化抽屉事件 ====================
+
+function setupOptimizationDrawerEvents() {
+  // 关闭抽屉
+  const closeDrawerBtn = document.getElementById('closeDrawerBtn');
+  const cancelBtn = document.getElementById('cancelBtn');
+  const drawerOverlay = document.querySelector('.drawer-overlay');
+
+  [closeDrawerBtn, cancelBtn, drawerOverlay].forEach(el => {
+    if (el) {
+      el.addEventListener('click', closeOptimizationDrawer);
+    }
+  });
+
+  // 配置模型按钮（在下拉列表中）
+  const configModelAction = document.getElementById('configModelAction');
+  if (configModelAction) {
+    configModelAction.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeAllCustomSelects();
+      openModelConfigModal();
+    });
+  }
+
+  // 配置模板按钮（在下拉列表中）
+  const configTemplateAction = document.getElementById('configTemplateAction');
+  if (configTemplateAction) {
+    configTemplateAction.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeAllCustomSelects();
+      openTemplateListModal();
+    });
+  }
+
+  // 开始优化按钮
+  const startOptimizeBtn = document.getElementById('startOptimizeBtn');
+  if (startOptimizeBtn) {
+    startOptimizeBtn.addEventListener('click', startOptimization);
+  }
+
+  // 继续优化按钮
+  const iterateBtn = document.getElementById('iterateBtn');
+  if (iterateBtn) {
+    iterateBtn.addEventListener('click', iterateOptimization);
+  }
+
+  // 应用优化按钮
+  const applyOptimizationBtn = document.getElementById('applyOptimizationBtn');
+  if (applyOptimizationBtn) {
+    applyOptimizationBtn.addEventListener('click', applyOptimization);
+  }
+
+  // 自定义下拉菜单交互
+  setupCustomSelect('model');
+  setupCustomSelect('template');
+
+  // 原始提示词输入
+  const originalEditor = document.getElementById('originalEditor');
+  if (originalEditor) {
+    originalEditor.addEventListener('input', updateOptimizeButtonState);
+  }
+}
+
+// ==================== 自定义下拉菜单 ====================
+
+function setupCustomSelect(type) {
+  const wrapper = document.getElementById(`${type}SelectWrapper`);
+  const trigger = document.getElementById(`${type}SelectTrigger`);
+  const options = document.getElementById(`${type}SelectOptions`);
+
+  if (!wrapper || !trigger || !options) return;
+
+  // 点击触发器
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleCustomSelect(type);
+  });
+
+  // 点击选项
+  options.addEventListener('click', (e) => {
+    const option = e.target.closest('.custom-select-option');
+    if (option && !option.classList.contains('disabled')) {
+      const value = option.dataset.value;
+      const text = option.querySelector('span').textContent;
+      selectCustomOption(type, value, text);
+    }
+  });
+
+  // 点击外部关闭
+  document.addEventListener('click', (e) => {
+    if (!wrapper.contains(e.target)) {
+      closeCustomSelect(type);
+    }
+  });
+}
+
+function toggleCustomSelect(type) {
+  const trigger = document.getElementById(`${type}SelectTrigger`);
+  const options = document.getElementById(`${type}SelectOptions`);
+
+  if (!trigger || !options) return;
+
+  const isOpen = options.classList.contains('show');
+  
+  // 关闭所有下拉菜单
+  closeAllCustomSelects();
+
+  // 如果之前是关闭的，则打开
+  if (!isOpen) {
+    trigger.classList.add('active');
+    options.classList.add('show');
+  }
+}
+
+function closeCustomSelect(type) {
+  const trigger = document.getElementById(`${type}SelectTrigger`);
+  const options = document.getElementById(`${type}SelectOptions`);
+
+  if (trigger) {
+    trigger.classList.remove('active');
+  }
+  if (options) {
+    options.classList.remove('show');
+  }
+}
+
+function closeAllCustomSelects() {
+  closeCustomSelect('model');
+  closeCustomSelect('template');
+}
+
+function selectCustomOption(type, value, text) {
+  const trigger = document.getElementById(`${type}SelectTrigger`);
+  const options = document.getElementById(`${type}SelectOptions`);
+
+  if (!trigger || !options) return;
+
+  // 更新触发器显示
+  const span = trigger.querySelector('span');
+  if (span) {
+    span.textContent = text || '请选择' + (type === 'model' ? '模型' : '模板');
+  }
+
+  // 更新选中状态
+  if (value) {
+    trigger.classList.remove('placeholder');
+    trigger.classList.add('has-value');
+  } else {
+    trigger.classList.add('placeholder');
+    trigger.classList.remove('has-value');
+  }
+
+  // 更新选项选中状态
+  const optionElements = options.querySelectorAll('.custom-select-option');
+  optionElements.forEach(option => {
+    if (option.dataset.value === value) {
+      option.classList.add('selected');
+    } else {
+      option.classList.remove('selected');
+    }
+  });
+
+  // 保存选中值（用于后续获取）
+  trigger.dataset.value = value;
+
+  // 关闭下拉菜单
+  closeCustomSelect(type);
+
+  // 更新按钮状态
+  updateOptimizeButtonState();
+}
+
+function getCustomSelectValue(type) {
+  const trigger = document.getElementById(`${type}SelectTrigger`);
+  return trigger ? trigger.dataset.value || '' : '';
+}
+
+// ==================== 优化抽屉操作 ====================
+
+function openOptimizationDrawer() {
+  const drawer = document.getElementById('optimizationDrawer');
+  if (drawer) {
+    drawer.classList.remove('hidden');
+
+    // 将当前编辑器内容填充到原始提示词
+    const originalEditor = document.getElementById('originalEditor');
+    const currentContent = editor ? editor.getValue() : '';
+    if (originalEditor) {
+      originalEditor.value = currentContent;
+    }
+
+    // 生成新的会话 ID
+    optimizationSessionId = 'session-' + Date.now();
+    optimizationResult = '';
+    isOptimizing = false;
+
+    // 重置优化结果区域
+    const optimizedOutput = document.getElementById('optimizedOutput');
+    if (optimizedOutput) {
+      optimizedOutput.innerHTML = '<p class="placeholder-text">优化结果将在这里显示...</p>';
+    }
+
+    // 更新按钮状态
+    updateOptimizeButtonState();
+    updateIterateButtonState();
+    updateApplyButtonState();
+  }
+}
+
+function closeOptimizationDrawer() {
+  const drawer = document.getElementById('optimizationDrawer');
+  if (drawer) {
+    drawer.classList.add('hidden');
+
+    // 清除会话信息
+    if (optimizationSessionId) {
+      clearOptimizationSession(optimizationSessionId);
+      optimizationSessionId = null;
+    }
+
+    // 重置状态
+    optimizationResult = '';
+    isOptimizing = false;
+  }
+}
+
+// ==================== 优化操作 ====================
+
+async function startOptimization() {
+  const prompt = document.getElementById('originalEditor').value;
+  const templateId = getCustomSelectValue('template');
+  const modelId = getCustomSelectValue('model');
+
+  if (!prompt || !templateId || !modelId) {
+    showMessage('请填写所有必填项', 'error');
+    return;
+  }
+
+  isOptimizing = true;
+  updateOptimizeButtonState();
+
+  const optimizedOutput = document.getElementById('optimizedOutput');
+  optimizedOutput.innerHTML = '';
+
+  try {
+    const response = await fetch(`${API_BASE}/prompts/optimize`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${currentToken}`
+      },
+      body: JSON.stringify({
+        prompt,
+        templateId,
+        modelId,
+        sessionId: optimizationSessionId
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`优化请求失败 (${response.status}): ${errorText}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    optimizationResult = '';
+    let hasError = false;
+
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+
+          if (data === '[DONE]') {
+            continue;
+          }
+
+          try {
+            const parsed = JSON.parse(data);
+
+            if (parsed.chunk) {
+              optimizationResult += parsed.chunk;
+              optimizedOutput.textContent = optimizationResult;
+              optimizedOutput.scrollTop = optimizedOutput.scrollHeight;
+            } else if (parsed.error) {
+              hasError = true;
+              throw new Error(parsed.error);
+            }
+          } catch (error) {
+            if (!hasError) {
+              console.warn('解析数据失败:', error);
+            }
+          }
+        }
+      }
+    }
+
+    // 优化完成
+    isOptimizing = false;
+    updateOptimizeButtonState();
+    updateIterateButtonState();
+    updateApplyButtonState();
+
+    showMessage('优化完成', 'success');
+  } catch (error) {
+    console.error('优化失败:', error);
+    isOptimizing = false;
+    updateOptimizeButtonState();
+
+    // 在优化结果区域显示错误信息
+    optimizedOutput.innerHTML = `<div class="error-message">
+      <h4>❌ 优化失败</h4>
+      <p>${escapeHtml(error.message)}</p>
+    </div>`;
+
+    showMessage('优化失败: ' + error.message, 'error');
+  }
+}
+
+async function iterateOptimization() {
+  const modelId = getCustomSelectValue('model');
+
+  if (!modelId) {
+    showMessage('请选择模型', 'error');
+    return;
+  }
+
+  if (!optimizationResult) {
+    showMessage('请先进行初始优化', 'error');
+    return;
+  }
+
+  isOptimizing = true;
+  updateIterateButtonState();
+
+  const optimizedOutput = document.getElementById('optimizedOutput');
+  optimizedOutput.innerHTML = '';
+
+  try {
+    const response = await fetch(`${API_BASE}/prompts/optimize`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${currentToken}`
+      },
+      body: JSON.stringify({
+        prompt: optimizationResult,
+        templateId: getCustomSelectValue('template'),
+        modelId: modelId,
+        sessionId: optimizationSessionId
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`迭代优化请求失败 (${response.status}): ${errorText}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    optimizationResult = '';
+    let hasError = false;
+
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+
+          if (data === '[DONE]') {
+            continue;
+          }
+
+          try {
+            const parsed = JSON.parse(data);
+
+            if (parsed.chunk) {
+              optimizationResult += parsed.chunk;
+              optimizedOutput.textContent = optimizationResult;
+              optimizedOutput.scrollTop = optimizedOutput.scrollHeight;
+            } else if (parsed.error) {
+              hasError = true;
+              throw new Error(parsed.error);
+            }
+          } catch (error) {
+            if (!hasError) {
+              console.warn('解析数据失败:', error);
+            }
+          }
+        }
+      }
+    }
+
+    // 迭代优化完成
+    isOptimizing = false;
+    updateIterateButtonState();
+    updateApplyButtonState();
+
+    showMessage('迭代优化完成', 'success');
+  } catch (error) {
+    console.error('迭代优化失败:', error);
+    isOptimizing = false;
+    updateIterateButtonState();
+
+    // 在优化结果区域显示错误信息
+    optimizedOutput.innerHTML = `<div class="error-message">
+      <h4>❌ 迭代优化失败</h4>
+      <p>${escapeHtml(error.message)}</p>
+    </div>`;
+
+    showMessage('迭代优化失败: ' + error.message, 'error');
+  }
+}
+
+function applyOptimization() {
+  if (!optimizationResult) {
+    showMessage('没有可应用的优化结果', 'error');
+    return;
+  }
+
+  if (editor) {
+    editor.setValue(optimizationResult);
+    showMessage('优化已应用', 'success');
+    closeOptimizationDrawer();
+  }
+}
+
+async function clearOptimizationSession(sessionId) {
+  try {
+    await fetch(`${API_BASE}/prompts/optimize/session/${sessionId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${currentToken}`
+      }
+    });
+  } catch (error) {
+    console.warn('清除会话失败:', error);
+  }
+}
+
+// ==================== 按钮状态更新 ====================
+
+function updateOptimizeButtonState() {
+  const startOptimizeBtn = document.getElementById('startOptimizeBtn');
+  const prompt = document.getElementById('originalEditor').value;
+  const templateId = getCustomSelectValue('template');
+  const modelId = getCustomSelectValue('model');
+
+  const canOptimize = prompt && templateId && modelId && !isOptimizing;
+  startOptimizeBtn.disabled = !canOptimize;
+  startOptimizeBtn.textContent = isOptimizing ? '优化中...' : '开始优化 →';
+}
+
+function updateIterateButtonState() {
+  const iterateBtn = document.getElementById('iterateBtn');
+  const canIterate = optimizationResult && !isOptimizing;
+  iterateBtn.disabled = !canIterate;
+}
+
+function updateApplyButtonState() {
+  const applyOptimizationBtn = document.getElementById('applyOptimizationBtn');
+  const canApply = optimizationResult && !isOptimizing;
+  applyOptimizationBtn.disabled = !canApply;
+}
+
+// ==================== 模板管理 ====================
+
+async function loadTemplates() {
+  try {
+    const response = await fetch(`${API_BASE}/optimization/templates`, {
+      headers: {
+        'Authorization': `Bearer ${currentToken}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('加载模板失败');
+    }
+
+    currentTemplates = await response.json();
+    renderTemplateOptions();
+  } catch (error) {
+    console.error('加载模板失败:', error);
+    showMessage('加载模板失败', 'error');
+  }
+}
+
+function renderTemplateOptions() {
+  const templateSelectTrigger = document.getElementById('templateSelectTrigger');
+  const templateSelectOptions = document.getElementById('templateSelectOptions');
+  if (!templateSelectTrigger || !templateSelectOptions) return;
+
+  // 清空选项
+  templateSelectOptions.innerHTML = '';
+
+  // 添加模板选项
+  currentTemplates.forEach(template => {
+    const option = document.createElement('div');
+    option.className = 'custom-select-option';
+    option.dataset.value = template.id;
+    option.innerHTML = `<span>${template.name}${template.isBuiltIn ? ' (内置)' : ''}</span><span class="check-icon">✓</span>`;
+
+    // 点击选项
+    option.addEventListener('click', () => {
+      selectCustomOption('template', template.id, template.name + (template.isBuiltIn ? ' (内置)' : ''));
+    });
+
+    templateSelectOptions.appendChild(option);
+  });
+
+  // 如果没有模板，添加默认选项
+  if (currentTemplates.length === 0) {
+    const defaultOption = document.createElement('div');
+    defaultOption.className = 'custom-select-option disabled';
+    defaultOption.dataset.value = '';
+    defaultOption.innerHTML = '<span>请选择模板</span><span class="check-icon">✓</span>';
+    templateSelectOptions.appendChild(defaultOption);
+  }
+
+  // 添加分隔线和配置按钮
+  const divider = document.createElement('div');
+  divider.className = 'custom-select-divider';
+  templateSelectOptions.appendChild(divider);
+
+  const action = document.createElement('div');
+  action.className = 'custom-select-action';
+  action.id = 'configTemplateAction';
+  action.innerHTML = '<span>⚙️ 配置模板</span>';
+  action.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeAllCustomSelects();
+    openTemplateListModal();
+  });
+  templateSelectOptions.appendChild(action);
+
+  // 如果有模板，默认选中第一条
+  if (currentTemplates.length > 0) {
+    const firstTemplate = currentTemplates[0];
+    selectCustomOption('template', firstTemplate.id, firstTemplate.name + (firstTemplate.isBuiltIn ? ' (内置)' : ''));
+  }
+}
+
+// ==================== 模型管理 ====================
+
+async function loadModels() {
+  try {
+    const response = await fetch(`${API_BASE}/optimization/models`, {
+      headers: {
+        'Authorization': `Bearer ${currentToken}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('加载模型失败');
+    }
+
+    currentModels = await response.json();
+    renderModelOptions();
+  } catch (error) {
+    console.error('加载模型失败:', error);
+    showMessage('加载模型失败', 'error');
+  }
+}
+
+function renderModelOptions() {
+  const modelSelectTrigger = document.getElementById('modelSelectTrigger');
+  const modelSelectOptions = document.getElementById('modelSelectOptions');
+  if (!modelSelectTrigger || !modelSelectOptions) return;
+
+  // 清空选项
+  modelSelectOptions.innerHTML = '';
+
+  // 添加模型选项
+  const enabledModels = currentModels.filter(model => model.enabled);
+  enabledModels.forEach(model => {
+    const option = document.createElement('div');
+    option.className = 'custom-select-option';
+    option.dataset.value = model.id;
+    option.innerHTML = `<span>${model.name}${model.isBuiltIn ? ' (内置)' : ''}</span><span class="check-icon">✓</span>`;
+
+    // 点击选项
+    option.addEventListener('click', () => {
+      selectCustomOption('model', model.id, model.name + (model.isBuiltIn ? ' (内置)' : ''));
+    });
+
+    modelSelectOptions.appendChild(option);
+  });
+
+  // 如果没有启用的模型，添加默认选项
+  if (enabledModels.length === 0) {
+    const defaultOption = document.createElement('div');
+    defaultOption.className = 'custom-select-option disabled';
+    defaultOption.dataset.value = '';
+    defaultOption.innerHTML = '<span>请选择模型</span><span class="check-icon">✓</span>';
+    modelSelectOptions.appendChild(defaultOption);
+  }
+
+  // 添加分隔线和配置按钮
+  const divider = document.createElement('div');
+  divider.className = 'custom-select-divider';
+  modelSelectOptions.appendChild(divider);
+
+  const action = document.createElement('div');
+  action.className = 'custom-select-action';
+  action.id = 'configModelAction';
+  action.innerHTML = '<span>⚙️ 配置模型</span>';
+  action.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeAllCustomSelects();
+    openModelConfigModal();
+  });
+  modelSelectOptions.appendChild(action);
+
+  // 如果有启用的模型，默认选中第一条
+  if (enabledModels.length > 0) {
+    const firstModel = enabledModels[0];
+    selectCustomOption('model', firstModel.id, firstModel.name + (firstModel.isBuiltIn ? ' (内置)' : ''));
+  }
+}
+
+// ==================== 模板列表模态框 ====================
+
+function openTemplateListModal() {
+  const modal = document.getElementById('templateListModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    renderTemplateList();
+  }
+
+  // 绑定事件
+  const createTemplateBtn = document.getElementById('createTemplateBtn');
+  const templateSearch = document.getElementById('templateSearch');
+  const templateListCloseBtn = document.getElementById('templateListCloseBtn');
+  const templateListModalClose = document.getElementById('templateListModalClose');
+
+  if (createTemplateBtn) {
+    createTemplateBtn.onclick = () => openTemplateEditorModal();
+  }
+
+  if (templateSearch) {
+    templateSearch.oninput = () => renderTemplateList(templateSearch.value);
+  }
+
+  [templateListCloseBtn, templateListModalClose].forEach(btn => {
+    if (btn) {
+      btn.onclick = closeTemplateListModal;
+    }
+  });
+}
+
+function closeTemplateListModal() {
+  const modal = document.getElementById('templateListModal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+}
+
+function renderTemplateList(search = '') {
+  const templateList = document.getElementById('templateList');
+  if (!templateList) return;
+
+  const filteredTemplates = currentTemplates.filter(template =>
+    template.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  if (filteredTemplates.length === 0) {
+    templateList.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 20px;">暂无模板</p>';
+    return;
+  }
+
+  templateList.innerHTML = filteredTemplates.map(template => `
+    <div class="template-item">
+      <div class="template-item-info">
+        <div class="template-item-name">
+          ${template.name}
+          ${template.isBuiltIn ? '<span class="template-item-badge built-in">内置</span>' : '<span class="template-item-badge custom">自定义</span>'}
+        </div>
+        <div class="template-item-description">${template.description || '暂无描述'}</div>
+      </div>
+      <div class="template-item-actions">
+        ${!template.isBuiltIn ? `
+          <button class="btn btn-outline btn-sm" onclick="editTemplate('${template.id}')">编辑</button>
+          <button class="btn btn-outline btn-sm" onclick="deleteTemplate('${template.id}')">删除</button>
+        ` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ==================== 模板编辑模态框 ====================
+
+function openTemplateEditorModal(templateId = null) {
+  const modal = document.getElementById('templateEditorModal');
+  const title = document.getElementById('templateEditorModalTitle');
+  if (modal) {
+    modal.classList.remove('hidden');
+    title.textContent = templateId ? '编辑模板' : '新增模板';
+  }
+
+  // 填充表单
+  const templateName = document.getElementById('templateName');
+  const templateDescription = document.getElementById('templateDescription');
+  const templateContent = document.getElementById('templateContent');
+
+  if (templateId) {
+    const template = currentTemplates.find(t => t.id === templateId);
+    if (template) {
+      templateName.value = template.name;
+      templateDescription.value = template.description || '';
+      templateContent.value = template.content;
+    }
+  } else {
+    templateName.value = '';
+    templateDescription.value = '';
+    templateContent.value = '';
+  }
+
+  // 绑定事件
+  const cancelTemplateBtn = document.getElementById('cancelTemplateBtn');
+  const saveTemplateBtn = document.getElementById('saveTemplateBtn');
+  const templateEditorModalClose = document.getElementById('templateEditorModalClose');
+
+  if (cancelTemplateBtn) {
+    cancelTemplateBtn.onclick = closeTemplateEditorModal;
+  }
+
+  if (templateEditorModalClose) {
+    templateEditorModalClose.onclick = closeTemplateEditorModal;
+  }
+
+  if (saveTemplateBtn) {
+    saveTemplateBtn.onclick = () => saveTemplate(templateId);
+  }
+}
+
+function closeTemplateEditorModal() {
+  const modal = document.getElementById('templateEditorModal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+}
+
+async function saveTemplate(templateId = null) {
+  const templateName = document.getElementById('templateName').value;
+  const templateDescription = document.getElementById('templateDescription').value;
+  const templateContent = document.getElementById('templateContent').value;
+
+  if (!templateName || !templateContent) {
+    showMessage('请填写必填项', 'error');
+    return;
+  }
+
+  try {
+    const url = templateId
+      ? `${API_BASE}/optimization/templates/${templateId}`
+      : `${API_BASE}/optimization/templates`;
+
+    const method = templateId ? 'PUT' : 'POST';
+
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${currentToken}`
+      },
+      body: JSON.stringify({
+        name: templateName,
+        description: templateDescription,
+        content: templateContent
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('保存模板失败');
+    }
+
+    showMessage('模板保存成功', 'success');
+    closeTemplateEditorModal();
+    closeTemplateListModal();
+    await loadTemplates();
+    renderTemplateOptions();
+  } catch (error) {
+    console.error('保存模板失败:', error);
+    showMessage('保存模板失败: ' + error.message, 'error');
+  }
+}
+
+async function deleteTemplate(templateId) {
+  if (!confirm('确定要删除此模板吗？')) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/optimization/templates/${templateId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${currentToken}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('删除模板失败');
+    }
+
+    showMessage('模板删除成功', 'success');
+    renderTemplateList();
+    await loadTemplates();
+    renderTemplateOptions();
+  } catch (error) {
+    console.error('删除模板失败:', error);
+    showMessage('删除模板失败: ' + error.message, 'error');
+  }
+}
+
+// ==================== 模型配置模态框 ====================
+
+function openModelConfigModal() {
+  const modal = document.getElementById('modelConfigModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    renderModelList();
+  }
+
+  // 绑定事件
+  const createModelBtn = document.getElementById('createModelBtn');
+  const modelConfigCloseBtn = document.getElementById('modelConfigCloseBtn');
+  const modelConfigModalClose = document.getElementById('modelConfigModalClose');
+
+  if (createModelBtn) {
+    createModelBtn.onclick = () => openModelEditorModal();
+  }
+
+  [modelConfigCloseBtn, modelConfigModalClose].forEach(btn => {
+    if (btn) {
+      btn.onclick = closeModelConfigModal;
+    }
+  });
+}
+
+function closeModelConfigModal() {
+  const modal = document.getElementById('modelConfigModal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+}
+
+function renderModelList() {
+  const modelList = document.getElementById('modelList');
+  if (!modelList) return;
+
+  if (currentModels.length === 0) {
+    modelList.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 20px;">暂无模型</p>';
+    return;
+  }
+
+  modelList.innerHTML = currentModels.map(model => `
+    <div class="model-item">
+      <div class="model-item-info">
+        <div class="model-item-name">
+          <span class="model-item-status ${model.enabled ? 'enabled' : 'disabled'}"></span>
+          ${model.name}
+          ${model.isBuiltIn ? '<span class="template-item-badge built-in">内置</span>' : '<span class="template-item-badge custom">自定义</span>'}
+        </div>
+        <div class="model-item-details">${model.provider} - ${model.model}</div>
+      </div>
+      <div class="model-item-actions">
+        <button class="btn btn-outline btn-sm" onclick="editModel('${model.id}')">编辑</button>
+        ${!model.isBuiltIn ? `<button class="btn btn-outline btn-sm" onclick="deleteModel('${model.id}')">删除</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ==================== 模型编辑模态框 ====================
+
+function openModelEditorModal(modelId = null) {
+  const modal = document.getElementById('modelEditorModal');
+  const title = document.getElementById('modelEditorModalTitle');
+  if (modal) {
+    modal.classList.remove('hidden');
+    title.textContent = modelId ? '编辑模型' : '新增模型';
+  }
+
+  // 填充表单
+  const modelName = document.getElementById('modelName');
+  const modelProvider = document.getElementById('modelProvider');
+  const modelModel = document.getElementById('modelModel');
+  const modelApiEndpoint = document.getElementById('modelApiEndpoint');
+  const modelApiKey = document.getElementById('modelApiKey');
+  const modelEnabled = document.getElementById('modelEnabled');
+
+  if (modelId) {
+    const model = currentModels.find(m => m.id === modelId);
+    if (model) {
+      modelName.value = model.name;
+      modelProvider.value = model.provider;
+      modelModel.value = model.model;
+      modelApiEndpoint.value = model.apiEndpoint;
+      modelApiKey.value = model.apiKey || '';
+      modelEnabled.checked = model.enabled !== false;
+    }
+  } else {
+    modelName.value = '';
+    modelProvider.value = '';
+    modelModel.value = '';
+    modelApiEndpoint.value = '';
+    modelApiKey.value = '';
+    modelEnabled.checked = true;
+  }
+
+  // 绑定事件
+  const cancelModelBtn = document.getElementById('cancelModelBtn');
+  const saveModelBtn = document.getElementById('saveModelBtn');
+  const modelEditorModalClose = document.getElementById('modelEditorModalClose');
+
+  if (cancelModelBtn) {
+    cancelModelBtn.onclick = closeModelEditorModal;
+  }
+
+  if (modelEditorModalClose) {
+    modelEditorModalClose.onclick = closeModelEditorModal;
+  }
+
+  if (saveModelBtn) {
+    saveModelBtn.onclick = () => saveModel(modelId);
+  }
+}
+
+function closeModelEditorModal() {
+  const modal = document.getElementById('modelEditorModal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+}
+
+async function saveModel(modelId = null) {
+  const modelName = document.getElementById('modelName').value;
+  const modelProvider = document.getElementById('modelProvider').value;
+  const modelModel = document.getElementById('modelModel').value;
+  const modelApiEndpoint = document.getElementById('modelApiEndpoint').value;
+  const modelApiKey = document.getElementById('modelApiKey').value;
+  const modelEnabled = document.getElementById('modelEnabled').checked;
+
+  if (!modelName || !modelProvider || !modelModel || !modelApiEndpoint) {
+    showMessage('请填写必填项', 'error');
+    return;
+  }
+
+  try {
+    const url = modelId
+      ? `${API_BASE}/optimization/models/${modelId}`
+      : `${API_BASE}/optimization/models`;
+
+    const method = modelId ? 'PUT' : 'POST';
+
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${currentToken}`
+      },
+      body: JSON.stringify({
+        name: modelName,
+        provider: modelProvider,
+        model: modelModel,
+        apiEndpoint: modelApiEndpoint,
+        apiKey: modelApiKey,
+        enabled: modelEnabled
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('保存模型失败');
+    }
+
+    showMessage('模型保存成功', 'success');
+    closeModelEditorModal();
+    closeModelConfigModal();
+    await loadModels();
+    renderModelOptions();
+  } catch (error) {
+    console.error('保存模型失败:', error);
+    showMessage('保存模型失败: ' + error.message, 'error');
+  }
+}
+
+async function deleteModel(modelId) {
+  if (!confirm('确定要删除此模型吗？')) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/optimization/models/${modelId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${currentToken}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('删除模型失败');
+    }
+
+    showMessage('模型删除成功', 'success');
+    renderModelList();
+    await loadModels();
+    renderModelOptions();
+  } catch (error) {
+    console.error('删除模型失败:', error);
+    showMessage('删除模型失败: ' + error.message, 'error');
+  }
+}
+
+// 将全局函数暴露给 window 对象，以便在 HTML onclick 中调用
+window.editTemplate = openTemplateEditorModal;
+window.deleteTemplate = deleteTemplate;
+window.editModel = openModelEditorModal;
+window.deleteModel = deleteModel;
 
 // 启动应用
 document.addEventListener('DOMContentLoaded', async () => {

@@ -78,6 +78,12 @@ export class PromptsArea {
                   <button id="editModeBtn" class="mode-btn active" data-mode="edit">编辑</button>
                   <button id="previewModeBtn" class="mode-btn" data-mode="preview">预览</button>
                 </div>
+                <button id="aiOptimizeBtn" class="btn btn-outline btn-sm" title="AI 优化">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                  </svg>
+                  AI 优化
+                </button>
                 <button id="saveBtn" class="btn btn-primary btn-sm">
                   保存
                 </button>

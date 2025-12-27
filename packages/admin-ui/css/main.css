@@ -1762,7 +1762,7 @@ aside {
 }
 
 .modal-dialog {
-  width: min(420px, 90vw);
+  width: min(520px, 90vw);
   margin: auto;
 }
 
