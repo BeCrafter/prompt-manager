@@ -72,6 +72,10 @@
       {
         "from": "../../env.example",
         "to": "runtime/.env"
+      },
+      {
+        "from": "../../packages/server/models/providers.yaml",
+        "to": "runtime/models/providers.yaml"
       }
     ],
     "mac": {

@@ -127,10 +127,10 @@
 .model-selector .form-control,
 .template-selector .form-control {
   flex: 1;
-  height: 36px;
-  padding: 8px 12px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
+  height: 40px;
+  padding: 10px 14px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
   font-size: 14px;
   color: #333;
   background-color: #fff;
@@ -138,21 +138,21 @@
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 36px;
+  background-position: right 14px center;
+  padding-right: 40px;
   cursor: pointer;
 }
 
 .model-selector .form-control:hover,
 .template-selector .form-control:hover {
-  border-color: #1890ff;
+  border-color: #9ca3af;
 }
 
 .model-selector .form-control:focus,
 .template-selector .form-control:focus {
   outline: none;
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 /* 下拉选项样式 */
@@ -217,9 +217,9 @@
 
 .original-prompt-section textarea {
   width: 100%;
-  padding: 12px;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
+  padding: 10px 14px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 14px;
   line-height: 1.6;
@@ -230,10 +230,14 @@
   transition: all 0.2s;
 }
 
+.original-prompt-section textarea:hover {
+  border-color: #9ca3af;
+}
+
 .original-prompt-section textarea:focus {
   outline: none;
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .original-prompt-section textarea::placeholder {
@@ -477,17 +481,69 @@
 
 .form-control {
   width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  padding: 10px 14px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
+}
+
+.form-control:hover {
+  border-color: #9ca3af;
 }
 
 .form-control:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* 原生select元素样式优化 */
+select.form-control {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%23B3D9FF' d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+  cursor: pointer;
+  position: relative;
+  border-color: #B3D9FF;
+}
+
+select.form-control:hover {
+  border-color: #007AFF;
+}
+
+/* Firefox兼容 */
+select.form-control::-ms-expand {
+  display: none;
+}
+
+/* select下拉选项样式 */
+select.form-control option {
+  padding: 12px 14px;
+  background-color: #fff;
+  color: #333;
+  min-height: 48px;
+  line-height: 1.5;
+}
+
+select.form-control option:hover {
+  background-color: #f5f5f5;
+}
+
+select.form-control option:checked {
+  background-color: #007AFF;
+  color: white;
+  font-weight: 500;
+}
+
+select.form-control option:disabled {
+  color: #9ca3af;
+  background-color: #f9fafb;
 }
 
 .form-text {
@@ -508,6 +564,16 @@
   width: 16px;
   height: 16px;
   cursor: pointer;
+}
+
+/* 自定义模型输入样式 */
+.custom-model-input {
+  margin-top: 8px;
+}
+
+.custom-model-input input::placeholder {
+  color: #9ca3af;
+  font-style: italic;
 }
 
 /* 表单信息框 */

@@ -1,10 +1,14 @@
 import fs from 'fs-extra';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import YAML from 'yaml';
 import { z } from 'zod';
 import crypto from 'crypto';
 import os from 'os';
 import { logger } from '../utils/logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * 模型数据结构验证schema
@@ -33,10 +37,11 @@ const ALGORITHM = 'aes-256-cbc';
  */
 class ModelManager {
   constructor() {
-    this.builtInDir = path.join(process.cwd(), 'packages/server/models/built-in');
-    this.customDir = path.join(os.homedir(), '.prompt-manager/models/custom');
+    this.builtInDir = path.join(__dirname, '../configs/models/built-in');
+    this.customDir = path.join(os.homedir(), '.prompt-manager/configs/models');
     this.loadedModels = new Map();
     this.idToPathMap = new Map();
+    this.providersConfig = null;
   }
 
   /**
@@ -66,6 +71,65 @@ class ModelManager {
   async ensureDirectories() {
     await fs.ensureDir(this.builtInDir);
     await fs.ensureDir(this.customDir);
+  }
+
+  /**
+   * 加载提供商配置
+   * @returns {Object} 提供商配置
+   */
+  async loadProvidersConfig() {
+    if (this.providersConfig) {
+      return this.providersConfig;
+    }
+
+    const providersConfigPath = path.join(__dirname, '../configs/models/providers.yaml');
+
+    try {
+      if (fs.existsSync(providersConfigPath)) {
+        const content = await fs.readFile(providersConfigPath, 'utf-8');
+        this.providersConfig = YAML.parse(content);
+        logger.info('提供商配置加载成功:', providersConfigPath);
+        return this.providersConfig;
+      }
+    } catch (error) {
+      logger.warn(`加载提供商配置失败:`, error.message);
+    }
+
+    this.providersConfig = { providers: {} };
+    return this.providersConfig;
+  }
+
+  /**
+   * 获取提供商列表
+   * @returns {Array} 提供商列表
+   */
+  async getProviders() {
+    const config = await this.loadProvidersConfig();
+    return Object.entries(config.providers || {}).map(([key, value]) => ({
+      key,
+      ...value
+    }));
+  }
+
+  /**
+   * 获取提供商的默认配置
+   * @param {string} providerKey - 提供商键名
+   * @returns {Object} 提供商默认配置
+   */
+  async getProviderDefaults(providerKey) {
+    const config = await this.loadProvidersConfig();
+    const provider = config.providers?.[providerKey];
+
+    if (!provider) {
+      return null;
+    }
+
+    return {
+      provider: provider.name,
+      model: provider.defaultModel,
+      apiEndpoint: provider.defaultEndpoint,
+      models: provider.models || []
+    };
   }
 
   /**
@@ -188,8 +252,8 @@ class ModelManager {
           validatedModel.isBuiltIn = isBuiltIn;
           validatedModel.filePath = filePath;
 
-          // 解密 API Key（如果存在）
-          if (validatedModel.apiKey) {
+          // 解密 API Key（仅对自定义模型）
+          if (validatedModel.apiKey && !isBuiltIn) {
             try {
               validatedModel.apiKey = this.decrypt(validatedModel.apiKey);
             } catch (error) {
@@ -197,6 +261,7 @@ class ModelManager {
               validatedModel.apiKey = '';
             }
           }
+          // 内置模型的 API Key 直接使用配置文件中的值（明文）
 
           // 生成唯一ID
           const uniqueId = this.generateUniqueId(relativePath);

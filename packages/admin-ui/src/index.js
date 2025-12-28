@@ -2684,6 +2684,34 @@ function setupOptimizationDrawerEvents() {
     iterateBtn.addEventListener('click', iterateOptimization);
   }
 
+  // 迭代优化指导弹窗事件
+  const iterationGuideModalClose = document.getElementById('iterationGuideModalClose');
+  const cancelIterationBtn = document.getElementById('cancelIterationBtn');
+  const confirmIterationBtn = document.getElementById('confirmIterationBtn');
+  const iterationGuide = document.getElementById('iterationGuide');
+
+  if (iterationGuideModalClose) {
+    iterationGuideModalClose.onclick = closeIterationGuideModal;
+  }
+
+  if (cancelIterationBtn) {
+    cancelIterationBtn.onclick = closeIterationGuideModal;
+  }
+
+  if (confirmIterationBtn) {
+    confirmIterationBtn.onclick = performIterationOptimization;
+  }
+
+  if (iterationGuide) {
+    // 当有输入时启用确认按钮
+    iterationGuide.addEventListener('input', () => {
+      const btn = document.getElementById('confirmIterationBtn');
+      if (btn) {
+        btn.disabled = false;
+      }
+    });
+  }
+
   // 应用优化按钮
   const applyOptimizationBtn = document.getElementById('applyOptimizationBtn');
   if (applyOptimizationBtn) {
@@ -2965,7 +2993,44 @@ async function startOptimization() {
   }
 }
 
+// ==================== 迭代优化功能 ====================
+
+function openIterationGuideModal() {
+  const modal = document.getElementById('iterationGuideModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    
+    // 清空输入框
+    const iterationGuide = document.getElementById('iterationGuide');
+    if (iterationGuide) {
+      iterationGuide.value = '';
+    }
+    
+    // 启用确认按钮
+    const confirmBtn = document.getElementById('confirmIterationBtn');
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = '开始迭代优化';
+    }
+  }
+}
+
+function closeIterationGuideModal() {
+  const modal = document.getElementById('iterationGuideModal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+}
+
 async function iterateOptimization() {
+  // 先打开指导弹窗
+  openIterationGuideModal();
+}
+
+async function performIterationOptimization() {
+  const iterationGuide = document.getElementById('iterationGuide');
+  const guideText = iterationGuide ? iterationGuide.value.trim() : '';
+  
   const modelId = getCustomSelectValue('model');
 
   if (!modelId) {
@@ -2978,6 +3043,9 @@ async function iterateOptimization() {
     return;
   }
 
+  // 关闭弹窗
+  closeIterationGuideModal();
+
   isOptimizing = true;
   updateIterateButtonState();
 
@@ -2985,17 +3053,18 @@ async function iterateOptimization() {
   optimizedOutput.innerHTML = '';
 
   try {
-    const response = await fetch(`${API_BASE}/prompts/optimize`, {
+    const response = await fetch(`${API_BASE}/prompts/optimize/iterate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${currentToken}`
       },
       body: JSON.stringify({
-        prompt: optimizationResult,
+        currentResult: optimizationResult,
         templateId: getCustomSelectValue('template'),
         modelId: modelId,
-        sessionId: optimizationSessionId
+        sessionId: optimizationSessionId,
+        guideText: guideText // 添加优化指导参数
       })
     });
 
@@ -3332,13 +3401,41 @@ function renderTemplateList(search = '') {
         <div class="template-item-description">${template.description || '暂无描述'}</div>
       </div>
       <div class="template-item-actions">
-        ${!template.isBuiltIn ? `
+        ${template.isBuiltIn ? `
+          <button class="btn btn-outline btn-sm" onclick="viewTemplate('${template.id}')">查看</button>
+        ` : `
           <button class="btn btn-outline btn-sm" onclick="editTemplate('${template.id}')">编辑</button>
           <button class="btn btn-outline btn-sm" onclick="deleteTemplate('${template.id}')">删除</button>
-        ` : ''}
+        `}
       </div>
     </div>
   `).join('');
+}
+
+// ==================== 模板查看模态框 ====================
+
+function viewTemplate(templateId) {
+  const template = currentTemplates.find(t => t.id === templateId);
+  if (!template) {
+    showMessage('模板不存在', 'error');
+    return;
+  }
+
+  openTemplateEditorModal(templateId);
+
+  // 禁用所有输入字段
+  const templateName = document.getElementById('templateName');
+  const templateDescription = document.getElementById('templateDescription');
+  const templateContent = document.getElementById('templateContent');
+  const saveTemplateBtn = document.getElementById('saveTemplateBtn');
+
+  if (templateName) templateName.disabled = true;
+  if (templateDescription) templateDescription.disabled = true;
+  if (templateContent) templateContent.disabled = true;
+  if (saveTemplateBtn) {
+    saveTemplateBtn.disabled = true;
+    saveTemplateBtn.textContent = '内置模板只读';
+  }
 }
 
 // ==================== 模板编辑模态框 ====================
@@ -3369,6 +3466,11 @@ function openTemplateEditorModal(templateId = null) {
     templateContent.value = '';
   }
 
+  // 启用所有输入字段（用于编辑模式）
+  templateName.disabled = false;
+  templateDescription.disabled = false;
+  templateContent.disabled = false;
+
   // 绑定事件
   const cancelTemplateBtn = document.getElementById('cancelTemplateBtn');
   const saveTemplateBtn = document.getElementById('saveTemplateBtn');
@@ -3383,6 +3485,8 @@ function openTemplateEditorModal(templateId = null) {
   }
 
   if (saveTemplateBtn) {
+    saveTemplateBtn.disabled = false;
+    saveTemplateBtn.textContent = '保存';
     saveTemplateBtn.onclick = () => saveTemplate(templateId);
   }
 }
@@ -3527,6 +3631,282 @@ function renderModelList() {
 
 // ==================== 模型编辑模态框 ====================
 
+// 加载模型提供商选项
+async function loadModelProviders() {
+  try {
+    const response = await fetch(`${API_BASE}/optimization/models/providers`, {
+      headers: {
+        'Authorization': `Bearer ${currentToken}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('加载提供商列表失败');
+    }
+
+    const providers = await response.json();
+    console.log('加载到的提供商列表:', providers);
+    return providers;
+  } catch (error) {
+    console.error('加载提供商列表失败:', error);
+    return [];
+  }
+}
+
+// 根据提供商键名获取默认配置
+async function getProviderDefaults(providerKey) {
+  try {
+    const response = await fetch(`${API_BASE}/optimization/models/providers/${providerKey}`, {
+      headers: {
+        'Authorization': `Bearer ${currentToken}`
+      }
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('获取提供商默认配置失败:', error);
+    return null;
+  }
+}
+
+// 填充提供商下拉框
+async function populateProviderDropdown(selectedValue = '') {
+  const providerSelect = document.getElementById('modelProvider');
+  if (!providerSelect) {
+    console.warn('找不到提供商下拉框元素');
+    return;
+  }
+
+  const providers = await loadModelProviders();
+  console.log('开始填充提供商下拉框，提供商数量:', providers.length);
+
+  // 清空并重新填充选项
+  providerSelect.innerHTML = '<option value="">请选择提供商</option>';
+
+  providers.forEach(provider => {
+    const option = document.createElement('option');
+    option.value = provider.name; // 使用名称作为值
+    option.textContent = provider.name;
+    option.dataset.key = provider.key; // 存储键名用于获取默认配置
+    option.dataset.defaultModel = provider.defaultModel || '';
+    option.dataset.defaultEndpoint = provider.defaultEndpoint || '';
+    option.dataset.models = JSON.stringify(provider.models || []);
+    providerSelect.appendChild(option);
+  });
+
+  // 恢复之前选中的值
+  if (selectedValue) {
+    providerSelect.value = selectedValue;
+  }
+
+  console.log('提供商下拉框填充完成');
+
+  // 绑定选择变更事件
+  providerSelect.onchange = async (e) => {
+    const selectedOption = e.target.options[e.target.selectedIndex];
+    const providerKey = selectedOption?.dataset.key;
+    const providerName = selectedOption?.value;
+
+    console.log('选择提供商:', { providerKey, providerName });
+
+    if (!providerKey) {
+      // 清空配置提示和模型列表
+      clearModelOptions();
+      const apiEndpointInput = document.getElementById('modelApiEndpoint');
+      if (apiEndpointInput) {
+        apiEndpointInput.value = '';
+      }
+      return;
+    }
+
+    // 如果选择的是"自定义"提供商，清空所有输入框
+    if (providerKey === 'custom') {
+      // 清空名称
+      const nameInput = document.getElementById('modelName');
+      if (nameInput) {
+        nameInput.value = '';
+      }
+
+      // 清空 API 端点
+      const apiEndpointInput = document.getElementById('modelApiEndpoint');
+      if (apiEndpointInput) {
+        apiEndpointInput.value = '';
+      }
+
+      // 清空 API Key
+      const apiKeyInput = document.getElementById('modelApiKey');
+      if (apiKeyInput) {
+        apiKeyInput.value = '';
+      }
+
+      // 隐藏模型下拉框，显示自定义输入框
+      const modelSelect = document.getElementById('modelModelSelect');
+      const customModelInput = document.getElementById('customModelInput');
+      const modelModelCustom = document.getElementById('modelModelCustom');
+      const modelModelHint = document.getElementById('modelModelHint');
+
+      if (modelSelect) {
+        modelSelect.innerHTML = '<option value="">请选择模型</option>';
+        modelSelect.style.display = 'none';
+      }
+
+      if (customModelInput) {
+        customModelInput.style.display = 'block';
+      }
+
+      if (modelModelCustom) {
+        modelModelCustom.value = '';
+      }
+
+      if (modelModelHint) {
+        modelModelHint.style.display = 'none';
+      }
+
+      console.log('已清空所有输入框（自定义提供商）');
+      return;
+    }
+
+    const defaults = await getProviderDefaults(providerKey);
+    console.log('提供商默认配置:', defaults);
+
+    if (defaults) {
+      // 自动填充 API 端点
+      const apiEndpointInput = document.getElementById('modelApiEndpoint');
+      if (apiEndpointInput && defaults.apiEndpoint) {
+        apiEndpointInput.value = defaults.apiEndpoint;
+      }
+
+      // 填充模型下拉框
+      populateModelDropdown(defaults.models || [], defaults.model);
+    }
+  };
+}
+
+// 填充模型下拉框
+function populateModelDropdown(models = [], defaultModel = '') {
+  const modelSelect = document.getElementById('modelModelSelect');
+  const customModelInput = document.getElementById('customModelInput');
+  const modelModelCustom = document.getElementById('modelModelCustom');
+  const modelModelHint = document.getElementById('modelModelHint');
+  const useCustomModel = document.getElementById('useCustomModel');
+
+  if (!modelSelect) {
+    console.warn('找不到模型下拉框元素');
+    return;
+  }
+
+  console.log('开始填充模型下拉框，模型数量:', models.length);
+
+  // 清空并重新填充选项
+  modelSelect.innerHTML = '<option value="">请选择模型</option>';
+
+  if (models && models.length > 0) {
+    // 显示下拉框，隐藏自定义输入
+    modelSelect.style.display = 'block';
+    customModelInput.style.display = 'none';
+    modelModelHint.style.display = 'block';
+
+    models.forEach(model => {
+      const option = document.createElement('option');
+      option.value = model;
+      option.textContent = model;
+      modelSelect.appendChild(option);
+    });
+
+    // 设置默认值
+    if (defaultModel) {
+      modelSelect.value = defaultModel;
+    }
+
+    // 显示"使用自定义模型"链接
+    if (useCustomModel) {
+      useCustomModel.onclick = (e) => {
+        e.preventDefault();
+        showCustomModelInput(models, modelSelect.value);
+      };
+    }
+  } else {
+    // 没有模型列表，直接显示自定义输入
+    showCustomModelInput([], '');
+  }
+
+  console.log('模型下拉框填充完成');
+}
+
+// 显示自定义模型输入
+function showCustomModelInput(models = [], currentValue = '') {
+  const modelSelect = document.getElementById('modelModelSelect');
+  const customModelInput = document.getElementById('customModelInput');
+  const modelModelCustom = document.getElementById('modelModelCustom');
+  const modelModelHint = document.getElementById('modelModelHint');
+
+  if (!modelSelect || !customModelInput) return;
+
+  // 隐藏下拉框，显示自定义输入
+  modelSelect.style.display = 'none';
+  customModelInput.style.display = 'block';
+  modelModelHint.style.display = 'none';
+
+  // 设置当前值
+  modelModelCustom.value = currentValue;
+
+  // 绑定返回下拉框的事件
+  if (models && models.length > 0) {
+    modelModelCustom.onblur = () => {
+      // 如果输入为空，显示下拉框
+      if (!modelModelCustom.value.trim()) {
+        populateModelDropdown(models, models[0]);
+      }
+    };
+  }
+}
+
+// 清空模型选项
+function clearModelOptions() {
+  const modelSelect = document.getElementById('modelModelSelect');
+  const customModelInput = document.getElementById('customModelInput');
+  const modelModelCustom = document.getElementById('modelModelCustom');
+  const modelModelHint = document.getElementById('modelModelHint');
+
+  if (modelSelect) {
+    modelSelect.innerHTML = '<option value="">请选择模型</option>';
+    modelSelect.style.display = 'block';
+  }
+
+  if (customModelInput) {
+    customModelInput.style.display = 'none';
+  }
+
+  if (modelModelCustom) {
+    modelModelCustom.value = '';
+  }
+
+  if (modelModelHint) {
+    modelModelHint.style.display = 'none';
+  }
+}
+
+// 获取当前选择的模型值
+function getSelectedModel() {
+  const modelSelect = document.getElementById('modelModelSelect');
+  const customModelInput = document.getElementById('customModelInput');
+  const modelModelCustom = document.getElementById('modelModelCustom');
+
+  if (modelSelect && modelSelect.style.display !== 'none') {
+    return modelSelect.value;
+  }
+
+  if (modelModelCustom && customModelInput.style.display !== 'none') {
+    return modelModelCustom.value;
+  }
+
+  return '';
+}
+
 function openModelEditorModal(modelId = null) {
   const modal = document.getElementById('modelEditorModal');
   const title = document.getElementById('modelEditorModalTitle');
@@ -3538,7 +3918,6 @@ function openModelEditorModal(modelId = null) {
   // 填充表单
   const modelName = document.getElementById('modelName');
   const modelProvider = document.getElementById('modelProvider');
-  const modelModel = document.getElementById('modelModel');
   const modelApiEndpoint = document.getElementById('modelApiEndpoint');
   const modelApiKey = document.getElementById('modelApiKey');
   const modelEnabled = document.getElementById('modelEnabled');
@@ -3546,20 +3925,97 @@ function openModelEditorModal(modelId = null) {
   if (modelId) {
     const model = currentModels.find(m => m.id === modelId);
     if (model) {
-      modelName.value = model.name;
-      modelProvider.value = model.provider;
-      modelModel.value = model.model;
-      modelApiEndpoint.value = model.apiEndpoint;
-      modelApiKey.value = model.apiKey || '';
-      modelEnabled.checked = model.enabled !== false;
+      // 检查是否为内置模型
+      const isBuiltIn = model.isBuiltIn === true;
+
+      // 先填充提供商下拉框
+      populateProviderDropdown(model.provider).then(async () => {
+        // 设置提供商值
+        modelProvider.value = model.provider;
+
+        // 获取选中的提供商选项
+        const selectedOption = modelProvider.options[modelProvider.selectedIndex];
+        const providerKey = selectedOption?.dataset.key;
+
+        // 手动填充模型列表，不触发 change 事件
+        if (providerKey && providerKey !== 'custom') {
+          const defaults = await getProviderDefaults(providerKey);
+          if (defaults) {
+            populateModelDropdown(defaults.models || [], defaults.model);
+          }
+        } else if (providerKey === 'custom') {
+          // 自定义提供商，显示输入框
+          clearModelOptions();
+          const customModelInput = document.getElementById('customModelInput');
+          const modelModelCustom = document.getElementById('modelModelCustom');
+          if (customModelInput && modelModelCustom) {
+            customModelInput.style.display = 'block';
+          }
+        }
+
+        // 现在设置所有字段值
+        modelName.value = model.name;
+        modelApiEndpoint.value = model.apiEndpoint;
+        // 如果是内置模型，显示假的 apiKey
+        modelApiKey.value = isBuiltIn ? '******' : (model.apiKey || '');
+        modelEnabled.checked = model.enabled !== false;
+
+        // 如果是内置模型，禁用所有输入字段和保存按钮
+        const saveModelBtn = document.getElementById('saveModelBtn');
+        if (isBuiltIn) {
+          modelName.disabled = true;
+          modelProvider.disabled = true;
+          modelApiEndpoint.disabled = true;
+          modelApiKey.disabled = true;
+          modelEnabled.disabled = true;
+          // 禁用模型选择
+          const modelSelect = document.getElementById('modelModelSelect');
+          const modelModelCustom = document.getElementById('modelModelCustom');
+          if (modelSelect) modelSelect.disabled = true;
+          if (modelModelCustom) modelModelCustom.disabled = true;
+          // 禁用保存按钮
+          if (saveModelBtn) {
+            saveModelBtn.disabled = true;
+            saveModelBtn.textContent = '内置模型不可编辑';
+          }
+        } else {
+          // 启用所有输入字段和保存按钮
+          modelName.disabled = false;
+          modelProvider.disabled = false;
+          modelApiEndpoint.disabled = false;
+          modelApiKey.disabled = false;
+          modelEnabled.disabled = false;
+          // 启用模型选择
+          const modelSelect = document.getElementById('modelModelSelect');
+          const modelModelCustom = document.getElementById('modelModelCustom');
+          if (modelSelect) modelSelect.disabled = false;
+          if (modelModelCustom) modelModelCustom.disabled = false;
+          // 启用保存按钮
+          if (saveModelBtn) {
+            saveModelBtn.disabled = false;
+            saveModelBtn.textContent = '保存';
+          }
+        }
+
+        // 设置模型值
+        setTimeout(() => {
+          const modelSelect = document.getElementById('modelModelSelect');
+          const modelModelCustom = document.getElementById('modelModelCustom');
+          if (modelSelect && modelSelect.style.display !== 'none') {
+            modelSelect.value = model.model;
+          } else if (modelModelCustom) {
+            modelModelCustom.value = model.model;
+          }
+        }, 50);
+      });
     }
   } else {
     modelName.value = '';
-    modelProvider.value = '';
-    modelModel.value = '';
     modelApiEndpoint.value = '';
     modelApiKey.value = '';
     modelEnabled.checked = true;
+    // 加载提供商选项
+    populateProviderDropdown();
   }
 
   // 绑定事件
@@ -3589,16 +4045,21 @@ function closeModelEditorModal() {
 
 async function saveModel(modelId = null) {
   const modelName = document.getElementById('modelName').value;
-  const modelProvider = document.getElementById('modelProvider').value;
-  const modelModel = document.getElementById('modelModel').value;
+  const modelProviderSelect = document.getElementById('modelProvider');
   const modelApiEndpoint = document.getElementById('modelApiEndpoint').value;
   const modelApiKey = document.getElementById('modelApiKey').value;
   const modelEnabled = document.getElementById('modelEnabled').checked;
+  
+  // 获取选择的模型值（从下拉框或自定义输入）
+  const modelModel = getSelectedModel();
 
-  if (!modelName || !modelProvider || !modelModel || !modelApiEndpoint) {
+  if (!modelName || !modelProviderSelect.value || !modelModel || !modelApiEndpoint) {
     showMessage('请填写必填项', 'error');
     return;
   }
+
+  // 使用选中的提供商名称
+  const modelProvider = modelProviderSelect.value;
 
   try {
     const url = modelId
@@ -3666,6 +4127,7 @@ async function deleteModel(modelId) {
 }
 
 // 将全局函数暴露给 window 对象，以便在 HTML onclick 中调用
+window.viewTemplate = viewTemplate;
 window.editTemplate = openTemplateEditorModal;
 window.deleteTemplate = deleteTemplate;
 window.editModel = openModelEditorModal;

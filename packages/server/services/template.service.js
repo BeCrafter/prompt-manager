@@ -1,11 +1,15 @@
 import fs from 'fs-extra';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import YAML from 'yaml';
 import { z } from 'zod';
 import crypto from 'crypto';
 import os from 'os';
 import { logger } from '../utils/logger.js';
 import { config } from '../utils/config.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * 模板数据结构验证schema
@@ -24,8 +28,8 @@ const TemplateSchema = z.object({
  */
 class TemplateManager {
   constructor() {
-    this.builtInDir = path.join(process.cwd(), 'packages/server/templates/built-in');
-    this.customDir = path.join(os.homedir(), '.prompt-manager/templates/custom');
+    this.builtInDir = path.join(__dirname, '../configs/templates/built-in');
+    this.customDir = path.join(os.homedir(), '.prompt-manager/configs/templates');
     this.loadedTemplates = new Map();
     this.idToPathMap = new Map();
   }

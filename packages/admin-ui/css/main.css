@@ -1774,10 +1774,13 @@ aside {
   transform: scale(1) translateY(0);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid rgba(0,0,0,0.08);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .modal-header {
-  padding: 20px 24px;
+  padding: 12px 24px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -1815,10 +1818,13 @@ aside {
 
 .modal-body {
   padding: 24px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .modal-footer {
-  padding: 16px 24px;
+  padding: 12px 24px;
   border-top: 1px solid var(--border);
   display: flex;
   justify-content: flex-end;

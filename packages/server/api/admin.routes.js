@@ -656,7 +656,9 @@ router.post('/prompts/optimize', adminAuthMiddleware, async (req, res) => {
         res.end();
     } catch (error) {
         logger.error('优化提示词失败:', error);
-        res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+        // 格式化错误信息，添加用户友好的前缀
+        const errorMessage = `模型执行失败: ${error.message}`;
+        res.write(`data: ${JSON.stringify({ error: errorMessage })}\n\n`);
         res.end();
     }
 });
@@ -664,7 +666,7 @@ router.post('/prompts/optimize', adminAuthMiddleware, async (req, res) => {
 // 迭代优化（流式）
 router.post('/prompts/optimize/iterate', adminAuthMiddleware, async (req, res) => {
     try {
-        const { currentResult, templateId, modelId, sessionId } = req.body;
+        const { currentResult, templateId, modelId, sessionId, guideText } = req.body;
 
         if (!currentResult || !templateId || !modelId || !sessionId) {
             return res.status(400).json({ error: '当前结果、模板ID、模型ID和会话ID是必需的' });
@@ -685,7 +687,8 @@ router.post('/prompts/optimize/iterate', adminAuthMiddleware, async (req, res) =
                 // 流式输出回调
                 res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
             },
-            sessionId
+            sessionId,
+            guideText // 传递优化指导参数
         );
 
         // 发送完成信号
@@ -693,7 +696,9 @@ router.post('/prompts/optimize/iterate', adminAuthMiddleware, async (req, res) =
         res.end();
     } catch (error) {
         logger.error('迭代优化失败:', error);
-        res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+        // 格式化错误信息，添加用户友好的前缀
+        const errorMessage = `模型执行失败: ${error.message}`;
+        res.write(`data: ${JSON.stringify({ error: errorMessage })}\n\n`);
         res.end();
     }
 });
@@ -771,6 +776,32 @@ router.delete('/optimization/templates/:id', adminAuthMiddleware, async (req, re
 });
 
 // ==================== 模型管理路由 ====================
+
+// 获取模型提供商列表
+router.get('/optimization/models/providers', adminAuthMiddleware, async (req, res) => {
+    try {
+        const providers = await modelManager.getProviders();
+        res.json(providers);
+    } catch (error) {
+        logger.error('获取模型提供商列表失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 获取模型提供商的默认配置
+router.get('/optimization/models/providers/:key', adminAuthMiddleware, async (req, res) => {
+    try {
+        const { key } = req.params;
+        const defaults = await modelManager.getProviderDefaults(key);
+        if (!defaults) {
+            return res.status(404).json({ error: '提供商不存在' });
+        }
+        res.json(defaults);
+    } catch (error) {
+        logger.error('获取提供商默认配置失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
 // 获取所有模型
 router.get('/optimization/models', adminAuthMiddleware, (req, res) => {

@@ -75,9 +75,10 @@ class OptimizationService {
    * @param {string} modelId - 模型ID
    * @param {Function} onChunk - 流式输出回调函数
    * @param {string} sessionId - 会话ID
+   * @param {string} guideText - 优化指导（可选）
    * @returns {Promise<Object>} 优化结果
    */
-  async iterateOptimization(currentResult, templateId, modelId, onChunk, sessionId) {
+  async iterateOptimization(currentResult, templateId, modelId, onChunk, sessionId, guideText = '') {
     try {
       // 检查会话是否存在
       const session = this.sessionIterations.get(sessionId);
@@ -113,9 +114,9 @@ class OptimizationService {
       }
 
       // 3. 构建迭代优化提示词
-      const iterationPrompt = this.buildIterationPrompt(currentResult, session.lastResult, template, session.count);
+      const iterationPrompt = this.buildIterationPrompt(currentResult, session.lastResult, template, session.count, guideText);
 
-      logger.info(`开始迭代优化（第 ${session.count + 1} 次），使用模板: ${template.name}，模型: ${model.name}`);
+      logger.info(`开始迭代优化（第 ${session.count + 1} 次），使用模板: ${template.name}，模型: ${model.name}${guideText ? '，有优化指导' : ''}`);
 
       // 4. 调用 AI API（流式）
       const result = await this.callAIModel(iterationPrompt, model, onChunk);
@@ -162,13 +163,19 @@ class OptimizationService {
    * @param {string} previousResult - 上一次的优化结果
    * @param {Object} template - 模板对象
    * @param {number} iterationCount - 迭代次数
+   * @param {string} guideText - 优化指导（可选）
    * @returns {string} 迭代优化提示词
    */
-  buildIterationPrompt(currentInput, previousResult, template, iterationCount) {
+  buildIterationPrompt(currentInput, previousResult, template, iterationCount, guideText = '') {
     let iterationPrompt = template.content;
 
     // 构建上下文信息
-    const context = `这是第 ${iterationCount + 1} 次优化。上一次的优化结果如下：\n\n${previousResult}\n\n`;
+    let context = `这是第 ${iterationCount + 1} 次优化。上一次的优化结果如下：\n\n${previousResult}\n\n`;
+
+    // 如果有优化指导，添加到上下文中
+    if (guideText && guideText.trim()) {
+      context += `本次优化的具体要求：\n${guideText}\n\n`;
+    }
 
     // 如果模板中没有 {{prompt}} 占位符，则追加到模板末尾
     if (!iterationPrompt.includes('{{prompt}}')) {

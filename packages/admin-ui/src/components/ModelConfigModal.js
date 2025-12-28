@@ -54,11 +54,24 @@ export class ModelConfigModal {
                 </div>
                 <div class="form-group">
                   <label for="modelProvider">提供商 <span class="required">*</span></label>
-                  <input type="text" id="modelProvider" class="form-control" required placeholder="例如：openai" />
+                  <select id="modelProvider" class="form-control" required>
+                    <option value="">请选择提供商</option>
+                    <!-- 动态加载提供商选项 -->
+                  </select>
+                  <small class="form-text">选择提供商可自动填充默认配置</small>
                 </div>
                 <div class="form-group">
                   <label for="modelModel">模型 <span class="required">*</span></label>
-                  <input type="text" id="modelModel" class="form-control" required placeholder="例如：gpt-4" />
+                  <select id="modelModelSelect" class="form-control" required style="margin-bottom: 8px;">
+                    <option value="">请选择模型</option>
+                    <!-- 动态加载模型选项 -->
+                  </select>
+                  <div id="customModelInput" class="custom-model-input" style="display: none;">
+                    <input type="text" id="modelModelCustom" class="form-control" placeholder="或输入自定义模型名称" />
+                  </div>
+                  <div id="modelModelHint" style="display: none;">
+                    <a href="#" id="useCustomModel" style="font-size: 12px; color: #1890ff;">使用自定义模型</a>
+                  </div>
                 </div>
                 <div class="form-group">
                   <label for="modelApiEndpoint">API 端点 <span class="required">*</span></label>

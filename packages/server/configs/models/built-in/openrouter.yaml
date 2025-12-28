@@ -1,0 +1,6 @@
+name: "OpenRouter"
+provider: "OpenRouter"
+model: "xiaomi/mimo-v2-flash:free"
+apiEndpoint: "https://openrouter.ai/api/v1/chat/completions"
+apiKey: "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"
+enabled: true

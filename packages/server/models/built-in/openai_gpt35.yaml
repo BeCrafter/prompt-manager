@@ -1,6 +1,0 @@
-name: "OpenAI GPT-3.5"
-provider: "openai"
-model: "gpt-3.5-turbo"
-apiEndpoint: "https://api.openai.com/v1/chat/completions"
-apiKey: ""
-enabled: true

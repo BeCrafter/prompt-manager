@@ -1,0 +1,40 @@
+# 预定义的模型提供商配置
+# 当用户选择提供商时，会自动填充这些默认配置
+
+providers:
+  openrouter:
+    name: OpenRouter
+    description: OpenRouter 官方 API
+    defaultModel: qwen/qwen3-coder:free
+    defaultEndpoint: https://openrouter.ai/api/v1/chat/completions
+    website: https://openrouter.ai
+    models:
+      - qwen/qwen3-coder:free
+      - z-ai/glm-4.5-air:free
+      - xiaomi/mimo-v2-flash:free
+      - nex-agi/deepseek-v3.1-nex-n1:free
+      - meta-llama/llama-3.3-70b-instruct:free
+
+  ollama:
+    name: Ollama
+    description: 本地部署的开源模型
+    defaultModel: llama3
+    defaultEndpoint: http://localhost:11434/v1/chat/completions
+    website: https://ollama.com
+    models:
+      - llama3
+      - llama3:8b
+      - llama3:70b
+      - mistral
+      - mixtral
+      - codellama
+      - phi3
+      - gemma
+
+  custom:
+    name: 自定义
+    description: 自定义 API 端点
+    defaultModel: ""
+    defaultEndpoint: ""
+    website: ""
+    models: []

@@ -82,6 +82,40 @@ export class OptimizationDrawer {
           </div>
         </div>
       </div>
+      
+      <!-- 迭代优化指导弹窗 -->
+      <div id="iterationGuideModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="iterationGuideModalTitle">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3 id="iterationGuideModalTitle">继续优化 - 输入优化指导</h3>
+              <button type="button" id="iterationGuideModalClose" class="modal-close" aria-label="关闭">×</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-info-box">
+                <h4>💡 优化指导说明</h4>
+                <p>请输入您希望本次迭代优化的具体方向或要求，例如：</p>
+                <ul>
+                  <li>让提示词更加简洁明了</li>
+                  <li>增加对输出格式的详细要求</li>
+                  <li>优化角色定义的专业性</li>
+                  <li>增强提示词的容错能力</li>
+                  <li>调整语气和风格</li>
+                </ul>
+              </div>
+              <div class="form-group">
+                <label for="iterationGuide">优化指导 <span class="optional">(可选)</span></label>
+                <textarea id="iterationGuide" class="form-control" rows="6" placeholder="请输入您希望优化的具体方向或要求..."></textarea>
+                <small class="form-text">如果不输入，将基于上一次的优化结果自动继续优化</small>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" id="cancelIterationBtn" class="btn btn-outline">取消</button>
+              <button type="button" id="confirmIterationBtn" class="btn btn-primary" disabled>开始迭代优化</button>
+            </div>
+          </div>
+        </div>
+      </div>
     `;
   }
 }
