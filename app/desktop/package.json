@@ -74,8 +74,8 @@
         "to": "runtime/.env"
       },
       {
-        "from": "../../packages/server/models/providers.yaml",
-        "to": "runtime/models/providers.yaml"
+        "from": "../../packages/server/configs/",
+        "to": "runtime/configs/"
       }
     ],
     "mac": {

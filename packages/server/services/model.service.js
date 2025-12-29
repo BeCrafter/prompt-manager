@@ -6,6 +6,7 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import os from 'os';
 import { logger } from '../utils/logger.js';
+import { util } from '../utils/util.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,7 +38,7 @@ const ALGORITHM = 'aes-256-cbc';
  */
 class ModelManager {
   constructor() {
-    this.builtInDir = path.join(__dirname, '../configs/models/built-in');
+    this.builtInDir = path.join(util.getBuiltInConfigsDir(), 'models/built-in');
     this.customDir = path.join(os.homedir(), '.prompt-manager/configs/models');
     this.loadedModels = new Map();
     this.idToPathMap = new Map();
@@ -82,7 +83,7 @@ class ModelManager {
       return this.providersConfig;
     }
 
-    const providersConfigPath = path.join(__dirname, '../configs/models/providers.yaml');
+    const providersConfigPath = path.join(util.getBuiltInConfigsDir(), 'models/providers.yaml');
 
     try {
       if (fs.existsSync(providersConfigPath)) {

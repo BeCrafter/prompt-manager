@@ -371,6 +371,33 @@ export class Util {
         // 返回默认路径
         return devWebPath;
     };
+
+    /**
+     * 获取内置配置文件目录
+     * 兼容开发环境和打包后的环境
+     * @returns {string} 配置目录路径
+     */
+    getBuiltInConfigsDir() {
+        // 检查是否在 Electron 环境中运行
+        const isElectron = typeof process !== 'undefined' && 
+                          process.versions && 
+                          process.versions.electron;
+        
+        // 检查是否是打包应用
+        // 在 macOS 打包应用中，process.resourcesPath 存在
+        if (process.resourcesPath) {
+            // 在打包应用中，内置配置位于 Resources/runtime/configs/
+            const packagedConfigPath = path.join(process.resourcesPath, 'runtime', 'configs');
+            if (this._pathExistsSync(packagedConfigPath)) {
+                return packagedConfigPath;
+            }
+        }
+        
+        // 在开发环境中，配置位于 packages/server/configs/
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = path.dirname(__filename);
+        return path.resolve(__dirname, '../configs');
+    }
     
     _pathExistsSync(filePath) {
         try {

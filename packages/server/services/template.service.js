@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import os from 'os';
 import { logger } from '../utils/logger.js';
 import { config } from '../utils/config.js';
+import { util } from '../utils/util.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,7 +29,7 @@ const TemplateSchema = z.object({
  */
 class TemplateManager {
   constructor() {
-    this.builtInDir = path.join(__dirname, '../configs/templates/built-in');
+    this.builtInDir = path.join(util.getBuiltInConfigsDir(), 'templates/built-in');
     this.customDir = path.join(os.homedir(), '.prompt-manager/configs/templates');
     this.loadedTemplates = new Map();
     this.idToPathMap = new Map();
