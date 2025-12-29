@@ -222,7 +222,21 @@ class OptimizationService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`API 请求失败: ${response.status} ${response.statusText} - ${errorText}`);
+        let errorDetail = errorText;
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.error && errorJson.error.message) {
+            errorDetail = errorJson.error.message;
+          } else if (errorJson.message) {
+            errorDetail = errorJson.message;
+          }
+        } catch (e) {
+          // 如果不是 JSON，限制长度
+          if (errorDetail.length > 200) {
+            errorDetail = errorDetail.substring(0, 200) + '...';
+          }
+        }
+        throw new Error(`API 请求失败 (${response.status} ${response.statusText}): ${errorDetail}`);
       }
 
       // 处理流式响应

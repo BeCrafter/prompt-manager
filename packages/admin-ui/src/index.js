@@ -2963,12 +2963,21 @@ async function startOptimization() {
               throw new Error(parsed.error);
             }
           } catch (error) {
-            if (!hasError) {
-              console.warn('解析数据失败:', error);
+            if (hasError) {
+              throw error; // 重新抛出已识别的错误
             }
+            console.warn('解析数据失败:', error);
           }
         }
       }
+      
+      // 如果已经发生错误，停止读取流
+      if (hasError) break;
+    }
+
+    // 检查是否发生了错误
+    if (hasError) {
+      return; // 错误已在 catch 块中处理
     }
 
     // 优化完成
@@ -2982,6 +2991,8 @@ async function startOptimization() {
     console.error('优化失败:', error);
     isOptimizing = false;
     updateOptimizeButtonState();
+    updateIterateButtonState();
+    updateApplyButtonState();
 
     // 在优化结果区域显示错误信息
     optimizedOutput.innerHTML = `<div class="error-message">
@@ -3106,12 +3117,21 @@ async function performIterationOptimization() {
               throw new Error(parsed.error);
             }
           } catch (error) {
-            if (!hasError) {
-              console.warn('解析数据失败:', error);
+            if (hasError) {
+              throw error; // 重新抛出已识别的错误
             }
+            console.warn('解析数据失败:', error);
           }
         }
       }
+
+      // 如果已经发生错误，停止读取流
+      if (hasError) break;
+    }
+
+    // 检查是否发生了错误
+    if (hasError) {
+      return; // 错误已在 catch 块中处理
     }
 
     // 迭代优化完成
