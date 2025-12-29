@@ -19,7 +19,9 @@ const TemplateSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, '模板名称不能为空'),
   description: z.string().optional(),
-  content: z.string().min(1, '模板内容不能为空'),
+  content: z.union([z.string(), z.array(z.any())]).default(''),
+  type: z.enum(['optimize', 'iterate']).default('optimize'),
+  format: z.enum(['simple', 'advanced']).default('simple'),
   isBuiltIn: z.boolean().optional().default(false),
   filePath: z.string().optional()
 });
@@ -194,7 +196,9 @@ class TemplateManager {
       const dataToSave = {
         name: validatedTemplate.name,
         description: validatedTemplate.description || '',
-        content: validatedTemplate.content
+        content: validatedTemplate.content,
+        type: validatedTemplate.type,
+        format: validatedTemplate.format
       };
 
       // 保存为 YAML 文件
@@ -249,7 +253,9 @@ class TemplateManager {
       const dataToSave = {
         name: validatedTemplate.name,
         description: validatedTemplate.description || '',
-        content: validatedTemplate.content
+        content: validatedTemplate.content,
+        type: validatedTemplate.type,
+        format: validatedTemplate.format
       };
 
       // 更新文件
@@ -259,6 +265,8 @@ class TemplateManager {
       existingTemplate.name = validatedTemplate.name;
       existingTemplate.description = validatedTemplate.description;
       existingTemplate.content = validatedTemplate.content;
+      existingTemplate.type = validatedTemplate.type;
+      existingTemplate.format = validatedTemplate.format;
 
       logger.info(`更新模板: ${existingTemplate.name} -> ID: ${id}`);
 
