@@ -22,9 +22,14 @@ class OptimizationService {
   async optimizePrompt(prompt, templateId, modelId, onChunk, sessionId = null) {
     try {
       // 1. 加载模板
-      const template = templateManager.getTemplate(templateId);
+      let template = templateManager.getTemplate(templateId);
       if (!template) {
-        throw new Error(`模板不存在: ${templateId}`);
+        // 尝试获取第一个系统优化模板
+        template = templateManager.getTemplates().find(t => (t.type || 'optimize') === 'optimize');
+      }
+      
+      if (!template) {
+        throw new Error(`未找到可用模板: ${templateId}`);
       }
 
       // 2. 加载模型配置
@@ -43,18 +48,19 @@ class OptimizationService {
         throw new Error(`模型 ${model.name} 的 API Key 未配置`);
       }
 
-      // 3. 构建优化提示词
-      const optimizationPrompt = this.buildOptimizationPrompt(prompt, template);
+      // 3. 构建优化消息列表
+      const messages = this.buildMessages(prompt, template);
 
       logger.info(`开始优化提示词，使用模板: ${template.name}，模型: ${model.name}`);
 
       // 4. 调用 AI API（流式）
-      const result = await this.callAIModel(optimizationPrompt, model, onChunk);
+      const result = await this.callAIModel(messages, model, onChunk);
 
       // 5. 如果提供了 sessionId，记录迭代信息
       if (sessionId) {
         this.sessionIterations.set(sessionId, {
           count: 1,
+          originalPrompt: prompt, // 记录原始提示词
           lastResult: result,
           lastTemplateId: templateId,
           lastModelId: modelId
@@ -92,9 +98,20 @@ class OptimizationService {
       }
 
       // 1. 加载模板
-      const template = templateManager.getTemplate(templateId);
+      let template = templateManager.getTemplate(templateId);
       if (!template) {
-        throw new Error(`模板不存在: ${templateId}`);
+        // 尝试获取第一个迭代优化模板
+        template = templateManager.getTemplates().find(t => t.type === 'iterate');
+      }
+
+      if (!template) {
+        // 回退到简单迭代逻辑（如果没有迭代模板）
+        template = {
+          name: '默认迭代',
+          format: 'simple',
+          type: 'iterate',
+          content: '{{prompt}}'
+        };
       }
 
       // 2. 加载模型配置
@@ -113,16 +130,24 @@ class OptimizationService {
         throw new Error(`模型 ${model.name} 的 API Key 未配置`);
       }
 
-      // 3. 构建迭代优化提示词
-      const iterationPrompt = this.buildIterationPrompt(currentResult, session.lastResult, template, session.count, guideText);
+      // 3. 构建迭代优化消息列表
+      const messages = this.buildIterationMessages(
+        currentResult, 
+        session.lastResult, 
+        template, 
+        session.count, 
+        guideText,
+        session.originalPrompt // 传入原始提示词
+      );
 
       logger.info(`开始迭代优化（第 ${session.count + 1} 次），使用模板: ${template.name}，模型: ${model.name}${guideText ? '，有优化指导' : ''}`);
 
       // 4. 调用 AI API（流式）
-      const result = await this.callAIModel(iterationPrompt, model, onChunk);
+      const result = await this.callAIModel(messages, model, onChunk);
 
       // 5. 更新会话信息
       this.sessionIterations.set(sessionId, {
+        ...session, // 保留 originalPrompt 等信息
         count: session.count + 1,
         lastResult: result,
         lastTemplateId: templateId,
@@ -137,76 +162,151 @@ class OptimizationService {
   }
 
   /**
-   * 构建优化提示词
-   * @param {string} prompt - 原始提示词
-   * @param {Object} template - 模板对象
-   * @returns {string} 优化提示词
+   * 替换提示词内容中的变量
+   * @param {string} content - 提示词内容
+   * @param {Object} variables - 变量映射
+   * @returns {string} 替换后的内容
    */
-  buildOptimizationPrompt(prompt, template) {
-    // 将模板内容中的 {{prompt}} 占位符替换为实际提示词
-    let optimizationPrompt = template.content;
-
-    // 如果模板中没有 {{prompt}} 占位符，则追加到模板末尾
-    if (!optimizationPrompt.includes('{{prompt}}')) {
-      optimizationPrompt += '\n\n请优化以下提示词：\n\n{{prompt}}';
+  replaceVariables(content, variables) {
+    if (!content || typeof content !== 'string') return content;
+    let result = content;
+    for (const [key, value] of Object.entries(variables)) {
+      // 允许使用 {{key}} 或 {{ key }} 格式
+      const placeholder = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
+      result = result.replace(placeholder, String(value ?? ''));
     }
-
-    // 替换占位符
-    optimizationPrompt = optimizationPrompt.replace(/{{prompt}}/g, prompt);
-
-    return optimizationPrompt;
+    return result;
   }
 
   /**
-   * 构建迭代优化提示词
-   * @param {string} currentInput - 当前输入（用于本次优化的内容）
-   * @param {string} previousResult - 上一次的优化结果
+   * 构建消息列表
+   * @param {string} prompt - 原始提示词
+   * @param {Object} template - 模板对象
+   * @returns {Array} 消息列表
+   */
+  buildMessages(prompt, template) {
+    if (template.format === 'advanced' && Array.isArray(template.content)) {
+      const variables = { 
+        originalPrompt: prompt,
+        prompt: prompt, // 兼容旧模板
+        input: prompt   // 兼容旧模板
+      };
+      return template.content.map(msg => ({
+        role: msg.role,
+        content: this.replaceVariables(msg.content, variables)
+      }));
+    }
+
+    // 简单模板处理
+    const variables = { prompt };
+    let content = template.content;
+    if (typeof content !== 'string') {
+      content = JSON.stringify(content);
+    }
+
+    // 如果模板中没有包含变量占位符，则自动追加
+    if (!content.includes('{{prompt}}') && !content.includes('{{input}}')) {
+      content += '\n\n请优化以下提示词：\n\n{{prompt}}';
+    }
+
+    return [
+      {
+        role: 'user',
+        content: this.replaceVariables(content, variables)
+      }
+    ];
+  }
+
+  /**
+   * 构建迭代消息列表
+   * @param {string} currentInput - 当前输入（界面上展示的待迭代内容）
+   * @param {string} previousResult - 上一次结果（会话记录）
    * @param {Object} template - 模板对象
    * @param {number} iterationCount - 迭代次数
-   * @param {string} guideText - 优化指导（可选）
-   * @returns {string} 迭代优化提示词
+   * @param {string} guideText - 指导文字
+   * @param {string} originalPrompt - 最初的原始提示词
+   * @returns {Array} 消息列表
    */
-  buildIterationPrompt(currentInput, previousResult, template, iterationCount, guideText = '') {
-    let iterationPrompt = template.content;
-
-    // 构建上下文信息
-    let context = `这是第 ${iterationCount + 1} 次优化。上一次的优化结果如下：\n\n${previousResult}\n\n`;
-
-    // 如果有优化指导，添加到上下文中
-    if (guideText && guideText.trim()) {
-      context += `本次优化的具体要求：\n${guideText}\n\n`;
+  buildIterationMessages(currentInput, previousResult, template, iterationCount, guideText = '', originalPrompt = '') {
+    if (template.format === 'advanced' && Array.isArray(template.content)) {
+      const variables = {
+        originalPrompt: originalPrompt || '',
+        lastOptimizedPrompt: currentInput, // 当前界面显示的结果即为“上一次优化结果”
+        iterateInput: guideText || '',
+        // 兼容别名
+        prompt: currentInput,
+        previousResult: previousResult || currentInput,
+        iterationCount: iterationCount + 1,
+        guideText: guideText || ''
+      };
+      
+      return template.content.map(msg => ({
+        role: msg.role,
+        content: this.replaceVariables(msg.content, variables)
+      }));
     }
 
-    // 如果模板中没有 {{prompt}} 占位符，则追加到模板末尾
-    if (!iterationPrompt.includes('{{prompt}}')) {
-      iterationPrompt += '\n\n请基于以上上下文，继续优化以下内容：\n\n{{prompt}}';
+    // 简单模板逻辑保持简单
+    const variables = {
+      prompt: currentInput,
+      previousResult: previousResult || currentInput,
+      iterationCount: iterationCount + 1,
+      guideText: guideText || ''
+    };
+
+    let content = template.content;
+    if (typeof content !== 'string') {
+      content = JSON.stringify(content);
     }
 
-    // 替换占位符
-    iterationPrompt = iterationPrompt.replace(/{{prompt}}/g, currentInput);
+    // 构建默认迭代上下文（如果模板是简单的且没有包含占位符）
+    let finalContent = '';
+    
+    // 如果没有使用任何变量占位符，执行默认拼接逻辑
+    const hasVariables = ['{{prompt}}', '{{previousResult}}', '{{guideText}}']
+      .some(v => content.includes(v));
 
-    // 在开头添加上下文
-    return context + iterationPrompt;
+    if (!hasVariables) {
+      if (!content.includes('{{previousResult}}')) {
+        finalContent += `这是第 ${variables.iterationCount} 次优化。上一次的优化结果如下：\n\n${variables.previousResult}\n\n`;
+      }
+      
+      if (guideText && !content.includes('{{guideText}}')) {
+        finalContent += `本次优化的具体要求：\n${guideText}\n\n`;
+      }
+
+      finalContent += `请基于以上上下文，继续优化以下内容：\n\n{{prompt}}`;
+    } else {
+      finalContent = content;
+    }
+
+    return [
+      {
+        role: 'user',
+        content: this.replaceVariables(finalContent, variables)
+      }
+    ];
   }
 
   /**
    * 调用 AI 模型（支持流式）
-   * @param {string} prompt - 要发送的提示词
+   * @param {Array} messages - 消息列表
    * @param {Object} model - 模型配置
    * @param {Function} onChunk - 流式输出回调函数
    * @returns {Promise<string>} 完整的响应内容
    */
-  async callAIModel(prompt, model, onChunk) {
+  async callAIModel(messages, model, onChunk) {
     try {
+      // 记录请求日志
+      logger.info(`[AI Request] 模型: ${model.name}, 消息数: ${messages.length}`);
+      messages.forEach((msg, i) => {
+        logger.debug(`[Message ${i}] Role: ${msg.role}, Content: ${msg.content.substring(0, 100)}${msg.content.length > 100 ? '...' : ''}`);
+      });
+      
       // 构建 API 请求
       const requestBody = {
         model: model.model,
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
+        messages,
         stream: true
       };
 
@@ -289,6 +389,7 @@ class OptimizationService {
       }
 
       logger.info(`AI 模型调用完成，返回 ${fullContent.length} 个字符`);
+      logger.debug(`[AI Response] Content: ${fullContent.substring(0, 200)}${fullContent.length > 200 ? '...' : ''}`);
       return fullContent;
     } catch (error) {
       logger.error('调用 AI 模型失败:', error);
@@ -327,8 +428,8 @@ class OptimizationService {
       }
 
       // 发送一个简单的测试请求
-      const testPrompt = '请回复"测试成功"';
-      const result = await this.callAIModel(testPrompt, model, null);
+      const messages = [{ role: 'user', content: '请回复"测试成功"' }];
+      const result = await this.callAIModel(messages, model, null);
 
       return {
         success: true,

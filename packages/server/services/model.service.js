@@ -236,8 +236,13 @@ class ModelManager {
         const relativePath = fileName;
 
         try {
-          const content = await fs.readFile(filePath, 'utf8');
+          let content = await fs.readFile(filePath, 'utf8');
           const ext = path.extname(fileName).toLowerCase();
+
+          // 环境变量替换 (支持 ${VAR} 格式)
+          content = content.replace(/\$\{([^}]+)\}/g, (match, varName) => {
+            return process.env[varName] || '';
+          });
 
           let modelData;
           if (ext === '.json') {

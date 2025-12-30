@@ -390,6 +390,26 @@
   color: #065f46;
 }
 
+.template-item-badge.optimize {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.template-item-badge.iterate {
+  background-color: #ede9fe;
+  color: #5b21b6;
+}
+
+.template-item-badge.simple {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.template-item-badge.advanced {
+  background-color: #fae8ff;
+  color: #86198f;
+}
+
 /* ==================== 模型列表样式 ==================== */
 
 .model-list-header {
@@ -897,4 +917,99 @@ select.form-control option:disabled {
   .drawer-content {
     border-radius: 0;
   }
+}
+
+.template-help-text {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #666;
+}
+
+.template-help-text p {
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.template-help-text ul {
+  padding-left: 20px;
+  margin: 0;
+}
+
+.template-help-text code {
+  background-color: #e9ecef;
+  padding: 2px 4px;
+  border-radius: 3px;
+  color: #d63384;
+}
+
+/* 高级模板样式 */
+.advanced-message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 10px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.advanced-message-item {
+  padding: 12px;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+}
+
+.advanced-message-item .message-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.advanced-message-item .message-role {
+  width: 120px;
+  height: 32px !important;
+  padding: 2px 8px !important;
+  font-size: 13px !important;
+}
+
+.btn-remove-message {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 20px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.btn-remove-message:hover {
+  color: #dc3545;
+}
+
+.advanced-message-item .message-content {
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.form-row {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.col-6 {
+  flex: 1;
+}
+
+.hidden {
+  display: none !important;
 }

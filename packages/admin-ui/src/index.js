@@ -2721,6 +2721,7 @@ function setupOptimizationDrawerEvents() {
   // 自定义下拉菜单交互
   setupCustomSelect('model');
   setupCustomSelect('template');
+  setupCustomSelect('iterationTemplate');
 
   // 原始提示词输入
   const originalEditor = document.getElementById('originalEditor');
@@ -2795,6 +2796,7 @@ function closeCustomSelect(type) {
 function closeAllCustomSelects() {
   closeCustomSelect('model');
   closeCustomSelect('template');
+  closeCustomSelect('iterationTemplate');
 }
 
 function selectCustomOption(type, value, text) {
@@ -2806,7 +2808,12 @@ function selectCustomOption(type, value, text) {
   // 更新触发器显示
   const span = trigger.querySelector('span');
   if (span) {
-    span.textContent = text || '请选择' + (type === 'model' ? '模型' : '模板');
+    let defaultText = '请选择';
+    if (type === 'model') defaultText += '模型';
+    else if (type === 'template') defaultText += '模板';
+    else if (type === 'iterationTemplate') defaultText = '选择迭代模板';
+    
+    span.textContent = text || defaultText;
   }
 
   // 更新选中状态
@@ -2835,7 +2842,19 @@ function selectCustomOption(type, value, text) {
   closeCustomSelect(type);
 
   // 更新按钮状态
-  updateOptimizeButtonState();
+  if (type === 'model' || type === 'template') {
+    updateOptimizeButtonState();
+  } else if (type === 'iterationTemplate') {
+    updateIterationConfirmButtonState();
+  }
+}
+
+function updateIterationConfirmButtonState() {
+  const confirmBtn = document.getElementById('confirmIterationBtn');
+  const templateId = getCustomSelectValue('iterationTemplate');
+  if (confirmBtn) {
+    confirmBtn.disabled = !templateId || isOptimizing;
+  }
 }
 
 function getCustomSelectValue(type) {
@@ -3017,12 +3036,11 @@ function openIterationGuideModal() {
       iterationGuide.value = '';
     }
     
-    // 启用确认按钮
-    const confirmBtn = document.getElementById('confirmIterationBtn');
-    if (confirmBtn) {
-      confirmBtn.disabled = false;
-      confirmBtn.textContent = '开始迭代优化';
-    }
+    // 渲染迭代模板选项
+    renderIterationTemplateOptions();
+    
+    // 更新确认按钮状态
+    updateIterationConfirmButtonState();
   }
 }
 
@@ -3072,7 +3090,7 @@ async function performIterationOptimization() {
       },
       body: JSON.stringify({
         currentResult: optimizationResult,
-        templateId: getCustomSelectValue('template'),
+        templateId: getCustomSelectValue('iterationTemplate'),
         modelId: modelId,
         sessionId: optimizationSessionId,
         guideText: guideText // 添加优化指导参数
@@ -3196,8 +3214,10 @@ function updateOptimizeButtonState() {
 
 function updateIterateButtonState() {
   const iterateBtn = document.getElementById('iterateBtn');
-  const canIterate = optimizationResult && !isOptimizing;
-  iterateBtn.disabled = !canIterate;
+  if (iterateBtn) {
+    const canIterate = optimizationResult && !isOptimizing;
+    iterateBtn.disabled = !canIterate;
+  }
 }
 
 function updateApplyButtonState() {
@@ -3222,6 +3242,7 @@ async function loadTemplates() {
 
     currentTemplates = await response.json();
     renderTemplateOptions();
+    renderIterationTemplateOptions();
   } catch (error) {
     console.error('加载模板失败:', error);
     showMessage('加载模板失败', 'error');
@@ -3236,8 +3257,11 @@ function renderTemplateOptions() {
   // 清空选项
   templateSelectOptions.innerHTML = '';
 
+  // 过滤系统提示词模板
+  const optimizeTemplates = currentTemplates.filter(t => (t.type || 'optimize') === 'optimize');
+
   // 添加模板选项
-  currentTemplates.forEach(template => {
+  optimizeTemplates.forEach(template => {
     const option = document.createElement('div');
     option.className = 'custom-select-option';
     option.dataset.value = template.id;
@@ -3252,11 +3276,11 @@ function renderTemplateOptions() {
   });
 
   // 如果没有模板，添加默认选项
-  if (currentTemplates.length === 0) {
+  if (optimizeTemplates.length === 0) {
     const defaultOption = document.createElement('div');
     defaultOption.className = 'custom-select-option disabled';
     defaultOption.dataset.value = '';
-    defaultOption.innerHTML = '<span>请选择模板</span><span class="check-icon">✓</span>';
+    defaultOption.innerHTML = '<span>无可用系统提示词模板</span><span class="check-icon">✓</span>';
     templateSelectOptions.appendChild(defaultOption);
   }
 
@@ -3277,9 +3301,68 @@ function renderTemplateOptions() {
   templateSelectOptions.appendChild(action);
 
   // 如果有模板，默认选中第一条
-  if (currentTemplates.length > 0) {
-    const firstTemplate = currentTemplates[0];
+  if (optimizeTemplates.length > 0) {
+    const firstTemplate = optimizeTemplates[0];
     selectCustomOption('template', firstTemplate.id, firstTemplate.name + (firstTemplate.isBuiltIn ? ' (内置)' : ''));
+  }
+}
+
+function renderIterationTemplateOptions() {
+  const trigger = document.getElementById('iterationTemplateSelectTrigger');
+  const options = document.getElementById('iterationTemplateSelectOptions');
+  if (!trigger || !options) return;
+
+  // 清空选项
+  options.innerHTML = '';
+
+  // 过滤迭代提示词模板
+  const iterateTemplates = currentTemplates.filter(t => t.type === 'iterate');
+
+  // 添加模板选项
+  iterateTemplates.forEach(template => {
+    const option = document.createElement('div');
+    option.className = 'custom-select-option';
+    option.dataset.value = template.id;
+    option.innerHTML = `<span>${template.name}${template.isBuiltIn ? ' (内置)' : ''}</span><span class="check-icon">✓</span>`;
+
+    options.appendChild(option);
+  });
+
+  // 如果没有模板，添加提示信息
+  if (iterateTemplates.length === 0) {
+    const emptyTip = document.createElement('div');
+    emptyTip.className = 'custom-select-option disabled';
+    emptyTip.innerHTML = '<span style="color: #999; font-size: 13px;">暂无迭代模板，请先配置</span>';
+    options.appendChild(emptyTip);
+  }
+
+  // 添加分隔线和配置按钮
+  const divider = document.createElement('div');
+  divider.className = 'custom-select-divider';
+  options.appendChild(divider);
+
+  const action = document.createElement('div');
+  action.className = 'custom-select-action';
+  action.innerHTML = '<span>⚙️ 配置迭代模板</span>';
+  action.style.color = '#3b82f6';
+  action.style.fontWeight = '500';
+  action.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeAllCustomSelects();
+    openTemplateListModal();
+  });
+  options.appendChild(action);
+
+  // 如果有模板，默认选中第一条
+  if (iterateTemplates.length > 0) {
+    const firstTemplate = iterateTemplates[0];
+    selectCustomOption('iterationTemplate', firstTemplate.id, firstTemplate.name + (firstTemplate.isBuiltIn ? ' (内置)' : ''));
+  } else {
+    // 重置触发器显示
+    trigger.querySelector('span').textContent = '选择迭代模板';
+    trigger.classList.add('placeholder');
+    trigger.classList.remove('has-value');
+    trigger.dataset.value = '';
   }
 }
 
@@ -3417,6 +3500,12 @@ function renderTemplateList(search = '') {
         <div class="template-item-name">
           ${template.name}
           ${template.isBuiltIn ? '<span class="template-item-badge built-in">内置</span>' : '<span class="template-item-badge custom">自定义</span>'}
+          <span class="template-item-badge ${template.type === 'iterate' ? 'iterate' : 'optimize'}">
+            ${template.type === 'iterate' ? '迭代' : '优化'}
+          </span>
+          <span class="template-item-badge ${template.format === 'advanced' ? 'advanced' : 'simple'}">
+            ${template.format === 'advanced' ? '高级' : '简单'}
+          </span>
         </div>
         <div class="template-item-description">${template.description || '暂无描述'}</div>
       </div>
@@ -3444,14 +3533,19 @@ function viewTemplate(templateId) {
   openTemplateEditorModal(templateId);
 
   // 禁用所有输入字段
-  const templateName = document.getElementById('templateName');
-  const templateDescription = document.getElementById('templateDescription');
-  const templateContent = document.getElementById('templateContent');
-  const saveTemplateBtn = document.getElementById('saveTemplateBtn');
+  const fields = ['templateName', 'templateDescription', 'templateContent', 'templateType', 'templateFormat', 'addMessageBtn'];
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = true;
+  });
 
-  if (templateName) templateName.disabled = true;
-  if (templateDescription) templateDescription.disabled = true;
-  if (templateContent) templateContent.disabled = true;
+  // 禁用高级消息列表中的所有输入
+  document.querySelectorAll('#advancedMessageList .form-control, #advancedMessageList .btn-remove-message').forEach(el => {
+    el.disabled = true;
+    if (el.tagName === 'BUTTON') el.style.display = 'none';
+  });
+
+  const saveTemplateBtn = document.getElementById('saveTemplateBtn');
   if (saveTemplateBtn) {
     saveTemplateBtn.disabled = true;
     saveTemplateBtn.textContent = '内置模板只读';
@@ -3459,6 +3553,84 @@ function viewTemplate(templateId) {
 }
 
 // ==================== 模板编辑模态框 ====================
+
+let advancedMessages = [];
+
+function updateVariableList(type, format = 'simple') {
+  const variableList = document.getElementById('variableList');
+  const advancedHelpText = document.querySelector('#advancedContentSection .template-help-text');
+  if (!variableList) return;
+
+  if (format === 'advanced') {
+    if (type === 'iterate') {
+      const advancedVars = `
+        <p>💡 高级模板变量：</p>
+        <ul id="variableList">
+          <li><code>{{originalPrompt}}</code> - 最初输入的原始提示词</li>
+          <li><code>{{lastOptimizedPrompt}}</code> - 当前界面显示的待优化内容</li>
+          <li><code>{{iterateInput}}</code> - 用户的本次优化指导意见</li>
+          <li><code>{{iterationCount}}</code> - 当前是第几次优化</li>
+        </ul>
+      `;
+      variableList.innerHTML = advancedVars;
+      if (advancedHelpText) advancedHelpText.innerHTML = advancedVars;
+    } else {
+      const advancedVars = `
+        <p>💡 高级模板变量：</p>
+        <ul id="variableList">
+          <li><code>{{originalPrompt}}</code> - 原始输入的提示词</li>
+        </ul>
+      `;
+      variableList.innerHTML = advancedVars;
+      if (advancedHelpText) advancedHelpText.innerHTML = advancedVars;
+    }
+  } else {
+    // 简单模板
+    if (type === 'iterate') {
+      variableList.innerHTML = `
+        <li><code>{{prompt}}</code> - 本次优化的输入内容</li>
+        <li><code>{{previousResult}}</code> - 上一次的优化结果</li>
+        <li><code>{{guideText}}</code> - 用户的优化指导意见</li>
+      `;
+    } else {
+      variableList.innerHTML = `
+        <li><code>{{prompt}}</code> - 原始输入的提示词</li>
+      `;
+    }
+  }
+}
+
+function renderAdvancedMessages() {
+  const list = document.getElementById('advancedMessageList');
+  if (!list) return;
+
+  if (advancedMessages.length === 0) {
+    advancedMessages = [{ role: 'system', content: '' }, { role: 'user', content: '{{originalPrompt}}' }];
+  }
+
+  list.innerHTML = advancedMessages.map((msg, index) => `
+    <div class="advanced-message-item" data-index="${index}">
+      <div class="message-header">
+        <select class="form-control message-role" onchange="updateAdvancedMessage(${index}, 'role', this.value)">
+          <option value="system" ${msg.role === 'system' ? 'selected' : ''}>System</option>
+          <option value="user" ${msg.role === 'user' ? 'selected' : ''}>User</option>
+          <option value="assistant" ${msg.role === 'assistant' ? 'selected' : ''}>Assistant</option>
+        </select>
+        <button type="button" class="btn-remove-message" onclick="removeAdvancedMessage(${index})">×</button>
+      </div>
+      <textarea class="form-control message-content" rows="3" oninput="updateAdvancedMessage(${index}, 'content', this.value)" placeholder="请输入消息内容...">${msg.content}</textarea>
+    </div>
+  `).join('');
+}
+
+window.updateAdvancedMessage = (index, field, value) => {
+  advancedMessages[index][field] = value;
+};
+
+window.removeAdvancedMessage = (index) => {
+  advancedMessages.splice(index, 1);
+  renderAdvancedMessages();
+};
 
 function openTemplateEditorModal(templateId = null) {
   const modal = document.getElementById('templateEditorModal');
@@ -3472,24 +3644,75 @@ function openTemplateEditorModal(templateId = null) {
   const templateName = document.getElementById('templateName');
   const templateDescription = document.getElementById('templateDescription');
   const templateContent = document.getElementById('templateContent');
+  const templateType = document.getElementById('templateType');
+  const templateFormat = document.getElementById('templateFormat');
+  const simpleSection = document.getElementById('simpleContentSection');
+  const advancedSection = document.getElementById('advancedContentSection');
 
   if (templateId) {
     const template = currentTemplates.find(t => t.id === templateId);
     if (template) {
       templateName.value = template.name;
       templateDescription.value = template.description || '';
-      templateContent.value = template.content;
+      templateType.value = template.type || 'optimize';
+      templateFormat.value = template.format || 'simple';
+      
+      if (template.format === 'advanced') {
+        advancedMessages = Array.isArray(template.content) ? [...template.content] : [];
+        templateContent.value = '';
+      } else {
+        templateContent.value = template.content;
+        advancedMessages = [];
+      }
     }
   } else {
     templateName.value = '';
     templateDescription.value = '';
+    templateType.value = 'optimize';
+    templateFormat.value = 'simple';
     templateContent.value = '';
+    advancedMessages = [];
   }
 
-  // 启用所有输入字段（用于编辑模式）
+  // 更新 UI 状态
+  updateVariableList(templateType.value, templateFormat.value);
+  if (templateFormat.value === 'advanced') {
+    simpleSection.classList.add('hidden');
+    advancedSection.classList.remove('hidden');
+    renderAdvancedMessages();
+  } else {
+    simpleSection.classList.remove('hidden');
+    advancedSection.classList.add('hidden');
+  }
+
+  // 绑定事件
+  templateType.onchange = (e) => updateVariableList(e.target.value, templateFormat.value);
+  templateFormat.onchange = (e) => {
+    updateVariableList(templateType.value, e.target.value);
+    if (e.target.value === 'advanced') {
+      simpleSection.classList.add('hidden');
+      advancedSection.classList.remove('hidden');
+      renderAdvancedMessages();
+    } else {
+      simpleSection.classList.remove('hidden');
+      advancedSection.classList.add('hidden');
+    }
+  };
+
+  const addMessageBtn = document.getElementById('addMessageBtn');
+  if (addMessageBtn) {
+    addMessageBtn.onclick = () => {
+      advancedMessages.push({ role: 'user', content: '' });
+      renderAdvancedMessages();
+    };
+  }
+
+  // 启用所有输入字段
   templateName.disabled = false;
   templateDescription.disabled = false;
   templateContent.disabled = false;
+  templateType.disabled = false;
+  templateFormat.disabled = false;
 
   // 绑定事件
   const cancelTemplateBtn = document.getElementById('cancelTemplateBtn');
@@ -3521,10 +3744,30 @@ function closeTemplateEditorModal() {
 async function saveTemplate(templateId = null) {
   const templateName = document.getElementById('templateName').value;
   const templateDescription = document.getElementById('templateDescription').value;
-  const templateContent = document.getElementById('templateContent').value;
+  const templateType = document.getElementById('templateType').value;
+  const templateFormat = document.getElementById('templateFormat').value;
+  
+  let templateContent;
+  if (templateFormat === 'advanced') {
+    templateContent = advancedMessages;
+    if (templateContent.length === 0) {
+      showMessage('请至少添加一条消息', 'error');
+      return;
+    }
+    if (templateContent.some(msg => !msg.content.trim())) {
+      showMessage('消息内容不能为空', 'error');
+      return;
+    }
+  } else {
+    templateContent = document.getElementById('templateContent').value;
+    if (!templateContent) {
+      showMessage('请输入模板内容', 'error');
+      return;
+    }
+  }
 
-  if (!templateName || !templateContent) {
-    showMessage('请填写必填项', 'error');
+  if (!templateName) {
+    showMessage('请填写模板名称', 'error');
     return;
   }
 
@@ -3544,6 +3787,8 @@ async function saveTemplate(templateId = null) {
       body: JSON.stringify({
         name: templateName,
         description: templateDescription,
+        type: templateType,
+        format: templateFormat,
         content: templateContent
       })
     });
@@ -3894,7 +4139,6 @@ function clearModelOptions() {
 
   if (modelSelect) {
     modelSelect.innerHTML = '<option value="">请选择模型</option>';
-    modelSelect.style.display = 'block';
   }
 
   if (customModelInput) {
@@ -3966,8 +4210,10 @@ function openModelEditorModal(modelId = null) {
         } else if (providerKey === 'custom') {
           // 自定义提供商，显示输入框
           clearModelOptions();
+          const modelSelect = document.getElementById('modelModelSelect');
           const customModelInput = document.getElementById('customModelInput');
           const modelModelCustom = document.getElementById('modelModelCustom');
+          if (modelSelect) modelSelect.style.display = 'none';
           if (customModelInput && modelModelCustom) {
             customModelInput.style.display = 'block';
           }

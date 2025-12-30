@@ -104,8 +104,22 @@ export class OptimizationDrawer {
                 </ul>
               </div>
               <div class="form-group">
+                <label for="iterationTemplate">迭代模板 <span class="required">*</span></label>
+                <div class="custom-select" id="iterationTemplateSelectWrapper">
+                  <div class="custom-select-trigger placeholder" id="iterationTemplateSelectTrigger">
+                    <span>选择迭代模板</span>
+                    <svg class="custom-select-arrow" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M2.5 4.5L6 8L9.5 4.5" stroke="#999" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <div class="custom-select-options" id="iterationTemplateSelectOptions">
+                    <!-- 迭代模板选项 -->
+                  </div>
+                </div>
+              </div>
+              <div class="form-group">
                 <label for="iterationGuide">优化指导 <span class="optional">(可选)</span></label>
-                <textarea id="iterationGuide" class="form-control" rows="6" placeholder="请输入您希望优化的具体方向或要求..."></textarea>
+                <textarea id="iterationGuide" class="form-control" rows="4" placeholder="请输入您希望优化的具体方向或要求..."></textarea>
                 <small class="form-text">如果不输入，将基于上一次的优化结果自动继续优化</small>
               </div>
             </div>
