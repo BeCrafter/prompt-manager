@@ -1,6 +1,0 @@
-name: "OpenRouter"
-provider: "OpenRouter"
-model: "qwen/qwen3-coder:free"
-apiEndpoint: "https://openrouter.ai/api/v1/chat/completions"
-apiKey: "${OPENROUTER_API_KEY}"
-enabled: true

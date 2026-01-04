@@ -133,7 +133,7 @@ class OptimizationService {
       // 3. 构建迭代优化消息列表
       const messages = this.buildIterationMessages(
         currentResult, 
-        session.lastResult, 
+        session.lastResult,
         template, 
         session.count, 
         guideText,
@@ -300,7 +300,7 @@ class OptimizationService {
       // 记录请求日志
       logger.info(`[AI Request] 模型: ${model.name}, 消息数: ${messages.length}`);
       messages.forEach((msg, i) => {
-        logger.debug(`[Message ${i}] Role: ${msg.role}, Content: ${msg.content.substring(0, 100)}${msg.content.length > 100 ? '...' : ''}`);
+        logger.debug(`[Message ${i}] Role: ${msg.role}, Content: ${msg.content.substring(0, 1000)}${msg.content.length > 1000 ? '...' : ''}`);
       });
       
       // 构建 API 请求
@@ -310,13 +310,17 @@ class OptimizationService {
         stream: true
       };
 
+      const headers = {
+        'Content-Type': 'application/json',
+      }
+      if (model.apiKey) {
+        headers['Authorization'] = `Bearer ${model.apiKey}`;
+      }
+
       // 发起请求
       const response = await fetch(model.apiEndpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${model.apiKey}`
-        },
+        headers: headers,
         body: JSON.stringify(requestBody)
       });
 
@@ -382,14 +386,14 @@ class OptimizationService {
                 }
               }
             } catch (error) {
-              logger.warn('解析 SSE 数据失败:', error.message);
+              // logger.warn('解析 SSE 数据失败:', error.message);
             }
           }
         }
       }
 
       logger.info(`AI 模型调用完成，返回 ${fullContent.length} 个字符`);
-      logger.debug(`[AI Response] Content: ${fullContent.substring(0, 200)}${fullContent.length > 200 ? '...' : ''}`);
+      logger.debug(`[AI Response] Content: ${fullContent.substring(0, 5000)}${fullContent.length > 5000 ? '...' : ''}`);
       return fullContent;
     } catch (error) {
       logger.error('调用 AI 模型失败:', error);

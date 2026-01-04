@@ -2,6 +2,16 @@
 # 当用户选择提供商时，会自动填充这些默认配置
 
 providers:
+  bigmodel:
+    name: BigModel
+    description: BigModel 官方 API
+    defaultModel: glm-4.5-air
+    defaultEndpoint: https://open.bigmodel.cn/api/paas/v4/chat/completions
+    website: https://bigmodel.cn
+    models:
+      - glm-4.5-air
+      - glm-4.6
+      - glm-4.7
   openrouter:
     name: OpenRouter
     description: OpenRouter 官方 API
