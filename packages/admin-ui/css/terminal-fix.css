@@ -4,6 +4,10 @@
    核心字体配置
    ============================================ */
 
+.composition-view {
+  display: none;
+}
+
 /* 为xterm设置合适的等宽字体，解决字体重叠问题 */
 .xterm {
   font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;

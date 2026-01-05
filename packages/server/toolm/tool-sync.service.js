@@ -27,19 +27,25 @@ const __dirname = path.dirname(__filename);
 export async function syncSystemTools() {
   logger.info('开始同步系统工具到沙箱环境...');
   
-  // 判断是否为打包环境
-  const isPackaged = process.resourcesPath && 
-                    (process.resourcesPath.includes('app.asar') || 
-                     process.resourcesPath.includes('Electron.app'));
-  
+  // 判断运行环境类型
+  const isElectronPackaged = process.resourcesPath &&
+                            (process.resourcesPath.includes('app.asar') ||
+                             process.resourcesPath.includes('Electron.app'));
+
+  const isNpmPackage = __dirname.includes('node_modules');
+
   let toolsDir;
-  
-  if (isPackaged) {
-    // 打包环境：工具位于 runtime/toolbox/
+
+  if (isElectronPackaged) {
+    // Electron 打包环境：工具位于 runtime/toolbox/
     toolsDir = path.join(process.resourcesPath, 'runtime', 'toolbox');
-    logger.debug('打包环境，使用工具目录:', { toolsDir });
+    logger.debug('Electron 打包环境，使用工具目录:', { toolsDir });
+  } else if (isNpmPackage) {
+    // NPM 包环境：工具位于 packages/resources/tools/
+    toolsDir = path.join(__dirname, '..', '..', 'resources', 'tools');
+    logger.debug('NPM 包环境，使用工具目录:', { toolsDir });
   } else {
-    // 开发环境：工具位于 resources/tools/
+    // 开发环境：工具位于 packages/resources/tools/
     toolsDir = path.join(__dirname, '..', '..', 'resources', 'tools');
     logger.debug('开发环境，使用工具目录:', { toolsDir });
   }

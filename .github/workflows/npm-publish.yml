@@ -21,11 +21,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18.x'
+          node-version: '22.x'
           registry-url: 'https://registry.npmjs.org'
       
       - name: Install dependencies
         run: npm ci
+
+      - name: Rebuild native modules
+        run: |
+          # 重建 node-pty 原生模块，确保在目标平台上可用
+          npm rebuild node-pty
       
       - name: Extract version from tag
         id: get_version

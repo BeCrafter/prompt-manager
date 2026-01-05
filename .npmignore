@@ -1,12 +1,63 @@
-.git
-.gitignore
-.env
-env.example
-node_modules
-*.log
-.DS_Store
-.vscode
-.idea
-docs/
+# Development files
 .github/
+docs/
+scripts/
+test/
+examples/
+*.test.js
+*.spec.js
+**/*.test.js
+**/*.spec.js
+
+# Git and editor files
+.git/
+.gitignore
+README.md
+LICENSE
+.env*
+
+# Editor and IDE files
+.vscode/
+.idea/
+.cursor/
+.DS_Store
+*.swp
+*.swo
+
+# Build artifacts
+dist/
+**/*.log
 *.bak
+*.tmp
+
+# Development files
+.nvmrc
+.iflow/
+IFLOW.md
+*.md
+!README.md
+
+# Desktop app (not needed for CLI)
+app/desktop/
+
+# Web interface (not needed for CLI)
+packages/web/
+packages/admin-ui/
+
+# Development server files
+packages/server/dev-server.js
+packages/server/playwright.config.js
+packages/server/vitest.config.js
+packages/server/jsdoc.conf.json
+packages/server/typedoc.json
+packages/server/tests/
+packages/server/html/
+packages/server/.eslintrc.js
+packages/server/.husky/
+packages/server/.prettierrc
+
+# Package manager files (except root)
+**/package-lock.json
+**/pnpm-lock.yaml
+**/yarn.lock
+!package-lock.json
