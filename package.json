@@ -48,6 +48,7 @@
     "test:server:integration": "cd packages/server && npm run test:integration",
     "test:e2e": "node test/e2e/test-packaged-app.js",
     "test:upload": "node test/integration/test_upload.js",
+    "test:install": "node scripts/test-install.js",
     "lint": "cd packages/server && npm run lint",
     "lint:check": "cd packages/server && npm run lint:check",
     "format": "cd packages/server && npm run format",
@@ -69,6 +70,7 @@
     "@npmcli/arborist": "^9.0.0",
     "adm-zip": "^0.5.16",
     "archiver": "^7.0.1",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "electron-builder": "^26.0.12",
     "express": "^5.1.0",
@@ -81,6 +83,7 @@
     "sharp": "^0.34.4",
     "tar": "^7.5.1",
     "to-ico": "^1.0.1",
+    "ws": "^8.18.0",
     "yaml": "^2.4.1",
     "zod": "^3.23.8"
   },
