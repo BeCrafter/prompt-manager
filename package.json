@@ -48,7 +48,7 @@
     "test:server:integration": "cd packages/server && npm run test:integration",
     "test:e2e": "node test/e2e/test-packaged-app.js",
     "test:upload": "node test/integration/test_upload.js",
-    "test:install": "node scripts/test-install.js",
+    "test:install": "cd packages/admin-ui && npm install && npm run build && cd - && node scripts/test-install.js",
     "lint": "cd packages/server && npm run lint",
     "lint:check": "cd packages/server && npm run lint:check",
     "format": "cd packages/server && npm run format",

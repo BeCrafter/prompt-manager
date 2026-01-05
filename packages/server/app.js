@@ -104,8 +104,8 @@ async function sendIndexHtml(req, res) {
       // 从 adminUiRoot 中提取 asar 文件路径和相对路径
       const asarPathMatch = adminUiRoot.match(/^(.*?\.asar)(\/.*)?$/);
       const asarFilePath = asarPathMatch ? asarPathMatch[1] : adminUiRoot.replace(/\/.*$/, '.asar');
-      const relativePathInAsar = asarPathMatch && asarPathMatch[2] ? asarPathMatch[2].substring(1) : 'web';
-      const indexPath = path.posix.join(relativePathInAsar, 'index.html');
+      const relativePathInAsar = asarPathMatch && asarPathMatch[2] ? asarPathMatch[2].substring(1) : 'packages/web';
+      const indexPath = path.posix.join(relativePathInAsar, 'admin.html');
       
       // 检查文件是否存在
       const stat = asar.statFile(asarFilePath, indexPath);
@@ -121,7 +121,17 @@ async function sendIndexHtml(req, res) {
       res.status(500).send('Internal Server Error');
     }
   } else {
-    res.sendFile(path.join(adminUiRoot, 'index.html'));
+    // 优先查找 index.html，如果不存在则使用 admin.html
+    const indexPath = path.join(adminUiRoot, 'index.html');
+    const adminPath = path.join(adminUiRoot, 'admin.html');
+
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else if (fs.existsSync(adminPath)) {
+      res.sendFile(adminPath);
+    } else {
+      res.status(404).send('Admin UI not found');
+    }
   }
 }
 

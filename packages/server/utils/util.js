@@ -356,18 +356,18 @@ export class Util {
         const __filename = fileURLToPath(import.meta.url);
         const __dirname = path.dirname(__filename);
         const devWebPath = path.join(__dirname, '..', 'web');
-        
+
         if (this._pathExistsSync(devWebPath)) {
             return devWebPath;
         }
-        
-        // 如果上面的路径不存在，尝试从项目根目录查找
+
+        // 在 npm 包环境中，优先查找 packages/web（编译后的）
         const projectRoot = path.resolve(__dirname, '../../..');
-        const altWebPath = path.join(projectRoot, 'packages', 'web');
-        if (this._pathExistsSync(altWebPath)) {
-            return altWebPath;
+        const webPath = path.join(projectRoot, 'packages', 'web');
+        if (this._pathExistsSync(webPath)) {
+            return webPath;
         }
-        
+
         // 返回默认路径
         return devWebPath;
     };
