@@ -42,7 +42,13 @@ app/desktop/
 
 # Web interface (not needed for CLI)
 packages/web/
-packages/admin-ui/
+
+# Admin UI (needed for CLI) - exclude build artifacts only
+packages/admin-ui/node_modules/
+packages/admin-ui/package-lock.json
+packages/admin-ui/pnpm-lock.yaml
+packages/admin-ui/webpack.config.js
+packages/admin-ui/.babelrc
 
 # Development server files
 packages/server/dev-server.js
