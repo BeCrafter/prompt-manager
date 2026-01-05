@@ -68,35 +68,39 @@ async function main() {
       throw error;
     }
 
-    // 验证 web 目录存在
-    console.log('验证: packages/web 目录存在');
+    // 验证发布包中包含 web 目录
+    console.log('验证: 发布包包含 packages/web 目录');
     try {
-      const webIndexPath = path.join(TEST_DIR, 'node_modules/@becrafter/prompt-manager/packages/web/index.html');
-      if (fs.existsSync(webIndexPath)) {
-        console.log('✅ Web 界面文件存在\n');
+      const result = execSync(`tar -tzf "${packPath}" | grep -c "packages/web/index.html"`, { encoding: 'utf8' });
+      if (parseInt(result.trim()) > 0) {
+        console.log('✅ 发布包包含 Web 界面文件\n');
       } else {
-        console.log('❌ Web 界面文件不存在\n');
-        console.log('检查路径:', webIndexPath);
-        throw new Error('Web 界面文件不存在');
+        console.log('❌ 发布包不包含 Web 界面文件\n');
+        console.log('检查包文件:', packPath);
+        console.log('包内容预览:');
+        execSync(`tar -tzf "${packPath}" | grep -E "(packages/web|package)" | head -10`, { stdio: 'inherit' });
+        throw new Error('发布包不包含 Web 界面文件');
       }
     } catch (error) {
-      console.log('❌ 检查 Web 界面文件失败:', error.message, '\n');
+      console.log('❌ 检查发布包失败:', error.message, '\n');
       throw error;
     }
 
-    // 验证 examples 目录存在
-    console.log('验证: examples 目录存在');
+    // 验证发布包中包含 examples 目录
+    console.log('验证: 发布包包含 examples 目录');
     try {
-      const examplesPath = path.join(TEST_DIR, 'node_modules/@becrafter/prompt-manager/examples');
-      if (fs.existsSync(examplesPath)) {
-        console.log('✅ Examples 目录存在\n');
+      const result = execSync(`tar -tzf "${packPath}" | grep -c "examples/prompts"`, { encoding: 'utf8' });
+      if (parseInt(result.trim()) > 0) {
+        console.log('✅ 发布包包含 Examples 目录\n');
       } else {
-        console.log('❌ Examples 目录不存在\n');
-        console.log('检查路径:', examplesPath);
-        throw new Error('Examples 目录不存在');
+        console.log('❌ 发布包不包含 Examples 目录\n');
+        console.log('检查包文件:', packPath);
+        console.log('包内容预览:');
+        execSync(`tar -tzf "${packPath}" | grep -E "(examples|package)" | head -10`, { stdio: 'inherit' });
+        throw new Error('发布包不包含 Examples 目录');
       }
     } catch (error) {
-      console.log('❌ 检查 Examples 目录失败:', error.message, '\n');
+      console.log('❌ 检查发布包失败:', error.message, '\n');
       throw error;
     }
 

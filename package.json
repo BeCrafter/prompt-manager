@@ -40,6 +40,7 @@
     "check:deps": "bash scripts/check-dependencies.sh",
     "build:core": "npm run build --prefix packages/server",
     "build:icons": "node ./scripts/build-icons.js",
+    "build:admin-ui": "cd packages/admin-ui && npm install && npm run build",
     "test": "npm run test:module-loading && npm run test:server && npm run test:server:integration && npm run test:upload",
     "test:module-loading": "node test/e2e/test-module-loading.js",
     "test:server": "cd packages/server && npm run test",
