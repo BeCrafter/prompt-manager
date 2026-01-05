@@ -11,6 +11,7 @@ openspec
 .pids
 .env
 *.bak
+*.tgz
 **/dist/
 **/node_modules/
 web/

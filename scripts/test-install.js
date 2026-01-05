@@ -10,6 +10,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
+import http from 'http';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -67,15 +68,102 @@ async function main() {
       throw error;
     }
 
+    // 验证 web 目录存在
+    console.log('验证: packages/web 目录存在');
+    try {
+      const webIndexPath = path.join(TEST_DIR, 'node_modules/@becrafter/prompt-manager/packages/web/index.html');
+      if (fs.existsSync(webIndexPath)) {
+        console.log('✅ Web 界面文件存在\n');
+      } else {
+        console.log('❌ Web 界面文件不存在\n');
+        console.log('检查路径:', webIndexPath);
+        throw new Error('Web 界面文件不存在');
+      }
+    } catch (error) {
+      console.log('❌ 检查 Web 界面文件失败:', error.message, '\n');
+      throw error;
+    }
+
+    // 验证 examples 目录存在
+    console.log('验证: examples 目录存在');
+    try {
+      const examplesPath = path.join(TEST_DIR, 'node_modules/@becrafter/prompt-manager/examples');
+      if (fs.existsSync(examplesPath)) {
+        console.log('✅ Examples 目录存在\n');
+      } else {
+        console.log('❌ Examples 目录不存在\n');
+        console.log('检查路径:', examplesPath);
+        throw new Error('Examples 目录不存在');
+      }
+    } catch (error) {
+      console.log('❌ 检查 Examples 目录失败:', error.message, '\n');
+      throw error;
+    }
+
     // 测试启动（短暂运行）
     console.log('测试: 启动服务（5秒后自动停止）');
-    const child = spawn('./node_modules/.bin/prompt-manager', ['--port', '5999'], {
+    const child = spawn('./node_modules/.bin/prompt-manager', ['--port', '5621'], {
       stdio: 'inherit'
     });
+
+    // 等待服务启动
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // 测试 Admin UI HTTP 访问
+    console.log('验证: Admin UI HTTP 访问');
+    try {
+      await new Promise((resolve, reject) => {
+        const req = http.request({
+          hostname: 'localhost',
+          port: 5621,
+          path: '/admin',
+          method: 'GET',
+          timeout: 5000
+        }, (res) => {
+          if (res.statusCode === 200 || res.statusCode === 301) {
+            console.log('✅ Admin UI 可正常访问\n');
+            resolve();
+          } else {
+            console.log(`❌ Admin UI 返回状态码: ${res.statusCode}\n`);
+            reject(new Error(`Admin UI 返回状态码: ${res.statusCode}`));
+          }
+        });
+
+        req.on('error', (error) => {
+          console.log('❌ Admin UI 访问失败:', error.message, '\n');
+          reject(error);
+        });
+
+        req.end();
+      });
+    } catch (error) {
+      console.log('❌ Admin UI HTTP 验证失败:', error.message, '\n');
+      child.kill('SIGTERM');
+      throw error;
+    }
 
     // 设置超时处理
     const timeout = setTimeout(async () => {
       child.kill('SIGTERM');
+
+      // 验证提示词同步
+      console.log('验证: 提示词同步');
+      try {
+        const userPromptsDir = path.join(os.homedir(), '.prompt-manager', 'prompts');
+        if (fs.existsSync(userPromptsDir)) {
+          const files = fs.readdirSync(userPromptsDir);
+          if (files.length > 0) {
+            console.log(`✅ 提示词已同步: ${files.length} 个文件\n`);
+          } else {
+            console.log('❌ 提示词目录为空\n');
+          }
+        } else {
+          console.log('❌ 用户提示词目录不存在\n');
+        }
+      } catch (error) {
+        console.log('❌ 验证提示词同步失败:', error.message, '\n');
+      }
+
       console.log('\n✅ 服务启动测试完成');
       console.log('\n🎉 本地安装测试通过！\n');
 
@@ -90,7 +178,7 @@ async function main() {
 
       // 恢复原始工作目录
       process.chdir(originalCwd);
-    }, 5000);
+    }, 3000);
 
     // 监听子进程退出
     child.on('exit', (code) => {
@@ -103,6 +191,24 @@ async function main() {
     child.on('error', async (error) => {
       clearTimeout(timeout);
       console.error('\n❌ 服务启动失败:', error.message);
+
+      // 清理测试目录
+      try {
+        console.log('🧹 清理测试环境...');
+        await fs.remove(TEST_DIR);
+        console.log('✅ 测试环境已清理\n');
+      } catch (cleanupError) {
+        console.warn('⚠️ 清理测试环境失败:', cleanupError.message);
+      }
+
+      process.chdir(originalCwd);
+      process.exit(1);
+    });
+
+    // 处理未捕获的异常
+    process.on('uncaughtException', async (error) => {
+      console.error('\n❌ 未捕获的异常:', error.message);
+      child.kill('SIGTERM');
 
       // 清理测试目录
       try {

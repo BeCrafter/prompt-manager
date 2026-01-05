@@ -3,7 +3,6 @@
 docs/
 scripts/
 test/
-examples/
 *.test.js
 *.spec.js
 **/*.test.js
@@ -43,8 +42,7 @@ app/desktop/
 # Admin UI source (not needed for CLI)
 packages/admin-ui/
 
-# Web interface (compiled, needed for CLI)
-packages/web/*.LICENSE.txt
+# Web interface (compiled, needed for CLI) - files field in package.json controls inclusion
 
 # Development server files
 packages/server/dev-server.js
