@@ -52,6 +52,54 @@ export class Util {
     }
 
     /**
+     * 初始化内置配置（如果不存在）
+     * 同步内置的模型配置和模板到用户配置目录
+     */
+    async seedBuiltInConfigsIfEmpty() {
+        try {
+            const userConfigDir = path.join(os.homedir(), '.prompt-manager', 'configs');
+            const builtInConfigsDir = this.getBuiltInConfigsDir();
+
+            // 检查内置配置目录是否存在
+            const builtInExists = await fse.pathExists(builtInConfigsDir);
+            if (!builtInExists) {
+                logger.debug('内置配置目录不存在，跳过同步');
+                return;
+            }
+
+            // 确保用户配置目录存在
+            await fse.ensureDir(userConfigDir);
+
+            // 同步模型配置
+            const modelsSrc = path.join(builtInConfigsDir, 'models');
+            const modelsDst = path.join(userConfigDir, 'models');
+            if (await fse.pathExists(modelsSrc)) {
+                await fse.copy(modelsSrc, modelsDst, {
+                    overwrite: false,
+                    errorOnExist: false,
+                    recursive: true
+                });
+                logger.info(`已同步内置模型配置到 ${modelsDst}`);
+            }
+
+            // 同步模板配置
+            const templatesSrc = path.join(builtInConfigsDir, 'templates');
+            const templatesDst = path.join(userConfigDir, 'templates');
+            if (await fse.pathExists(templatesSrc)) {
+                await fse.copy(templatesSrc, templatesDst, {
+                    overwrite: false,
+                    errorOnExist: false,
+                    recursive: true
+                });
+                logger.info(`已同步内置模板配置到 ${templatesDst}`);
+            }
+
+        } catch (error) {
+            logger.warn('同步内置配置失败:', error.message);
+        }
+    }
+
+    /**
      * 生成文件唯一标识码
      * @param {*} relativePath 
      * @returns 
@@ -379,10 +427,10 @@ export class Util {
      */
     getBuiltInConfigsDir() {
         // 检查是否在 Electron 环境中运行
-        const isElectron = typeof process !== 'undefined' && 
-                          process.versions && 
+        const isElectron = typeof process !== 'undefined' &&
+                          process.versions &&
                           process.versions.electron;
-        
+
         // 检查是否是打包应用
         // 在 macOS 打包应用中，process.resourcesPath 存在
         if (process.resourcesPath) {
@@ -392,10 +440,16 @@ export class Util {
                 return packagedConfigPath;
             }
         }
-        
-        // 在开发环境中，配置位于 packages/server/configs/
+
+        // 在 npm 包环境中，配置位于 node_modules 中的包目录
         const __filename = fileURLToPath(import.meta.url);
         const __dirname = path.dirname(__filename);
+        const npmConfigPath = path.resolve(__dirname, '../configs');
+        if (this._pathExistsSync(npmConfigPath)) {
+            return npmConfigPath;
+        }
+
+        // 在开发环境中，配置位于 packages/server/configs/
         return path.resolve(__dirname, '../configs');
     }
     

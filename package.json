@@ -1,6 +1,6 @@
 {
   "name": "@becrafter/prompt-manager",
-  "version": "0.1.12",
+  "version": "0.1.14",
   "description": "Remote MCP Server for managing prompts",
   "publishConfig": {
     "access": "public"
@@ -40,6 +40,7 @@
     "check:deps": "bash scripts/check-dependencies.sh",
     "build:core": "npm run build --prefix packages/server",
     "build:icons": "node ./scripts/build-icons.js",
+    "build:admin-ui": "cd packages/admin-ui && npm install && npm run build",
     "test": "npm run test:module-loading && npm run test:server && npm run test:server:integration && npm run test:upload",
     "test:module-loading": "node test/e2e/test-module-loading.js",
     "test:server": "cd packages/server && npm run test",
@@ -87,6 +88,17 @@
     "yaml": "^2.4.1",
     "zod": "^3.23.8"
   },
+  "files": [
+    "app/",
+    "packages/server/",
+    "packages/resources/",
+    "packages/web/",
+    "packages/configs/",
+    "examples/",
+    "env.example",
+    "README.md",
+    "LICENSE"
+  ],
   "engines": {
     "node": ">=22.20.0 <23.0.0"
   },

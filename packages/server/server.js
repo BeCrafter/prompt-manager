@@ -73,6 +73,7 @@ async function _handleConfig(options) {
   promptManager.promptsDir = promptsDir;
   await config.ensurePromptsDir();
   await util.seedPromptsIfEmpty();
+  await util.seedBuiltInConfigsIfEmpty();
   await config.validate();
   config.showConfig();
 }
