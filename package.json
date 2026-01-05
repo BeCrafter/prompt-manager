@@ -38,7 +38,6 @@
     "desktop:check": "npm run check:deps && npm run test:module-loading",
     "desktop:verify": "npm run check:deps && npm run test:module-loading && npm run desktop:dev",
     "check:deps": "bash scripts/check-dependencies.sh",
-    "postinstall": "node ./scripts/postinstall.js",
     "build:core": "npm run build --prefix packages/server",
     "build:icons": "node ./scripts/build-icons.js",
     "test": "npm run test:module-loading && npm run test:server && npm run test:server:integration && npm run test:upload",
