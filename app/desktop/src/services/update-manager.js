@@ -1,4 +1,4 @@
-const { dialog, shell } = require('electron');
+const { dialog, shell, clipboard } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const tar = require('tar');
@@ -94,18 +94,28 @@ class UpdateManager {
   }
 
   async showUpdateAvailableDialog(latestVersion, currentVersion) {
+    const installCommand = "curl -fsSL 'http://iskill.site/scripts/becrafter-installer.sh' | bash -s prompt-manager";
+    
     const { response } = await dialog.showMessageBox({
       type: 'info',
       title: '发现新版本',
       message: `发现新版本 ${latestVersion}`,
-      detail: `当前版本：${currentVersion}\n可前往发布页下载并手动更新。`,
-      buttons: ['打开发布页', '取消'],
+      detail: `当前版本：${currentVersion}\n可前往发布页下载并手动更新，或使用安装命令快速更新。`,
+      buttons: ['打开发布页', '复制安装命令', '取消'],
       defaultId: 0,
-      cancelId: 1
+      cancelId: 2
     });
 
     if (response === 0) {
       shell.openExternal('https://github.com/BeCrafter/prompt-manager/releases/latest');
+    } else if (response === 1) {
+      clipboard.writeText(installCommand);
+      await dialog.showMessageBox({
+        type: 'info',
+        title: '已复制',
+        message: '安装命令已复制到剪贴板',
+        detail: installCommand
+      });
     }
 
     return false;
