@@ -61,3 +61,10 @@ packages/server/.prettierrc
 **/pnpm-lock.yaml
 **/yarn.lock
 !package-lock.json
+
+# Dependencies (should not be included)
+**/node_modules/
+node_modules/
+
+# Generated files
+*.tgz

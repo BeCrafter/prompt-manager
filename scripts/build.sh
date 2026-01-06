@@ -98,7 +98,9 @@ echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}安装依赖${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo "Installing dependencies for app/desktop..."
-(cd app/desktop && unset_npm_config && npm install)
+# 使用 --ignore-scripts 跳过 postinstall 脚本，避免 Python 3.13 的 distutils 问题
+# 原生模块将在后面使用 electron-rebuild 统一重建
+(cd app/desktop && unset_npm_config && npm install --ignore-scripts)
 
 # 重建 node-pty 以适配 Electron 的 Node.js 版本
 echo -e "${BLUE}========================================${NC}"
@@ -115,7 +117,8 @@ cd -
 
 # 安装 packages/server 依赖（核心服务依赖）
 echo "Installing dependencies for packages/server..."
-(cd packages/server && unset_npm_config && npm install)
+# 使用 --ignore-scripts 跳过 postinstall 脚本
+(cd packages/server && unset_npm_config && npm install --ignore-scripts)
 cd -
 
 # 清理缓存
@@ -134,7 +137,8 @@ echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}构建根目录环境${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo "Building root environment..."
-unset_npm_config && npm install
+# 使用 --ignore-scripts 跳过 postinstall 脚本
+unset_npm_config && npm install --ignore-scripts
 
 # 重建根目录的 node-pty 以适配 Electron
 echo -e "${BLUE}========================================${NC}"

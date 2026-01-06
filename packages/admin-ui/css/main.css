@@ -891,6 +891,7 @@ aside {
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
 }
 
 .prompt-item:hover {
@@ -991,6 +992,7 @@ aside {
     rgba(238, 238, 238, 0.6) 60%,
     rgba(238, 238, 238, 0) 100%);
   z-index: 1;
+  pointer-events: auto;
 }
 
 .prompt-item {
