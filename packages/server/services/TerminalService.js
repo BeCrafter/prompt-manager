@@ -69,7 +69,7 @@ class TerminalSession {
       case 'win32':
         return process.env.COMSPEC || 'cmd.exe';
       case 'darwin':
-        return process.env.SHELL || '/bin/bash';
+        return process.env.SHELL || '/bin/zsh';
       case 'linux':
         return process.env.SHELL || '/bin/bash';
       default:
@@ -83,15 +83,34 @@ class TerminalSession {
   setupPtyEvents() {
     if (!this.pty) return;
 
-    this.pty.on('data', (data) => {
-      this.lastActivity = new Date();
-      this.emit('data', data);
-    });
+    // 对于正常的PTY进程
+    if (!this.pty.isFallback) {
+      this.pty.on('data', (data) => {
+        this.lastActivity = new Date();
+        this.emit('data', data);
+      });
 
-    this.pty.on('exit', (exitCode, signal) => {
-      this.isActive = false;
-      this.emit('exit', { exitCode, signal });
-    });
+      this.pty.on('exit', (exitCode, signal) => {
+        this.isActive = false;
+        this.emit('exit', { exitCode, signal });
+      });
+    } else {
+      // 对于fallback PTY进程（child_process.spawn）
+      this.pty.process.stdout?.on('data', (data) => {
+        this.lastActivity = new Date();
+        this.emit('data', data);
+      });
+
+      this.pty.process.stderr?.on('data', (data) => {
+        this.lastActivity = new Date();
+        this.emit('data', data);
+      });
+
+      this.pty.process.on('exit', (exitCode, signal) => {
+        this.isActive = false;
+        this.emit('exit', { exitCode, signal });
+      });
+    }
   }
 
   /**
@@ -101,7 +120,14 @@ class TerminalSession {
     if (!this.isActive || !this.pty) {
       throw new Error('Terminal session is not active');
     }
-    this.pty.write(data);
+
+    if (this.pty.isFallback) {
+      // fallback PTY使用child_process
+      this.pty.process.stdin?.write(data);
+    } else {
+      // 正常PTY
+      this.pty.write(data);
+    }
     this.lastActivity = new Date();
   }
 
@@ -112,7 +138,14 @@ class TerminalSession {
     if (!this.isActive || !this.pty) {
       throw new Error('Terminal session is not active');
     }
-    this.pty.resize(cols, rows);
+
+    if (this.pty.isFallback) {
+      // fallback PTY不支持resize，记录日志
+      logger.debug(`Fallback PTY resize requested: ${cols}x${rows} (not supported)`);
+    } else {
+      // 正常PTY支持resize
+      this.pty.resize(cols, rows);
+    }
     this.size = { cols, rows };
   }
 
@@ -121,7 +154,13 @@ class TerminalSession {
    */
   terminate() {
     if (this.pty) {
-      this.pty.kill();
+      if (this.pty.isFallback) {
+        // fallback PTY使用child_process
+        this.pty.process.kill();
+      } else {
+        // 正常PTY
+        this.pty.kill();
+      }
     }
     this.isActive = false;
   }
@@ -255,6 +294,17 @@ export class TerminalService {
     const shells = this.getShellCandidates(options.shell);
     let lastError = null;
 
+    // 在macOS上确保PATH包含常用目录
+    if (process.platform === 'darwin') {
+      const defaultPath = '/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin';
+      if (!env.PATH || env.PATH === '') {
+        env.PATH = defaultPath;
+      } else if (!env.PATH.includes('/usr/local/bin')) {
+        env.PATH = `${env.PATH}:${defaultPath}`;
+      }
+      logger.debug(`macOS PATH configured: ${env.PATH}`);
+    }
+
     for (const candidate of shells) {
       if (!candidate) continue;
       const resolvedShell = this.resolveShellPath(candidate);
@@ -267,20 +317,94 @@ export class TerminalService {
       logger.debug(`Creating PTY with shell: ${resolvedShell}, args: ${args.join(' ')}, cwd: ${cwd}`);
 
       try {
-        return pty.default.spawn(resolvedShell, args, {
+        const ptyProcess = pty.default.spawn(resolvedShell, args, {
           name: 'xterm-color',
           cols: options.size.cols,
           rows: options.size.rows,
           cwd: cwd,
           env: env
         });
+
+        // 添加PTY进程的事件监听，用于调试
+        ptyProcess.on('data', (data) => {
+          logger.debug(`PTY data received: ${data.length} bytes`);
+        });
+
+        ptyProcess.on('exit', (code, signal) => {
+          logger.debug(`PTY process exited: code=${code}, signal=${signal}`);
+        });
+
+        return ptyProcess;
       } catch (error) {
         lastError = error;
         logger.warn(`Failed to spawn shell ${resolvedShell}: ${error.message}`);
+
+        // 如果是posix_spawnp失败，尝试备用方案
+        if (error.message.includes('posix_spawnp')) {
+          logger.warn('posix_spawnp failed, trying alternative approach...');
+          try {
+            // 尝试使用child_process.spawn作为备用方案
+            const { spawn } = await import('child_process');
+            const child = spawn(resolvedShell, args, {
+              cwd: cwd,
+              env: env,
+              stdio: ['pipe', 'pipe', 'pipe'],
+              shell: false
+            });
+
+            // 包装child_process.spawn的结果以兼容PTY接口
+            return this.createFallbackPtyProcess(child, options);
+          } catch (fallbackError) {
+            logger.warn(`Fallback spawn also failed: ${fallbackError.message}`);
+          }
+        }
       }
     }
 
     throw lastError || new Error('Unable to create PTY session: no suitable shell found');
+  }
+
+  /**
+   * 创建备用PTY进程（使用child_process.spawn）
+   */
+  createFallbackPtyProcess(childProcess, options) {
+    // 创建一个兼容PTY接口的对象
+    const fallbackPty = {
+      pid: childProcess.pid,
+      cols: options.size.cols,
+      rows: options.size.rows,
+      process: childProcess,
+      isFallback: true,
+
+      write(data) {
+        if (childProcess.stdin) {
+          childProcess.stdin.write(data);
+        }
+      },
+
+      resize(cols, rows) {
+        this.cols = cols;
+        this.rows = rows;
+        // child_process不支持resize，记录日志
+        logger.debug(`Fallback PTY resize requested: ${cols}x${rows} (not supported)`);
+      },
+
+      kill(signal = 'SIGTERM') {
+        childProcess.kill(signal);
+      },
+
+      on(event, callback) {
+        if (event === 'data') {
+          childProcess.stdout?.on('data', callback);
+          childProcess.stderr?.on('data', callback);
+        } else if (event === 'exit') {
+          childProcess.on('exit', callback);
+        }
+      }
+    };
+
+    logger.info('Created fallback PTY process (limited functionality)');
+    return fallbackPty;
   }
 
   /**
@@ -292,7 +416,7 @@ export class TerminalService {
         return process.env.COMSPEC || 'cmd.exe';
       case 'darwin':
         // 在 macOS 上优先使用用户的 SHELL 环境变量
-        return process.env.SHELL || '/bin/zsh' || '/bin/bash';
+        return process.env.SHELL || '/bin/zsh';
       case 'linux':
         return process.env.SHELL || '/bin/bash';
       default:
