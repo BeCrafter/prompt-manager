@@ -17,9 +17,10 @@ let PTY_AVAILABLE = false;
 let PTY_LOAD_ERROR = null;
 
 /**
- * 尝试加载 node-pty 模块
+ * 尝试加载 node-pty 模块，如果失败则尝试自动修复
  */
 async function tryLoadNodePty() {
+  logger.info('开始尝试加载 node-pty 模块...');
   try {
     const ptyModule = await import('node-pty');
     pty = ptyModule;
@@ -30,10 +31,52 @@ async function tryLoadNodePty() {
       return true;
     }
   } catch (error) {
+    logger.info('node-pty 模块加载失败，准备自动修复...');
     PTY_LOAD_ERROR = error;
     PTY_AVAILABLE = false;
-    logger.warn('node-pty 模块不可用，终端功能将被禁用:', error.message);
-    logger.warn('提示: 运行 "npm rebuild node-pty" 来修复此问题');
+    logger.warn('node-pty 模块不可用，尝试自动修复...');
+
+    // 尝试自动修复
+    try {
+      const { spawn } = await import('child_process');
+      const { promisify } = await import('util');
+      const exec = promisify(spawn);
+
+      logger.info('正在重新编译 node-pty...');
+      const rebuildProcess = spawn('npm', ['rebuild', 'node-pty'], {
+        stdio: 'inherit',
+        cwd: process.cwd()
+      });
+
+      await new Promise((resolve, reject) => {
+        rebuildProcess.on('close', (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`npm rebuild 失败，退出码: ${code}`));
+          }
+        });
+        rebuildProcess.on('error', reject);
+      });
+
+      // 重新尝试加载
+      try {
+        const ptyModule = await import('node-pty');
+        pty = ptyModule;
+        if (pty && pty.default && pty.default.spawn) {
+          PTY_AVAILABLE = true;
+          logger.info('node-pty 模块修复成功！');
+          return true;
+        }
+      } catch (retryError) {
+        logger.error('自动修复失败，请手动运行: npm rebuild node-pty');
+      }
+    } catch (fixError) {
+      logger.error('自动修复过程失败:', fixError.message);
+      logger.error('请手动运行: npm rebuild node-pty');
+    }
+
+    logger.warn('终端功能将被禁用，请修复 node-pty 后再重启服务');
     return false;
   }
   return false;
@@ -192,6 +235,64 @@ export class TerminalService {
     }, 60000); // 每分钟检查一次
     
     logger.info('TerminalService initialized');
+    
+    // 修复 node-pty 二进制文件权限
+    this.fixNodePtyPermissions();
+  }
+  
+  /**
+   * 修复 node-pty 二进制文件权限
+   * 这是解决 posix_spawnp failed 错误的关键
+   */
+  async fixNodePtyPermissions() {
+    try {
+      const { execSync } = await import('child_process');
+      const platform = process.platform;
+      
+      // 只在 Unix-like 系统上修复权限（macOS, Linux）
+      if (platform !== 'win32') {
+        logger.info('🔧 检查并修复 node-pty 二进制文件权限...');
+        
+        // 尝试多个可能的 node-pty 路径
+        const possiblePaths = [
+          // 路径1: 在包的 node_modules 中（开发环境）
+          path.join(path.dirname(path.dirname(new URL(import.meta.url).pathname)), 'node_modules', 'node-pty', 'prebuilds'),
+          // 路径2: 在根 node_modules 中（npm 安装环境）
+          path.join(process.cwd(), 'node_modules', 'node-pty', 'prebuilds'),
+          // 路径3: 相对于当前工作目录
+          path.join(process.cwd(), 'node_modules', '@becrafter', 'prompt-manager', 'node_modules', 'node-pty', 'prebuilds')
+        ];
+        
+        let ptyPath = null;
+        const fs = await import('fs');
+        
+        for (const possiblePath of possiblePaths) {
+          if (fs.existsSync(possiblePath)) {
+            ptyPath = possiblePath;
+            break;
+          }
+        }
+        
+        if (ptyPath) {
+          try {
+            // 添加执行权限 - 使用 find 命令来处理所有平台
+            execSync(`find ${ptyPath} -type f -name "*.node" -o -name "spawn-helper" | xargs chmod +x 2>/dev/null || true`, {
+              stdio: 'pipe',
+              timeout: 5000
+            });
+            logger.info('✅ node-pty 权限修复完成');
+          } catch (error) {
+            // 静默失败，不影响服务启动
+            logger.debug('node-pty 权限修复失败:', error.message);
+          }
+        } else {
+          logger.debug('未找到 node-pty prebuilds 目录，跳过权限修复');
+        }
+      }
+    } catch (error) {
+      // 静默失败，不影响服务启动
+      logger.debug('node-pty 权限修复失败:', error.message);
+    }
   }
 
   /**
@@ -252,17 +353,148 @@ export class TerminalService {
     const shell = options.shell || this.getDefaultShellForPlatform();
     const args = this.getShellArgs(shell);
     const cwd = options.workingDirectory || os.homedir();
-    const env = { ...process.env, ...options.environment };
 
-    logger.debug(`Creating PTY with shell: ${shell}, args: ${args.join(' ')}, cwd: ${cwd}`);
+    // 确保环境变量正确，特别是 PATH
+    const env = {
+      ...process.env,
+      ...options.environment,
+      // 确保 SHELL 环境变量正确设置
+      SHELL: shell,
+      // 确保 LANG 和 LC_* 变量设置
+      LANG: process.env.LANG || 'en_US.UTF-8',
+      LC_ALL: process.env.LC_ALL || process.env.LANG || 'en_US.UTF-8',
+      LC_CTYPE: process.env.LC_CTYPE || process.env.LANG || 'en_US.UTF-8',
+      // 确保 TERM 变量设置
+      TERM: process.env.TERM || 'xterm-256color'
+    };
 
-    return pty.default.spawn(shell, args, {
-      name: 'xterm-color',
-      cols: options.size.cols,
-      rows: options.size.rows,
-      cwd: cwd,
-      env: env
-    });
+    logger.info(`🔧 创建终端会话 - Shell: ${shell}, Args: [${args.join(', ')}], CWD: ${cwd}`);
+    logger.info(`🔧 环境变量 - SHELL: ${env.SHELL}, TERM: ${env.TERM}, LANG: ${env.LANG}`);
+    logger.info(`🔧 Shell 可执行性检查: ${shell} ${args.join(' ')}`);
+
+    // 检查 shell 是否可执行
+    try {
+      const fs = await import('fs');
+      if (!fs.existsSync(shell)) {
+        throw new Error(`Shell 不存在: ${shell}`);
+      }
+
+      const stats = fs.statSync(shell);
+      if (!stats.isFile()) {
+        throw new Error(`Shell 不是文件: ${shell}`);
+      }
+
+      if (!(stats.mode & parseInt('111', 8))) {
+        throw new Error(`Shell 没有执行权限: ${shell}`);
+      }
+
+      logger.info(`✅ Shell 验证通过: ${shell}`);
+    } catch (error) {
+      logger.error(`❌ Shell 验证失败:`, error.message);
+      throw error;
+    }
+
+    // 创建 PTY 进程 - 使用多级回退机制
+    logger.info(`🔧 尝试创建 PTY 进程...`);
+
+    // 定义尝试策略的优先级
+    const strategies = [
+      // 策略 1: 使用用户指定的 shell 和 xterm-256color
+      {
+        name: 'User shell with xterm-256color',
+        shell: shell,
+        args: args,
+        term: 'xterm-256color'
+      },
+      // 策略 2: 使用用户指定的 shell 和 xterm
+      {
+        name: 'User shell with xterm',
+        shell: shell,
+        args: args,
+        term: 'xterm'
+      },
+      // 策略 3: 使用 /bin/sh 和 xterm-256color
+      {
+        name: '/bin/sh with xterm-256color',
+        shell: '/bin/sh',
+        args: [],
+        term: 'xterm-256color'
+      },
+      // 策略 4: 使用 /bin/sh 和 xterm
+      {
+        name: '/bin/sh with xterm',
+        shell: '/bin/sh',
+        args: [],
+        term: 'xterm'
+      },
+      // 策略 5: 使用 /bin/sh 和 ansi
+      {
+        name: '/bin/sh with ansi',
+        shell: '/bin/sh',
+        args: [],
+        term: 'ansi'
+      }
+    ];
+
+    let lastError = null;
+
+    for (let i = 0; i < strategies.length; i++) {
+      const strategy = strategies[i];
+      
+      try {
+        logger.info(`🔄 尝试策略 ${i + 1}/${strategies.length}: ${strategy.name}`);
+        
+        const ptyProcess = pty.default.spawn(strategy.shell, strategy.args, {
+          name: strategy.term,
+          cols: options.size.cols,
+          rows: options.size.rows,
+          cwd: cwd,
+          env: {
+            ...env,
+            TERM: strategy.term,
+            SHELL: strategy.shell
+          }
+        });
+
+        logger.info(`✅ PTY 进程创建成功，PID: ${ptyProcess.pid}`);
+        logger.info(`✅ 使用策略: ${strategy.name}`);
+        
+        // 更新会话选项以反映实际使用的 shell
+        options.shell = strategy.shell;
+        
+        return ptyProcess;
+
+      } catch (error) {
+        lastError = error;
+        logger.warn(`❌ 策略 ${i + 1} 失败: ${error.message}`);
+        
+        // 继续尝试下一个策略
+        continue;
+      }
+    }
+
+    // 所有策略都失败了
+    logger.error(`❌ 所有 PTY 创建策略都失败了`);
+    logger.error(`❌ 最后一个错误: ${lastError?.message}`);
+    logger.error(`❌ 系统信息 - 平台: ${process.platform}, Node: ${process.version}`);
+    logger.error(`❌ 环境信息 - SHELL: ${env.SHELL}, TERM: ${env.TERM}`);
+    logger.error(`❌ 原始 Shell 路径: ${shell}, 参数: [${args.join(', ')}]`);
+    logger.error(`❌ 工作目录: ${cwd}`);
+
+    // 提供用户友好的错误信息
+    const error = new Error(
+      `终端创建失败：所有 PTY 创建策略都失败了。\n` +
+      `最后一个错误: ${lastError?.message}\n` +
+      `建议解决方案:\n` +
+      `1. 运行: npm rebuild node-pty\n` +
+      `2. 检查系统权限和 macOS 安全设置\n` +
+      `3. 确认 shell 路径正确: ${shell}\n` +
+      `4. 重启系统后再试\n` +
+      `5. 检查是否有其他进程占用了 PTY 资源`
+    );
+    error.code = 'TERMINAL_CREATION_FAILED';
+    error.originalError = lastError;
+    throw error;
   }
 
   /**
@@ -291,7 +523,9 @@ export class TerminalService {
       }
       return ['/c'];
     }
-    return ['-l'];
+    // 不使用 -l 参数，避免 login shell 导致的 posix_spawnp 失败
+    // 如果需要交互式 shell，可以通过环境变量或 shell 配置来实现
+    return [];
   }
 
   /**

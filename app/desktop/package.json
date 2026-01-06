@@ -1,6 +1,6 @@
 {
   "name": "@becrafter/prompt-desktop",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "Menu bar desktop wrapper for @becrafter/prompt-manager",
   "author": "BeCrafter",
   "homepage": "https://github.com/BeCrafter/prompt-manager",
@@ -14,7 +14,7 @@
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.2",
-    "electron": "39.0.0",
+    "electron": "^39.0.0",
     "electron-builder": "^24.13.3",
     "electron-rebuild": "^3.2.9"
   },
@@ -38,7 +38,8 @@
     "appId": "com.becrafter.promptserver",
     "productName": "Prompt Manager",
     "icon": "assets/icons/icon.png",
-    "npmRebuild": true,
+    "npmRebuild": false,
+    "buildDependenciesFromSource": false,
     "files": [
       "**/*",
       "assets/**/*",

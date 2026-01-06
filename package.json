@@ -1,6 +1,6 @@
 {
   "name": "@becrafter/prompt-manager",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "Remote MCP Server for managing prompts",
   "publishConfig": {
     "access": "public"
@@ -55,7 +55,8 @@
     "format": "cd packages/server && npm run format",
     "format:check": "cd packages/server && npm run format:check",
     "check:env": "bash scripts/check-env.sh",
-    "setup:env": "node scripts/preinstall-check.js"
+    "setup:env": "node scripts/preinstall-check.js",
+    "postinstall": "npm rebuild node-pty && chmod +x node_modules/node-pty/prebuilds/*/pty.node node_modules/node-pty/prebuilds/*/spawn-helper 2>/dev/null || true"
   },
   "keywords": [
     "mcp",
@@ -89,12 +90,23 @@
     "zod": "^3.23.8"
   },
   "files": [
-    "app/",
-    "packages/server/",
-    "packages/resources/",
+    "app/cli/",
+    "packages/server/index.js",
+    "packages/server/server.js",
+    "packages/server/app.js",
+    "packages/server/services/*.js",
+    "packages/server/mcp/*.js",
+    "packages/server/mcp/**/*.js",
+    "packages/server/api/*.js",
+    "packages/server/utils/*.js",
+    "packages/server/middlewares/*.js",
+    "packages/server/toolm/*.js",
+    "packages/server/toolm/**/*.js",
+    "packages/server/configs/**/*.yaml",
+    "packages/resources/tools/**/*.js",
+    "packages/resources/tools/**/*.md",
     "packages/web/",
-    "packages/configs/",
-    "examples/",
+    "examples/**/*.yaml",
     "env.example",
     "README.md",
     "LICENSE"

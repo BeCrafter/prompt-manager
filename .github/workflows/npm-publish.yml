@@ -2,6 +2,7 @@ name: NPM Publish
 
 on:
   push:
+    # branches: ['*']  # 所有分支都可以触发
     tags:
       - 'v*' # 触发条件：推送以 v 开头的标签
 

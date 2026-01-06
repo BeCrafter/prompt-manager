@@ -267,6 +267,10 @@
   transition: all 0.3s ease;
 }
 
+.recommended-prompt-modal.hidden {
+  display: none !important;
+}
+
 .recommended-prompt-modal.active {
   opacity: 1;
   visibility: visible;
@@ -438,6 +442,10 @@
   opacity: 0;
   visibility: hidden;
   transition: all 0.3s ease;
+}
+
+.sync-prompt-modal.hidden {
+  display: none !important;
 }
 
 .sync-prompt-modal.active {

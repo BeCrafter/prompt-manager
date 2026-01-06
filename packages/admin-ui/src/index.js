@@ -4655,6 +4655,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (modal) {
           console.log('Modal element found, showing modal');
+          modal.classList.remove('hidden');
           modal.classList.add('active');
           document.body.style.overflow = 'hidden';
         } else {
@@ -4734,6 +4735,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (modal) {
           console.log('Modal element found, hiding modal');
           modal.classList.remove('active');
+          modal.classList.add('hidden');
           document.body.style.overflow = '';
         } else {
           console.error('Modal element not found when trying to hide');
@@ -4777,6 +4779,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         if (modal) {
+          modal.classList.remove('hidden');
           modal.classList.add('active');
           document.body.style.overflow = 'hidden';
         }
@@ -4787,6 +4790,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const modal = document.getElementById('syncPromptModal');
         if (modal) {
           modal.classList.remove('active');
+          modal.classList.add('hidden');
           document.body.style.overflow = '';
         }
       }

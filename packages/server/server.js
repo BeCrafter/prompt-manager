@@ -73,7 +73,8 @@ async function _handleConfig(options) {
   promptManager.promptsDir = promptsDir;
   await config.ensurePromptsDir();
   await util.seedPromptsIfEmpty();
-  await util.seedBuiltInConfigsIfEmpty();
+  // 内置配置不需要同步到用户目录，直接从 packages/server/configs/ 读取
+  // await util.seedBuiltInConfigsIfEmpty();
   await config.validate();
   config.showConfig();
 }
