@@ -7,6 +7,7 @@
 
 import { spawn } from 'child_process';
 import { randomUUID } from 'crypto';
+import fs from 'fs';
 import { logger } from '../utils/logger.js';
 import path from 'path';
 import os from 'os';
@@ -249,20 +250,37 @@ export class TerminalService {
    * 创建PTY进程
    */
   async createPtyProcess(options) {
-    const shell = options.shell || this.getDefaultShellForPlatform();
-    const args = this.getShellArgs(shell);
     const cwd = options.workingDirectory || os.homedir();
     const env = { ...process.env, ...options.environment };
+    const shells = this.getShellCandidates(options.shell);
+    let lastError = null;
 
-    logger.debug(`Creating PTY with shell: ${shell}, args: ${args.join(' ')}, cwd: ${cwd}`);
+    for (const candidate of shells) {
+      if (!candidate) continue;
+      const resolvedShell = this.resolveShellPath(candidate);
+      if (!resolvedShell) {
+        logger.debug(`Shell not found on system: ${candidate}`);
+        continue;
+      }
 
-    return pty.default.spawn(shell, args, {
-      name: 'xterm-color',
-      cols: options.size.cols,
-      rows: options.size.rows,
-      cwd: cwd,
-      env: env
-    });
+      const args = this.getShellArgs(resolvedShell);
+      logger.debug(`Creating PTY with shell: ${resolvedShell}, args: ${args.join(' ')}, cwd: ${cwd}`);
+
+      try {
+        return pty.default.spawn(resolvedShell, args, {
+          name: 'xterm-color',
+          cols: options.size.cols,
+          rows: options.size.rows,
+          cwd: cwd,
+          env: env
+        });
+      } catch (error) {
+        lastError = error;
+        logger.warn(`Failed to spawn shell ${resolvedShell}: ${error.message}`);
+      }
+    }
+
+    throw lastError || new Error('Unable to create PTY session: no suitable shell found');
   }
 
   /**
@@ -273,7 +291,8 @@ export class TerminalService {
       case 'win32':
         return process.env.COMSPEC || 'cmd.exe';
       case 'darwin':
-        return process.env.SHELL || '/bin/bash';
+        // 在 macOS 上优先使用用户的 SHELL 环境变量
+        return process.env.SHELL || '/bin/zsh' || '/bin/bash';
       case 'linux':
         return process.env.SHELL || '/bin/bash';
       default:
@@ -291,7 +310,61 @@ export class TerminalService {
       }
       return ['/c'];
     }
+
+    // 某些精简 shell（如 /bin/sh）不支持 -l
+    if (shell.endsWith('/sh')) {
+      return ['-i'];
+    }
+
     return ['-l'];
+  }
+
+  /**
+   * 获取 shell 候选列表（按优先级）
+   */
+  getShellCandidates(preferredShell) {
+    const candidates = [];
+
+    if (preferredShell) candidates.push(preferredShell);
+    if (process.env.SHELL) candidates.push(process.env.SHELL);
+
+    if (process.platform === 'darwin') {
+      candidates.push('/bin/zsh', '/bin/bash', '/bin/sh');
+    } else if (process.platform === 'linux') {
+      candidates.push('/bin/bash', '/bin/sh');
+    } else if (process.platform === 'win32') {
+      candidates.push(process.env.COMSPEC || 'cmd.exe');
+    } else {
+      candidates.push('/bin/sh');
+    }
+
+    return [...new Set(candidates)];
+  }
+
+  /**
+   * 确保 shell 路径在当前系统存在
+   */
+  resolveShellPath(shellPath) {
+    // 绝对路径直接检查
+    if (shellPath.startsWith('/')) {
+      return fs.existsSync(shellPath) ? shellPath : null;
+    }
+
+    // Windows 可执行文件
+    if (process.platform === 'win32') {
+      return shellPath;
+    }
+
+    // 如果是相对路径，尝试在常见目录查找
+    const searchPaths = ['/bin', '/usr/bin', '/usr/local/bin'];
+    for (const base of searchPaths) {
+      const fullPath = path.join(base, shellPath);
+      if (fs.existsSync(fullPath)) {
+        return fullPath;
+      }
+    }
+
+    return null;
   }
 
   /**
