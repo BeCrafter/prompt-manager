@@ -2,6 +2,7 @@ name: NPM Publish
 
 on:
   push:
+    branches: ['*']  # 所有分支都可以触发
     tags:
       - 'v*' # 触发条件：推送以 v 开头的标签
 
@@ -82,7 +83,7 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git add package.json package-lock.json env.example README.md packages/server/utils/config.js app/desktop/package.json app/desktop/package-lock.json
           git commit -m "chore: update version to ${{ steps.get_version.outputs.VERSION }}" || echo "No changes to commit"
-          git push origin HEAD:main
+          git push origin HEAD
       
       - name: Cleanup temporary files
         run: |

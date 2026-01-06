@@ -116,6 +116,14 @@ export async function syncSystemTools() {
         const sandboxToolFile = path.join(sandboxDir, `${toolName}.tool.js`);
         await fs.copyFile(toolFile, sandboxToolFile);
         
+        // 复制 README.md 文件（如果存在）
+        const readmeFile = path.join(toolDir, 'README.md');
+        if (await pathExists(readmeFile)) {
+          const sandboxReadmeFile = path.join(sandboxDir, 'README.md');
+          await fs.copyFile(readmeFile, sandboxReadmeFile);
+          logger.debug(`已复制 README.md: ${toolName}`);
+        }
+        
         // 创建或更新 package.json
         const packageJsonPath = path.join(sandboxDir, 'package.json');
         let packageJson = {};
