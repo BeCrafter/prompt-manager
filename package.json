@@ -1,6 +1,6 @@
 {
   "name": "@becrafter/prompt-manager",
-  "version": "0.1.5",
+  "version": "0.1.16",
   "description": "Remote MCP Server for managing prompts",
   "publishConfig": {
     "access": "public"
@@ -38,9 +38,9 @@
     "desktop:check": "npm run check:deps && npm run test:module-loading",
     "desktop:verify": "npm run check:deps && npm run test:module-loading && npm run desktop:dev",
     "check:deps": "bash scripts/check-dependencies.sh",
-    "postinstall": "node ./scripts/postinstall.js",
     "build:core": "npm run build --prefix packages/server",
     "build:icons": "node ./scripts/build-icons.js",
+    "build:admin-ui": "cd packages/admin-ui && npm install && npm run build",
     "test": "npm run test:module-loading && npm run test:server && npm run test:server:integration && npm run test:upload",
     "test:module-loading": "node test/e2e/test-module-loading.js",
     "test:server": "cd packages/server && npm run test",
@@ -49,6 +49,7 @@
     "test:server:integration": "cd packages/server && npm run test:integration",
     "test:e2e": "node test/e2e/test-packaged-app.js",
     "test:upload": "node test/integration/test_upload.js",
+    "test:install": "cd packages/admin-ui && npm install && npm run build && cd - && node scripts/test-install.js",
     "lint": "cd packages/server && npm run lint",
     "lint:check": "cd packages/server && npm run lint:check",
     "format": "cd packages/server && npm run format",
@@ -70,6 +71,7 @@
     "@npmcli/arborist": "^9.0.0",
     "adm-zip": "^0.5.16",
     "archiver": "^7.0.1",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "electron-builder": "^26.0.12",
     "express": "^5.1.0",
@@ -82,9 +84,21 @@
     "sharp": "^0.34.4",
     "tar": "^7.5.1",
     "to-ico": "^1.0.1",
+    "ws": "^8.18.0",
     "yaml": "^2.4.1",
     "zod": "^3.23.8"
   },
+  "files": [
+    "app/",
+    "packages/server/",
+    "packages/resources/",
+    "packages/web/",
+    "packages/configs/",
+    "examples/",
+    "env.example",
+    "README.md",
+    "LICENSE"
+  ],
   "engines": {
     "node": ">=22.20.0 <23.0.0"
   },
