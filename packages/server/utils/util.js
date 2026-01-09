@@ -385,39 +385,84 @@ export class Util {
     }
 
     getWebUiRoot() {
-        // 检查是否在 Electron 环境中运行
-        const isElectron = typeof process !== 'undefined' && 
-                          process.versions && 
-                          process.versions.electron;
-        
-        // 检查是否是打包应用
-        if (isElectron && process.resourcesPath) {
-            // 检查是否在打包模式（在我们的应用目录下有 app.asar）
-            const ourAppAsar = path.join(process.resourcesPath, 'app.asar');
-            if (fs.existsSync(ourAppAsar)) {
-                // 在打包的 Electron 应用中，web UI 位于 app.asar 内
-                return path.join(process.resourcesPath, 'app.asar', 'web');
-            }
-        }
-        
-        // 在开发环境中，web UI 位于项目目录中的 packages/web
         const __filename = fileURLToPath(import.meta.url);
         const __dirname = path.dirname(__filename);
-        const devWebPath = path.join(__dirname, '..', 'web');
 
+        console.log('🔍 getWebUiRoot() called from:', __dirname);
+
+        // 检查是否在 Electron 环境中运行
+        const isElectron = typeof process !== 'undefined' &&
+                          process.versions &&
+                          process.versions.electron;
+
+        // 检查是否是打包应用
+        if (isElectron && process.resourcesPath) {
+            const ourAppAsar = path.join(process.resourcesPath, 'app.asar');
+            if (fs.existsSync(ourAppAsar)) {
+                const asarPath = path.join(process.resourcesPath, 'app.asar', 'web');
+                console.log('📦 Using Electron ASAR path:', asarPath);
+                return asarPath;
+            }
+        }
+
+        // 在开发环境中，web UI 位于项目目录中的 packages/web
+        const devWebPath = path.join(__dirname, '..', '..', 'web');
+        console.log('🔍 Checking dev path:', devWebPath);
         if (this._pathExistsSync(devWebPath)) {
+            console.log('✅ Using dev environment path:', devWebPath);
             return devWebPath;
         }
 
-        // 在 npm 包环境中，优先查找 packages/web（编译后的）
-        const projectRoot = path.resolve(__dirname, '../../..');
-        const webPath = path.join(projectRoot, 'packages', 'web');
-        if (this._pathExistsSync(webPath)) {
-            return webPath;
+        // 在 npm 包环境中，查找 packages/web
+        // 从当前文件位置向上查找可能的包根目录
+        let currentDir = __dirname;
+        let searchDepth = 0;
+        const maxDepth = 5;
+
+        while (searchDepth < maxDepth) {
+            // 检查 packages/web
+            const webPath = path.join(currentDir, 'packages', 'web');
+            console.log('🔍 Checking npm package path:', webPath);
+            if (this._pathExistsSync(webPath)) {
+                console.log('✅ Found web UI in npm package:', webPath);
+                return webPath;
+            }
+
+            // 检查直接的 web 目录（某些打包场景）
+            const altWebPath = path.join(currentDir, 'web');
+            console.log('🔍 Checking alternative path:', altWebPath);
+            if (this._pathExistsSync(altWebPath)) {
+                console.log('✅ Found web UI in alternative path:', altWebPath);
+                return altWebPath;
+            }
+
+            // 向上查找
+            const parentDir = path.dirname(currentDir);
+            if (parentDir === currentDir) {
+                // 已经到达根目录
+                break;
+            }
+            currentDir = parentDir;
+            searchDepth++;
         }
 
-        // 返回默认路径
-        return devWebPath;
+        // 如果都找不到，使用当前工作目录作为最后尝试
+        const cwdWebPath = path.join(process.cwd(), 'packages', 'web');
+        console.log('🔍 Checking CWD path:', cwdWebPath);
+        if (this._pathExistsSync(cwdWebPath)) {
+            console.log('✅ Found web UI in CWD:', cwdWebPath);
+            return cwdWebPath;
+        }
+
+        // 最后的fallback
+        console.error('❌ Web UI not found in any location. This will cause blank pages.');
+        console.error('Current directory:', __dirname);
+        console.error('Working directory:', process.cwd());
+        console.error('Checked paths:');
+        console.error('  - Dev path:', devWebPath);
+        console.error('  - CWD path:', cwdWebPath);
+
+        return devWebPath; // 返回开发路径作为fallback，虽然它不存在
     };
 
     /**

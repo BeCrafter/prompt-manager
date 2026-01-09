@@ -150,10 +150,11 @@ export async function startServer(options = {}) {
             // 设置服务器实例
             serverInstance = server;
             
-            // 启动WebSocket服务
+            // 启动WebSocket服务，传入 HTTP 服务器端口
             try {
-              await webSocketService.start();
-              logger.info(`WebSocket服务启动成功，端口: 5622`);
+                await webSocketService.start({ port: config.getPort() });
+                const wsPort = webSocketService.getPort();
+                logger.info(`WebSocket服务启动成功，端口: ${wsPort}`);
             } catch (wsError) {
               logger.error('WebSocket服务启动失败:', wsError.message);
               // WebSocket服务失败不影响主服务器运行

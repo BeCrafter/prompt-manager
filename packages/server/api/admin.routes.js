@@ -16,6 +16,7 @@ import {adminAuthMiddleware} from '../middlewares/auth.middleware.js'
 import { templateManager } from '../services/template.service.js';
 import { modelManager } from '../services/model.service.js';
 import { optimizationService } from '../services/optimization.service.js';
+import { webSocketService } from '../services/WebSocketService.js';
 
 const router = express.Router();
 
@@ -34,6 +35,24 @@ router.get('/config', (req, res) => {
         requireAuth: config.adminRequireAuth,
         adminEnable: config.adminEnable
     });
+});
+
+// 获取公开配置端点（无需认证）
+router.get('/config/public', (req, res) => {
+  const publicConfig = config.getPublicConfig();
+
+  // 如果 WebSocket 服务已启动，使用实际分配的端口
+  if (webSocketService.isRunning) {
+    publicConfig.websocketPort = webSocketService.getPort();
+  } else {
+    // 如果 WebSocket 服务未启动，返回 null 表示尚未确定
+    publicConfig.websocketPort = null;
+  }
+
+  res.json({
+    success: true,
+    data: publicConfig
+  });
 });
 
 // 登录端点

@@ -77,14 +77,12 @@ MCP Prompt Server - 智能 Prompt 管理服务器
   -v, --version              显示版本信息
 
 环境变量:
-  MCP_SERVER_NAME            服务器名称 (默认: prompt-manager)
   SERVER_PORT                服务器端口 (默认: 5621)
   PROMPTS_DIR                Prompts目录路径
-  MCP_SERVER_VERSION         服务器版本
   LOG_LEVEL                  日志级别 (默认: info)
   MAX_PROMPTS                最大prompt数量限制 (默认: 1000)
   RECURSIVE_SCAN             是否启用递归扫描子目录 (默认: true)
-  ADMIN_ENABLE               是否启用管理员功能 (默认: true)
+  ADMIN_ENABLE               是否启用管理界面 (默认: true)
   ADMIN_REQUIRE_AUTH         是否需要登录认证 (默认: true)
   ADMIN_USERNAME             管理员用户名 (默认: admin)
   ADMIN_PASSWORD             管理员密码 (默认: admin)
@@ -120,8 +118,8 @@ export class Config {
     this.port = cliArgs.port || process.env.SERVER_PORT || 5621;
 
     // 其他配置
-    this.serverName = process.env.MCP_SERVER_NAME || 'prompt-manager';
-    this.serverVersion = process.env.MCP_SERVER_VERSION || '0.1.20';
+    this.serverName = 'prompt-manager';
+    this.serverVersion = '0.1.20';
     this.logLevel = process.env.LOG_LEVEL || 'info';
     this.maxPrompts = parseInt(process.env.MAX_PROMPTS) || 1000;
     this.recursiveScan = process.env.RECURSIVE_SCAN !== 'false'; // 默认启用递归扫描
@@ -311,6 +309,26 @@ export class Config {
   }
 
   /**
+   * 获取公开配置（前端可访问的配置信息）
+   */
+  getPublicConfig() {
+    return {
+      serverName: this.serverName,
+      serverVersion: this.serverVersion,
+      port: this.port,
+      adminEnable: this.adminEnable,
+      adminPath: this.adminPath,
+      websocketPort: null, // 这个会在 admin.routes.js 中动态设置
+      features: {
+        terminal: true,
+        optimization: true,
+        templates: true,
+        models: true
+      }
+    };
+  }
+
+  /**
    * 显示当前配置（输出到 stderr，不干扰 MCP 通信）
    */
   showConfig() {
@@ -322,7 +340,7 @@ export class Config {
     process.stderr.write(`   递归扫描: ${this.recursiveScan ? '启用' : '禁用'}\n`);
     process.stderr.write(`   Prompts目录: ${this.promptsDir}\n`);
     process.stderr.write(`   最大Prompt数量: ${this.maxPrompts}\n`);
-    process.stderr.write(`   管理员功能: ${this.adminEnable ? '启用' : '禁用'}\n`);
+    process.stderr.write(`   管理界面: ${this.adminEnable ? '启用' : '禁用'}\n`);
     if (this.adminEnable) {
       process.stderr.write(`   登录认证: ${this.adminRequireAuth ? '需要' : '不需要'}\n`);
     }

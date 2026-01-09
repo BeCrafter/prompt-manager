@@ -189,11 +189,11 @@ start_frontend() {
     cd "$ADMIN_UI_DIR"
     
     # 检查端口
-    check_port 9000 "前端服务"
+    check_port 6521 "前端服务"
     
     # 启动前端
     echo -e "${GREEN}前端服务启动中...${NC}"
-    echo -e "${YELLOW}访问地址: http://localhost:9000${NC}"
+    echo -e "${YELLOW}访问地址: http://localhost:6521${NC}"
     echo ""
     
     npm run dev > "$PIDS_DIR/frontend.log" 2>&1 &
@@ -227,7 +227,7 @@ show_info() {
     echo -e "  - 日志: $PIDS_DIR/backend.log"
     echo ""
     echo -e "${BLUE}前端服务:${NC}"
-    echo -e "  - 地址: http://localhost:9000"
+    echo -e "  - 地址: http://localhost:6521"
     echo -e "  - 日志: $PIDS_DIR/frontend.log"
     echo ""
     echo -e "${YELLOW}提示:${NC}"

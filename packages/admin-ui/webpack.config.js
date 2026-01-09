@@ -2,6 +2,7 @@ const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const webpack = require('webpack');
 
 module.exports = (env, argv) => {
   const isProduction = argv.mode === 'production';
@@ -83,14 +84,21 @@ module.exports = (env, argv) => {
       
       new CopyWebpackPlugin({
         patterns: [
-          // 移除CSS文件的复制，因为现在使用MiniCssExtractPlugin处理
+          // 复制所有 CSS 文件
           { from: 'css/codemirror.css', to: 'css/' },
           { from: 'css/codemirror-theme_xq-light.css', to: 'css/' },
+          { from: 'css/terminal-fix.css', to: 'css/' },
         ],
       }),
       
       new MiniCssExtractPlugin({
         filename: 'css/[name].[contenthash].css',
+      }),
+
+      // 定义环境变量，供前端代码使用
+      new webpack.DefinePlugin({
+        'process.env.HTTP_PORT': JSON.stringify(process.env.HTTP_PORT || '5621'),
+        'window.HTTP_PORT': JSON.stringify(process.env.HTTP_PORT || '5621'),
       }),
     ],
     

@@ -274,7 +274,7 @@ class WebSocketConnection {
 export class WebSocketService {
   constructor(options = {}) {
     this.options = {
-      port: 5622,
+      port: options.port || 0, // 0 表示让系统自动分配端口，或使用外部指定的端口
       host: '0.0.0.0',
       maxConnections: 100,
       heartbeatInterval: 30000, // 30秒心跳
@@ -318,11 +318,14 @@ export class WebSocketService {
 
         this.wss.on('listening', () => {
           this.isRunning = true;
-          logger.info(`WebSocket server listening on ${this.options.host}:${this.options.port}`);
-          
+          // 获取实际分配的端口
+          const address = this.wss.address();
+          this.actualPort = typeof address === 'string' ? parseInt(address) : address.port;
+          logger.info(`WebSocket server listening on ${this.options.host}:${this.actualPort}`);
+
           // 启动心跳检测
           this.startHeartbeat();
-          
+
           resolve();
         });
 
@@ -458,6 +461,13 @@ export class WebSocketService {
   }
 
   /**
+   * 获取实际分配的端口
+   */
+  getPort() {
+    return this.actualPort || this.options.port;
+  }
+
+  /**
    * 获取服务状态
    */
   getStatus() {
@@ -467,7 +477,7 @@ export class WebSocketService {
 
     return {
       isRunning: this.isRunning,
-      port: this.options.port,
+      port: this.getPort(),
       host: this.options.host,
       totalConnections: this.connections.size,
       activeConnections: activeConnections.length,

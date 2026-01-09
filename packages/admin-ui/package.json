@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "Admin UI for Prompt Manager",
   "scripts": {
-    "dev": "npx webpack serve --mode development",
+    "dev": "HTTP_PORT=${HTTP_PORT:-5621} npx webpack serve --mode development",
     "build": "npx webpack --mode production",
     "serve": "npx http-server . -p 8080 -o"
   },

@@ -32,6 +32,7 @@ import { OptimizationConfigModal } from './components/OptimizationConfigModal';
 
 // 导入 CodeMirror 相关功能
 import { initCodeMirror } from './codemirror';
+import { getBackendUrl } from './utils/env-loader.js';
 
 // 导入终端组件
 import { TerminalComponent } from './components/TerminalComponent.js';
@@ -106,7 +107,7 @@ let currentNav = 'prompts';
 // 终端组件实例
 let terminalComponent = null;
 
-const API_HOST = 'http://localhost:5621';
+const API_HOST = getBackendUrl();
 
 // API 基础配置
 const API_BASE = `${API_HOST}/adminapi`;

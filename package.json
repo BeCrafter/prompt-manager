@@ -21,8 +21,6 @@
   "scripts": {
     "dev": "cd packages/server && node --watch server.js",
     "dev:all": "bash scripts/dev-all.sh",
-    "dev:backend": "cd packages/server && npm run dev:clean",
-    "dev:frontend": "npm run dev --prefix packages/admin-ui",
     "fix:pty": "cd packages/server && npm run fix:pty",
     "fix:pty:desktop": "cd app/desktop && npx electron-rebuild -f -w node-pty",
     "help": "cd packages/server && node server.js --help",

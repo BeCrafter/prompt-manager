@@ -14,6 +14,9 @@
 // xterm.js相关模块 - 将在init方法中动态导入
 let Terminal, FitAddon, WebLinksAddon, SearchAddon, Unicode11Addon, CanvasAddon;
 
+// 配置加载器 - 用于获取动态WebSocket端口
+import { configLoader } from '../utils/config-loader.js';
+
 /**
  * 终端组件类（优化版）
  */
@@ -97,7 +100,7 @@ export class TerminalComponent {
       this.setupAddons();
       this.setupEventListeners();
       this.render();
-      this.connectWebSocket();
+      await this.connectWebSocket();
       console.log('TerminalComponent初始化完成');
     } catch (error) {
       console.error('TerminalComponent初始化过程中出错:', error);
@@ -554,7 +557,7 @@ export class TerminalComponent {
     const clearBtn = document.getElementById('clearBtn');
     const themeBtn = document.getElementById('themeBtn');
     
-    reconnectBtn?.addEventListener('click', () => this.reconnect());
+    reconnectBtn?.addEventListener('click', async () => await this.reconnect());
     clearBtn?.addEventListener('click', () => this.clear());
     themeBtn?.addEventListener('click', () => this.toggleTheme());
   }
@@ -563,9 +566,9 @@ export class TerminalComponent {
   /**
    * 连接WebSocket（优化版 - 改进重连机制和心跳保活）
    */
-  connectWebSocket() {
-    const wsUrl = this.getWebSocketUrl();
-    
+  async connectWebSocket() {
+    const wsUrl = await this.getWebSocketUrl();
+
     console.log('尝试连接WebSocket:', wsUrl);
     
     try {
@@ -649,17 +652,27 @@ export class TerminalComponent {
   /**
    * 获取WebSocket URL
    */
-  getWebSocketUrl() {
+  async getWebSocketUrl() {
+    console.log('🔍 TerminalComponent.getWebSocketUrl() 被调用 - 开始获取WebSocket URL');
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.hostname;
-    const currentPort = window.location.port;
-    
-    // WebSocket服务运行在5622端口
-    let wsPort = 5622;
-    
-    const wsUrl = `${protocol}//${host}:${wsPort}`;
-    console.log('WebSocket URL:', wsUrl);
-    return wsUrl;
+
+    console.log('🔍 尝试从配置加载器获取动态WebSocket端口...');
+    try {
+      // 从配置加载器获取动态WebSocket端口
+      const wsUrl = await configLoader.getWebSocketUrl();
+      console.log('✅ 使用动态配置的WebSocket URL:', wsUrl);
+      console.log('✅ 成功调用了 /adminapi/config/public 接口获取端口配置');
+      return wsUrl;
+    } catch (error) {
+      console.warn('❌ 获取动态WebSocket配置失败，使用默认配置:', error.message);
+      console.warn('❌ 这意味着 /adminapi/config/public 接口调用失败');
+
+      // 降级到默认端口
+      const defaultWsUrl = `${protocol}//${host}:5622`;
+      console.log('使用默认WebSocket URL:', defaultWsUrl);
+      return defaultWsUrl;
+    }
   }
 
   /**
@@ -677,8 +690,8 @@ export class TerminalComponent {
       
       this.write(`\r\n\x1b[33m⏳ ${delay/1000}秒后尝试重新连接 (${this.reconnectAttempts}/${this.maxReconnectAttempts})...\x1b[0m\r\n`);
       
-      setTimeout(() => {
-        this.connectWebSocket();
+      setTimeout(async () => {
+        await this.connectWebSocket();
       }, delay);
     } else {
       this.writeError(`\r\n\x1b[31m✗ 已达到最大重连次数 (${this.maxReconnectAttempts})，请刷新页面重试\x1b[0m\r\n`);
@@ -861,18 +874,18 @@ export class TerminalComponent {
   /**
    * 重新连接
    */
-  reconnect() {
+  async reconnect() {
     // 清理旧会话
     this.sessionId = null;
     this.isConnected = false;
-    
+
     if (this.websocket) {
       this.websocket.close();
       this.websocket = null;
     }
-    
+
     this.reconnectAttempts = 0;
-    this.connectWebSocket();
+    await this.connectWebSocket();
   }
 
   /**
