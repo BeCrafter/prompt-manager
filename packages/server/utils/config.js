@@ -119,7 +119,7 @@ export class Config {
 
     // 其他配置
     this.serverName = 'prompt-manager';
-    this.serverVersion = '0.1.20';
+    this.serverVersion = '0.1.22';
     this.logLevel = process.env.LOG_LEVEL || 'info';
     this.maxPrompts = parseInt(process.env.MAX_PROMPTS) || 1000;
     this.recursiveScan = process.env.RECURSIVE_SCAN !== 'false'; // 默认启用递归扫描
