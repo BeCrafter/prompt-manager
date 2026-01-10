@@ -1,15 +1,11 @@
 import fs from 'fs-extra';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import YAML from 'yaml';
 import { z } from 'zod';
 import crypto from 'crypto';
 import os from 'os';
 import { logger } from '../utils/logger.js';
 import { util } from '../utils/util.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 /**
  * 模型数据结构验证schema
@@ -93,7 +89,7 @@ class ModelManager {
         return this.providersConfig;
       }
     } catch (error) {
-      logger.warn(`加载提供商配置失败:`, error.message);
+      logger.warn('加载提供商配置失败:', error.message);
     }
 
     this.providersConfig = { providers: {} };
@@ -149,7 +145,7 @@ class ModelManager {
       let encrypted = cipher.update(text, 'utf8', 'hex');
       encrypted += cipher.final('hex');
 
-      return iv.toString('hex') + ':' + encrypted;
+      return `${iv.toString('hex')}:${encrypted}`;
     } catch (error) {
       logger.error('加密失败:', error);
       throw error;

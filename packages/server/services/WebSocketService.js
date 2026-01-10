@@ -1,6 +1,6 @@
 /**
  * WebSocketService - WebSocket服务管理类
- * 
+ *
  * 提供实时双向通信服务，支持终端会话的实时数据传输
  * 处理客户端连接、消息路由和会话管理
  */
@@ -22,7 +22,7 @@ class WebSocketConnection {
     this.sessionId = null;
     this.isAuthenticated = false;
     this.userInfo = null;
-    
+
     this.setupWebSocketEvents();
   }
 
@@ -30,7 +30,7 @@ class WebSocketConnection {
    * 设置WebSocket事件监听
    */
   setupWebSocketEvents() {
-    this.ws.on('message', (data) => {
+    this.ws.on('message', data => {
       this.handleMessage(data);
     });
 
@@ -38,7 +38,7 @@ class WebSocketConnection {
       this.handleClose(code, reason);
     });
 
-    this.ws.on('error', (error) => {
+    this.ws.on('error', error => {
       this.handleError(error);
     });
 
@@ -54,28 +54,28 @@ class WebSocketConnection {
     try {
       this.lastActivity = new Date();
       const message = JSON.parse(data.toString());
-      
+
       logger.debug(`Received message from client ${this.clientId}:`, message.type);
-      
+
       // 根据消息类型处理
       switch (message.type) {
-        case 'terminal.create':
-          await this.handleTerminalCreate(message);
-          break;
-        case 'terminal.data':
-          await this.handleTerminalData(message);
-          break;
-        case 'terminal.resize':
-          await this.handleTerminalResize(message);
-          break;
-        case 'terminal.close':
-          await this.handleTerminalClose(message);
-          break;
-        case 'ping':
-          this.handlePing(message);
-          break;
-        default:
-          this.sendError('Unknown message type', message.type);
+      case 'terminal.create':
+        await this.handleTerminalCreate(message);
+        break;
+      case 'terminal.data':
+        await this.handleTerminalData(message);
+        break;
+      case 'terminal.resize':
+        await this.handleTerminalResize(message);
+        break;
+      case 'terminal.close':
+        await this.handleTerminalClose(message);
+        break;
+      case 'ping':
+        this.handlePing(message);
+        break;
+      default:
+        this.sendError('Unknown message type', message.type);
       }
     } catch (error) {
       logger.error(`Error handling message from client ${this.clientId}:`, error);
@@ -100,14 +100,14 @@ class WebSocketConnection {
       this.sessionId = session.id;
 
       // 监听会话数据
-      session.on('data', (data) => {
+      session.on('data', data => {
         this.send('terminal.data', {
           sessionId: session.id,
-          data: data
+          data
         });
       });
 
-      session.on('exit', (info) => {
+      session.on('exit', info => {
         this.send('terminal.exit', {
           sessionId: session.id,
           exitCode: info.exitCode,
@@ -175,7 +175,7 @@ class WebSocketConnection {
   /**
    * 处理终端关闭
    */
-  async handleTerminalClose(message) {
+  async handleTerminalClose(_message) {
     if (this.sessionId) {
       try {
         await terminalService.removeSession(this.sessionId);
@@ -192,7 +192,7 @@ class WebSocketConnection {
   /**
    * 处理ping
    */
-  handlePing(message) {
+  handlePing(_message) {
     this.send('pong', {
       timestamp: Date.now(),
       clientId: this.clientId
@@ -204,7 +204,7 @@ class WebSocketConnection {
    */
   handleClose(code, reason) {
     logger.info(`Client ${this.clientId} disconnected: ${code} - ${reason}`);
-    
+
     // 清理关联的终端会话
     if (this.sessionId) {
       terminalService.removeSession(this.sessionId);
@@ -224,12 +224,12 @@ class WebSocketConnection {
   send(type, data) {
     if (this.ws.readyState === this.ws.OPEN) {
       const message = {
-        type: type,
+        type,
         timestamp: Date.now(),
         clientId: this.clientId,
         ...data
       };
-      
+
       this.ws.send(JSON.stringify(message));
     }
   }
@@ -239,8 +239,8 @@ class WebSocketConnection {
    */
   sendError(message, details = null) {
     this.send('error', {
-      message: message,
-      details: details
+      message,
+      details
     });
   }
 
@@ -274,18 +274,18 @@ class WebSocketConnection {
 export class WebSocketService {
   constructor(options = {}) {
     this.options = {
-      port: options.port || 0, // 0 表示让系统自动分配端口，或使用外部指定的端口
+      port: options.port || 8081, // 默认端口
       host: '0.0.0.0',
       maxConnections: 100,
       heartbeatInterval: 30000, // 30秒心跳
       connectionTimeout: 300000, // 5分钟超时
       ...options
     };
-    
+
     this.wss = null;
     this.connections = new Map();
     this.isRunning = false;
-    
+
     logger.info('WebSocketService initialized');
   }
 
@@ -309,7 +309,7 @@ export class WebSocketService {
           this.handleConnection(ws, request);
         });
 
-        this.wss.on('error', (error) => {
+        this.wss.on('error', error => {
           logger.error('WebSocket server error:', error);
           if (!this.isRunning) {
             reject(error);
@@ -328,7 +328,6 @@ export class WebSocketService {
 
           resolve();
         });
-
       } catch (error) {
         reject(error);
       }
@@ -344,7 +343,7 @@ export class WebSocketService {
     }
 
     // 关闭所有连接
-    for (const [clientId, connection] of this.connections) {
+    for (const connection of this.connections.values()) {
       connection.close(1001, 'Server shutdown');
     }
     this.connections.clear();
@@ -369,7 +368,7 @@ export class WebSocketService {
    */
   handleConnection(ws, request) {
     const clientId = this.generateClientId();
-    
+
     // 检查连接数限制
     if (this.connections.size >= this.options.maxConnections) {
       ws.close(1013, 'Server overload');
@@ -379,12 +378,12 @@ export class WebSocketService {
     try {
       const connection = new WebSocketConnection(ws, clientId);
       this.connections.set(clientId, connection);
-      
+
       logger.info(`New client connected: ${clientId} from ${request.socket.remoteAddress}`);
-      
+
       // 发送欢迎消息
       connection.send('welcome', {
-        clientId: clientId,
+        clientId,
         serverInfo: {
           version: '1.0.0',
           platform: process.platform,
@@ -396,7 +395,6 @@ export class WebSocketService {
       ws.on('close', () => {
         this.connections.delete(clientId);
       });
-
     } catch (error) {
       logger.error(`Failed to handle connection for client ${clientId}:`, error);
       ws.close(1011, 'Internal error');
@@ -416,7 +414,7 @@ export class WebSocketService {
   startHeartbeat() {
     this.heartbeatInterval = setInterval(() => {
       const now = Date.now();
-      
+
       for (const [clientId, connection] of this.connections) {
         // 检查连接超时
         if (now - connection.lastActivity > this.options.connectionTimeout) {
@@ -471,9 +469,7 @@ export class WebSocketService {
    * 获取服务状态
    */
   getStatus() {
-    const activeConnections = this.getAllConnections().filter(
-      conn => conn.ws.readyState === conn.ws.OPEN
-    );
+    const activeConnections = this.getAllConnections().filter(conn => conn.ws.readyState === conn.ws.OPEN);
 
     return {
       isRunning: this.isRunning,

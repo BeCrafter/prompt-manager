@@ -1,6 +1,6 @@
 /**
  * 工具存储服务
- * 
+ *
  * 职责：
  * 1. 为每个工具提供独立的存储空间
  * 2. 数据持久化到工具目录的 data 目录
@@ -25,18 +25,18 @@ export function getStorage(toolName) {
   if (!storageCache.has(toolName)) {
     storageCache.set(toolName, {});
   }
-  
+
   const storage = storageCache.get(toolName);
   const storageFile = getStorageFilePath(toolName);
-  
+
   // 加载存储数据（如果存在）
   loadStorageData(toolName, storageFile, storage);
-  
+
   return {
-    getItem: (key) => {
+    getItem: key => {
       return storage[key];
     },
-    
+
     setItem: (key, value) => {
       storage[key] = value;
       // 异步保存
@@ -44,15 +44,15 @@ export function getStorage(toolName) {
         logger.error(`保存工具存储失败: ${toolName}`, { error: error.message });
       });
     },
-    
-    removeItem: (key) => {
+
+    removeItem: key => {
       delete storage[key];
       // 异步保存
       saveStorageData(toolName, storageFile, storage).catch(error => {
         logger.error(`保存工具存储失败: ${toolName}`, { error: error.message });
       });
     },
-    
+
     clear: () => {
       storageCache.set(toolName, {});
       // 删除存储文件
@@ -108,4 +108,3 @@ async function saveStorageData(toolName, storageFile, storage) {
     throw error;
   }
 }
-

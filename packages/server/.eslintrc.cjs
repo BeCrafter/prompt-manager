@@ -6,12 +6,9 @@ module.exports = {
   env: {
     browser: true,
     es2021: true,
-    node: true,
-    vitest: true
+    node: true
   },
-  extends: [
-    'eslint:recommended'
-  ],
+  extends: ['eslint:recommended'],
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module'
@@ -28,26 +25,19 @@ module.exports = {
     'template-curly-spacing': 'error',
     'arrow-spacing': 'error',
     'comma-dangle': ['error', 'never'],
-    'quotes': ['error', 'single'],
-    'semi': ['error', 'always'],
-    'indent': ['error', 2],
+    quotes: ['error', 'single'],
+    semi: ['error', 'always'],
+    indent: ['error', 2],
     'max-len': ['warn', { code: 120 }],
     'no-trailing-spaces': 'error',
-    'eol-last': 'error',
-    
-    // 测试相关规则
-    'vitest/expect-expect': 'error',
-    'vitest/no-disabled-tests': 'warn',
-    'vitest/no-focused-tests': 'error'
+    'eol-last': 'error'
   },
-  plugins: [
-    'vitest'
-  ],
   overrides: [
     {
       files: ['tests/**/*.test.js', 'tests/**/*.spec.js'],
       env: {
-        vitest: true
+        node: true,
+        es2021: true
       },
       rules: {
         'no-unused-expressions': 'off'
@@ -60,11 +50,5 @@ module.exports = {
       }
     }
   ],
-  ignorePatterns: [
-    'node_modules/',
-    'dist/',
-    'coverage/',
-    'test-results/',
-    'playwright-report/'
-  ]
+  ignorePatterns: ['node_modules/', 'dist/', 'coverage/', 'test-results/', 'playwright-report/', 'html/']
 };

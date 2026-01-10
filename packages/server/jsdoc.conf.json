@@ -1,30 +1,14 @@
 {
   "source": {
-    "include": [
-      "./services/",
-      "./utils/",
-      "./mcp/",
-      "./api/",
-      "./toolm/",
-      "./index.js"
-    ],
-    "exclude": [
-      "node_modules/",
-      "dist/",
-      "coverage/",
-      "tests/",
-      "test-results/"
-    ],
+    "include": ["./services/", "./utils/", "./mcp/", "./api/", "./toolm/", "./index.js"],
+    "exclude": ["node_modules/", "dist/", "coverage/", "tests/", "test-results/"],
     "includePattern": ".+\\.js(doc)?$"
   },
   "opts": {
     "destination": "./docs/jsdoc/",
     "recurse": true
   },
-  "plugins": [
-    "plugins/markdown",
-    "plugins/summarize"
-  ],
+  "plugins": ["plugins/markdown", "plugins/summarize"],
   "templates": {
     "cleverLinks": false,
     "monospaceLinks": false,

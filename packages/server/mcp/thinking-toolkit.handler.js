@@ -10,8 +10,8 @@ import { handleThinkPlan } from './think-plan.handler.js';
 import { logger } from '../utils/logger.js';
 
 export const THINKING_SCENARIOS = {
-    EXPLORATORY: 'exploratory', // 探索 / 诊断类场景
-    EXECUTION: 'execution'      // 执行 / 规划类场景
+  EXPLORATORY: 'exploratory', // 探索 / 诊断类场景
+  EXECUTION: 'execution' // 执行 / 规划类场景
 };
 
 /**
@@ -21,122 +21,121 @@ export const THINKING_SCENARIOS = {
  * @param {object} args.payload - 对应场景所需的参数
  */
 export async function handleThinkingToolkit(args) {
-    const { scenario, payload, _meta } = args || {};
-    const resolvedScenario = scenario || _meta?.scenario;
+  const { scenario, payload, _meta } = args || {};
+  const resolvedScenario = scenario || _meta?.scenario;
 
-    if (!resolvedScenario) {
-        throw new Error('缺少必需参数: scenario');
-    }
+  if (!resolvedScenario) {
+    throw new Error('缺少必需参数: scenario');
+  }
 
-    const description = getScenarioDescription(resolvedScenario);
-    if (!description) {
-        throw new Error(`未找到场景 ${resolvedScenario} 对应的描述信息`);
-    }
+  const description = getScenarioDescription(resolvedScenario);
+  if (!description) {
+    throw new Error(`未找到场景 ${resolvedScenario} 对应的描述信息`);
+  }
 
-    if (payload === undefined || payload === null) {
-        return {
-            content: [
-                {
-                    type: 'text',
-                    text: description
-                }
-            ]
-        };
-    }
-
-    logger.debug('[thinking_toolkit] dispatching scenario:', resolvedScenario);
-
-    const executor = resolvedScenario === THINKING_SCENARIOS.EXPLORATORY
-        ? handleSequentialThinking
-        : resolvedScenario === THINKING_SCENARIOS.EXECUTION
-            ? handleThinkPlan
-            : null;
-
-    if (!executor) {
-        throw new Error(`不支持的 scenario: ${resolvedScenario}`);
-    }
-
-    const normalizedPayload = normalizePayloadByScenario(resolvedScenario, payload);
-
-    const result = await executor(normalizedPayload);
-
-    if (!result || !Array.isArray(result.content)) {
-        return result;
-    }
-
+  if (payload === undefined || payload === null) {
     return {
-        ...result,
-        content: [
-            ...result.content
-        ]
+      content: [
+        {
+          type: 'text',
+          text: description
+        }
+      ]
     };
+  }
+
+  logger.debug('[thinking_toolkit] dispatching scenario:', resolvedScenario);
+
+  const executor =
+    resolvedScenario === THINKING_SCENARIOS.EXPLORATORY
+      ? handleSequentialThinking
+      : resolvedScenario === THINKING_SCENARIOS.EXECUTION
+        ? handleThinkPlan
+        : null;
+
+  if (!executor) {
+    throw new Error(`不支持的 scenario: ${resolvedScenario}`);
+  }
+
+  const normalizedPayload = normalizePayloadByScenario(resolvedScenario, payload);
+
+  const result = await executor(normalizedPayload);
+
+  if (!result || !Array.isArray(result.content)) {
+    return result;
+  }
+
+  return {
+    ...result,
+    content: [...result.content]
+  };
 }
 
 function normalizePayloadByScenario(scenario, payload) {
-    if (typeof payload !== 'object' || Array.isArray(payload)) {
-        const sample = scenario === THINKING_SCENARIOS.EXPLORATORY
-            ? `{"thought":"分析性能下降的可能原因","totalThoughts":5}`
-            : `{"thought":"需要上线新版本","plan":"1. 备份 2. 部署 3. 验证","action":"先执行备份脚本","thoughtNumber":"TP-001"}`;
-        throw new Error(`payload 必须是对象。例如：${sample}`);
+  if (typeof payload !== 'object' || Array.isArray(payload)) {
+    const sample =
+      scenario === THINKING_SCENARIOS.EXPLORATORY
+        ? '{"thought":"分析性能下降的可能原因","totalThoughts":5}'
+        : '{"thought":"需要上线新版本","plan":"1. 备份 2. 部署 3. 验证","action":"先执行备份脚本","thoughtNumber":"TP-001"}';
+    throw new Error(`payload 必须是对象。例如：${sample}`);
+  }
+
+  const sanitizeThought = value => {
+    if (typeof value !== 'string') {
+      return value;
+    }
+    return value.trim();
+  };
+
+  if (scenario === THINKING_SCENARIOS.EXPLORATORY) {
+    const requiredMissing = [];
+    if (!payload.thought || sanitizeThought(payload.thought).length === 0) {
+      requiredMissing.push('thought');
+    }
+    if (requiredMissing.length > 0) {
+      throw new Error(
+        `当 scenario="exploratory" 时，需要提供 ${requiredMissing.join('、')} 字段。例如：{"thought":"分析性能下降的可能原因","totalThoughts":5}`
+      );
     }
 
-    const sanitizeThought = (value) => {
-        if (typeof value !== 'string') {
-            return value;
-        }
-        return value.trim();
+    const normalized = { ...payload };
+    if (normalized.thoughtNumber !== undefined) {
+      const numericValue =
+        typeof normalized.thoughtNumber === 'string' ? Number(normalized.thoughtNumber) : normalized.thoughtNumber;
+      if (Number.isNaN(numericValue)) {
+        throw new Error('exploratory 场景中 thoughtNumber 需要是数字，例如 1 或 2。');
+      }
+      normalized.thoughtNumber = numericValue;
+    }
+    return normalized;
+  }
+
+  if (scenario === THINKING_SCENARIOS.EXECUTION) {
+    const requiredFields = ['thought', 'plan', 'action', 'thoughtNumber'];
+    const missing = requiredFields.filter(field => {
+      const value = payload[field];
+      if (value === undefined || value === null) {
+        return true;
+      }
+      if (typeof value === 'string') {
+        return value.trim().length === 0;
+      }
+      return false;
+    });
+
+    if (missing.length > 0) {
+      throw new Error(
+        `当 scenario="execution" 时，需要提供 ${missing.join('、')} 字段。例如：{"thought":"需要上线新版本","plan":"1. 备份 2. 部署 3. 验证","action":"先执行备份脚本","thoughtNumber":"TP-001"}`
+      );
+    }
+
+    return {
+      ...payload,
+      thoughtNumber: String(payload.thoughtNumber)
     };
+  }
 
-    if (scenario === THINKING_SCENARIOS.EXPLORATORY) {
-        const requiredMissing = [];
-        if (!payload.thought || sanitizeThought(payload.thought).length === 0) {
-            requiredMissing.push('thought');
-        }
-        if (requiredMissing.length > 0) {
-            throw new Error(
-                `当 scenario="exploratory" 时，需要提供 ${requiredMissing.join('、')} 字段。例如：{"thought":"分析性能下降的可能原因","totalThoughts":5}`
-            );
-        }
-
-        const normalized = { ...payload };
-        if (normalized.thoughtNumber !== undefined) {
-            const numericValue = typeof normalized.thoughtNumber === 'string'
-                ? Number(normalized.thoughtNumber)
-                : normalized.thoughtNumber;
-            if (Number.isNaN(numericValue)) {
-                throw new Error('exploratory 场景中 thoughtNumber 需要是数字，例如 1 或 2。');
-            }
-            normalized.thoughtNumber = numericValue;
-        }
-        return normalized;
-    }
-
-    if (scenario === THINKING_SCENARIOS.EXECUTION) {
-        const requiredFields = ['thought', 'plan', 'action', 'thoughtNumber'];
-        const missing = requiredFields.filter((field) => {
-            const value = payload[field];
-            if (value === undefined || value === null) {
-                return true;
-            }
-            if (typeof value === 'string') {
-                return value.trim().length === 0;
-            }
-            return false;
-        });
-
-        if (missing.length > 0) {
-            throw new Error(
-                `当 scenario="execution" 时，需要提供 ${missing.join('、')} 字段。例如：{"thought":"需要上线新版本","plan":"1. 备份 2. 部署 3. 验证","action":"先执行备份脚本","thoughtNumber":"TP-001"}`
-            );
-        }
-
-        return {
-            ...payload,
-            thoughtNumber: String(payload.thoughtNumber)
-        };
-    }
-
-    throw new Error(`不支持的 scenario: ${scenario}`);
+  throw new Error(`不支持的 scenario: ${scenario}`);
 }
 
 const SEQUENTIAL_THINKING_DESCRIPTION = `🧠 **顺序思考工具 (Sequential Thinking)** - 动态反思性思维工具
@@ -371,10 +370,10 @@ export const THINK_AND_PLAN_DESCRIPTION = `📋 **思考规划工具 (Think & Pl
 `;
 
 const descriptionMap = {
-    exploratory: SEQUENTIAL_THINKING_DESCRIPTION,
-    execution: THINK_AND_PLAN_DESCRIPTION
+  exploratory: SEQUENTIAL_THINKING_DESCRIPTION,
+  execution: THINK_AND_PLAN_DESCRIPTION
 };
 
 function getScenarioDescription(scenario) {
-    return descriptionMap[scenario] || '';
+  return descriptionMap[scenario] || '';
 }

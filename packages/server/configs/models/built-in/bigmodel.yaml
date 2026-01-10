@@ -1,6 +1,6 @@
-name: "BigModel"
-provider: "BigModel"
-model: "glm-4.5-air"
-apiEndpoint: "https://open.bigmodel.cn/api/paas/v4/chat/completions"
-apiKey: "ba6397b3478a47c79938c98b822a3ced.fGPlm03ACPDDsbmL"
+name: 'BigModel'
+provider: 'BigModel'
+model: 'glm-4.5-air'
+apiEndpoint: 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
+apiKey: 'ba6397b3478a47c79938c98b822a3ced.fGPlm03ACPDDsbmL'
 enabled: true

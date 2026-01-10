@@ -30,18 +30,18 @@ function serveAsarStatic(root) {
       try {
         // 动态导入 asar 模块（在 ES 模块环境中）
         const { default: asar } = await import('@electron/asar');
-        
+
         // 从 root 中提取 asar 文件路径和相对路径
         const asarPathMatch = root.match(/^(.*?\.asar)(\/.*)?$/);
         const asarFilePath = asarPathMatch ? asarPathMatch[1] : root.replace(/\/.*$/, '.asar');
         const relativePathInAsar = asarPathMatch && asarPathMatch[2] ? asarPathMatch[2].substring(1) : 'web';
-        
+
         const filePath = path.posix.join(relativePathInAsar, req.path).replace(/^\//, '');
         const stat = asar.statFile(asarFilePath, filePath);
-        
+
         if (stat) {
           const fileContent = asar.extractFile(asarFilePath, filePath);
-          
+
           // 设置适当的 Content-Type
           const ext = path.extname(filePath).toLowerCase();
           const mimeTypes = {
@@ -55,11 +55,11 @@ function serveAsarStatic(root) {
             '.svg': 'image/svg+xml',
             '.ico': 'image/x-icon'
           };
-          
+
           if (mimeTypes[ext]) {
             res.setHeader('Content-Type', mimeTypes[ext]);
           }
-          
+
           res.send(fileContent);
         } else {
           next();
@@ -80,7 +80,6 @@ app.use(cors());
 app.use(express.json({ limit: '8mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-
 // 为管理员界面提供静态文件服务 - 根路径
 // 检查是否需要使用 ASAR 处理（需要验证 .asar 文件实际上存在）
 const isAsarPath = adminUiRoot.includes('.asar') && fs.existsSync(adminUiRoot.replace(/\/.*$/, '.asar'));
@@ -100,13 +99,13 @@ async function sendIndexHtml(req, res) {
     try {
       // 动态导入 asar 模块（在 ES 模块环境中）
       const { default: asar } = await import('@electron/asar');
-      
+
       // 从 adminUiRoot 中提取 asar 文件路径和相对路径
       const asarPathMatch = adminUiRoot.match(/^(.*?\.asar)(\/.*)?$/);
       const asarFilePath = asarPathMatch ? asarPathMatch[1] : adminUiRoot.replace(/\/.*$/, '.asar');
       const relativePathInAsar = asarPathMatch && asarPathMatch[2] ? asarPathMatch[2].substring(1) : 'web';
       const indexPath = path.posix.join(relativePathInAsar, 'index.html');
-      
+
       // 检查文件是否存在
       const stat = asar.statFile(asarFilePath, indexPath);
       if (stat) {
@@ -129,13 +128,12 @@ async function sendIndexHtml(req, res) {
 app.get(config.adminPath, sendIndexHtml);
 
 // 为管理员界面提供根路径访问（当用户访问 /admin/ 时显示 index.html）
-app.get(config.adminPath + '/', sendIndexHtml);
-
+app.get(`${config.adminPath}/`, sendIndexHtml);
 
 // 健康检查端点
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'ok', 
+  res.status(200).json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     port: config.getPort(),
@@ -154,7 +152,6 @@ app.use('/surge', surgeRouter);
 
 // 注册工具API
 app.use('/tool', toolRouter);
-
 
 const transports = {};
 const mcpServers = {}; // 存储每个会话的MCP服务器实例
@@ -198,7 +195,7 @@ function attachTransportLifecycle(transport) {
     scheduleSessionCleanup(sid);
   };
 
-  transport.onerror = (error) => {
+  transport.onerror = error => {
     console.error('MCP Transport error:', error);
   };
 }
@@ -208,7 +205,7 @@ app.all('/mcp', (req, res) => {
   try {
     let transport;
     const sessionId = req.headers['mcp-session-id'] || '';
-    
+
     if (sessionId && transports[sessionId]) {
       const existingTransport = transports[sessionId];
       // Check if the transport is of the correct type
@@ -218,12 +215,12 @@ app.all('/mcp', (req, res) => {
       } else {
         // Transport exists but is not a StreamableHTTPServerTransport (could be SSEServerTransport)
         res.status(400).json({
-            jsonrpc: '2.0',
-            error: {
-                code: -32000,
-                message: 'Bad Request: Session exists but uses a different transport protocol'
-            },
-            id: null
+          jsonrpc: '2.0',
+          error: {
+            code: -32000,
+            message: 'Bad Request: Session exists but uses a different transport protocol'
+          },
+          id: null
         });
         return;
       }
@@ -231,51 +228,51 @@ app.all('/mcp', (req, res) => {
       // 断线后尝试恢复会话：为已有会话重新创建 transport
       const eventStore = eventStores[sessionId];
       transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: () => sessionId,
-          eventStore,
-          onsessioninitialized: async () => {
-              // 已有会话，不需要重新初始化
-              transports[sessionId] = transport;
-              // 重新连接已有的 MCP server
-              try {
-                  const server = mcpServers[sessionId];
-                  server.connect(transport);
-                  console.log(`MCP server reconnected for session ${sessionId}`);
-              } catch (error) {
-                  console.error('会话恢复失败:', error);
-              }
+        sessionIdGenerator: () => sessionId,
+        eventStore,
+        onsessioninitialized: async () => {
+          // 已有会话，不需要重新初始化
+          transports[sessionId] = transport;
+          // 重新连接已有的 MCP server
+          try {
+            const server = mcpServers[sessionId];
+            server.connect(transport);
+            console.log(`MCP server reconnected for session ${sessionId}`);
+          } catch (error) {
+            console.error('会话恢复失败:', error);
           }
+        }
       });
       // 确保立即记录 transport
       transports[sessionId] = transport;
       attachTransportLifecycle(transport);
       // 若存在延迟清理计时器，先取消
       if (sessionCleanupTimers[sessionId]) {
-          clearTimeout(sessionCleanupTimers[sessionId]);
-          delete sessionCleanupTimers[sessionId];
+        clearTimeout(sessionCleanupTimers[sessionId]);
+        delete sessionCleanupTimers[sessionId];
       }
     } else if (!sessionId && req.method === 'POST' && isInitializeRequest(req.body)) {
       const eventStore = new InMemoryEventStore();
 
       transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: () => randomUUID(),
-          eventStore, // Enable resumability
-          onsessioninitialized: async sessionId => {
-              // Store the transport by session ID when session is initialized
-              console.log(`StreamableHTTP session initialized with ID: ${sessionId}`);
-              transports[sessionId] = transport;
-              eventStores[sessionId] = eventStore;
-              
-              try {
-                  // 为新会话创建MCP服务器实例（同步等待完成）
-                  const server = await getMcpServer();
-                  mcpServers[sessionId] = server;
-                  server.connect(transport);
-                  console.log(`MCP server connected for session ${sessionId}`);
-              } catch (error) {
-                  console.error('创建MCP服务器失败:', error);
-              }
+        sessionIdGenerator: () => randomUUID(),
+        eventStore, // Enable resumability
+        onsessioninitialized: async sessionId => {
+          // Store the transport by session ID when session is initialized
+          console.log(`StreamableHTTP session initialized with ID: ${sessionId}`);
+          transports[sessionId] = transport;
+          eventStores[sessionId] = eventStore;
+
+          try {
+            // 为新会话创建MCP服务器实例（同步等待完成）
+            const server = await getMcpServer();
+            mcpServers[sessionId] = server;
+            server.connect(transport);
+            console.log(`MCP server connected for session ${sessionId}`);
+          } catch (error) {
+            console.error('创建MCP服务器失败:', error);
           }
+        }
       });
 
       // 统一注册关闭/错误处理（含延迟清理）
@@ -283,40 +280,40 @@ app.all('/mcp', (req, res) => {
     } else {
       // Invalid request - no session ID or not initialization request
       res.status(400).json({
-          jsonrpc: '2.0',
-          error: {
-              code: -32000,
-              message: 'Bad Request: No valid session ID provided'
-          },
-          id: null
+        jsonrpc: '2.0',
+        error: {
+          code: -32000,
+          message: 'Bad Request: No valid session ID provided'
+        },
+        id: null
       });
       return;
     }
-    
+
     // Handle the request with the transport
     transport.handleRequest(req, res, req.body);
   } catch (error) {
-    logger.error('Error handling MCP request: ' + error.message);
+    logger.error(`Error handling MCP request: ${error.message}`);
     return res.status(500).json({
-        jsonrpc: '2.0',
-        error: {
-            code: -32603,
-            message: 'Internal server error'
-        },
-        id: null
+      jsonrpc: '2.0',
+      error: {
+        code: -32603,
+        message: 'Internal server error'
+      },
+      id: null
     });
   }
 });
 
 // 错误处理中间件
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error(`[服务器错误]: ${err.message}`);
-  res.status(500).send('Internal Server Error')
+  res.status(500).send('Internal Server Error');
 });
 
 // 404处理
 app.use((req, res) => {
-  res.status(404).send('Not Found')
+  res.status(404).send('Not Found');
 });
 
 // 导出清理函数
@@ -333,7 +330,7 @@ export function cleanupMcpSessions() {
     }
     delete transports[sessionId];
   }
-  
+
   // 注意：mcpServers 对象在 app.js 中不可访问，需要在 server.js 中处理
 }
 

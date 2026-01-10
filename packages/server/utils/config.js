@@ -1,7 +1,6 @@
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
-import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 
@@ -25,8 +24,6 @@ function expandPath(inputPath) {
 const configHome = path.join(os.homedir(), '.prompt-manager');
 dotenv.config({ path: path.join(configHome, '.env') });
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 const DEFAULT_HOME_DIR = path.join(os.homedir(), '.prompt-manager');
 const DEFAULT_PROMPTS_DIR = path.join(DEFAULT_HOME_DIR, 'prompts');
 
@@ -109,9 +106,7 @@ export class Config {
     }
 
     // 确定prompts目录
-    this.promptsDir = expandPath(cliArgs.promptsDir) ||
-      expandPath(process.env.PROMPTS_DIR) ||
-      DEFAULT_PROMPTS_DIR;
+    this.promptsDir = expandPath(cliArgs.promptsDir) || expandPath(process.env.PROMPTS_DIR) || DEFAULT_PROMPTS_DIR;
     this.configHome = path.dirname(this.promptsDir);
 
     // 服务器端口
@@ -147,7 +142,7 @@ export class Config {
     ];
 
     if (cliArgs.version) {
-      process.stderr.write(this.serverVersion + '\n');
+      process.stderr.write(`${this.serverVersion}\n`);
       process.exit(0);
     }
 
@@ -221,7 +216,6 @@ export class Config {
     }
   }
 
-
   /**
    * 确保prompts目录存在
    */
@@ -230,7 +224,7 @@ export class Config {
       await fs.ensureDir(this.promptsDir);
       return true;
     } catch (error) {
-      process.stderr.write('Failed to create prompts directory: ' + error.message + '\n');
+      process.stderr.write(`Failed to create prompts directory: ${error.message}\n`);
       return false;
     }
   }

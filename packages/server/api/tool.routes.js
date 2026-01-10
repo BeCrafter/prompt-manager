@@ -23,7 +23,7 @@ const upload = multer({
     },
     filename: (req, file, cb) => {
       // 生成唯一文件名，避免并发上传冲突
-      const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1E9)}-${file.originalname}`;
+      const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${file.originalname}`;
       cb(null, uniqueName);
     }
   }),
@@ -53,14 +53,7 @@ router.get('/list', async (req, res) => {
       await toolLoaderService.initialize();
     }
 
-    const {
-      search,
-      category,
-      tags,
-      author,
-      page = 1,
-      limit = 20
-    } = req.query;
+    const { search, category, tags, author, page = 1, limit = 20 } = req.query;
 
     // 获取所有工具
     let tools = toolLoaderService.getAllTools();
@@ -76,9 +69,7 @@ router.get('/list', async (req, res) => {
     }
 
     if (category) {
-      tools = tools.filter(tool => 
-        tool.metadata.category === category
-      );
+      tools = tools.filter(tool => tool.metadata.category === category);
     }
 
     if (tags) {
@@ -91,9 +82,7 @@ router.get('/list', async (req, res) => {
 
     if (author) {
       const authorLower = author.toLowerCase();
-      tools = tools.filter(tool => 
-        tool.metadata.author?.toLowerCase() === authorLower
-      );
+      tools = tools.filter(tool => tool.metadata.author?.toLowerCase() === authorLower);
     }
 
     // 排序
@@ -130,7 +119,6 @@ router.get('/list', async (req, res) => {
     };
 
     res.json(response);
-
   } catch (error) {
     logger.error('获取工具列表失败:', error);
     res.status(500).json({
@@ -151,7 +139,7 @@ router.get('/detail/:toolName', async (req, res) => {
     }
 
     const { toolName } = req.params;
-    
+
     // 检查工具是否存在
     if (!toolLoaderService.hasTool(toolName)) {
       return res.status(404).json({
@@ -182,7 +170,6 @@ router.get('/detail/:toolName', async (req, res) => {
       success: true,
       tool: toolDetail
     });
-
   } catch (error) {
     logger.error('获取工具详情失败:', error);
     res.status(500).json({
@@ -203,7 +190,7 @@ router.get('/readme/:toolName', async (req, res) => {
     }
 
     const { toolName } = req.params;
-    
+
     // 检查工具是否存在
     if (!toolLoaderService.hasTool(toolName)) {
       return res.status(404).json({
@@ -212,13 +199,11 @@ router.get('/readme/:toolName', async (req, res) => {
       });
     }
 
-    const tool = toolLoaderService.getTool(toolName);
-    
     // 查找 README.md 文件
     const toolboxDir = path.join(os.homedir(), '.prompt-manager', 'toolbox', toolName);
     const readmePath = path.join(toolboxDir, 'README.md');
-    
-    if (!await pathExists(readmePath)) {
+
+    if (!(await pathExists(readmePath))) {
       return res.status(404).json({
         success: false,
         error: `工具 '${toolName}' 的 README.md 文件不存在`
@@ -227,13 +212,12 @@ router.get('/readme/:toolName', async (req, res) => {
 
     const fs = await import('fs');
     const readmeContent = await fs.promises.readFile(readmePath, 'utf-8');
-    
+
     res.json({
       success: true,
       toolName,
       content: readmeContent
     });
-
   } catch (error) {
     logger.error('读取工具 README 失败:', error);
     res.status(500).json({
@@ -245,7 +229,7 @@ router.get('/readme/:toolName', async (req, res) => {
 
 /**
  * 上传工具包
- * 
+ *
  * 上传内容必须是 .zip 文件
  * 上传后需要做工具名的重复性检查，重复的不允许会给出提示，让用户自己判断是否需要覆盖
  * 解压缩 .zip 文件，然后检查里面是否存在规范约定的两个文件，至少存在这两个
@@ -277,7 +261,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     // 创建临时解压目录
     const tempDir = path.join(os.homedir(), '.prompt-manager', 'temp');
     fs.ensureDirSync(tempDir);
-    extractedDir = path.join(tempDir, `extracted_${Date.now()}_${Math.round(Math.random() * 1E9)}`);
+    extractedDir = path.join(tempDir, `extracted_${Date.now()}_${Math.round(Math.random() * 1e9)}`);
     fs.ensureDirSync(extractedDir);
 
     // 解压ZIP文件
@@ -286,10 +270,10 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
     // 检查解压后的目录结构
     const files = fs.readdirSync(extractedDir);
-    
+
     // 查找工具文件（以 .tool.js 结尾的文件）
-    const toolFiles = files.filter(file => 
-      file.endsWith('.tool.js') && fs.statSync(path.join(extractedDir, file)).isFile()
+    const toolFiles = files.filter(
+      file => file.endsWith('.tool.js') && fs.statSync(path.join(extractedDir, file)).isFile()
     );
 
     if (toolFiles.length === 0) {
@@ -304,8 +288,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     const toolName = toolFileName.replace('.tool.js', '');
 
     // 检查是否存在 README.md
-    const hasReadme = files.some(file => 
-      file.toLowerCase() === 'readme.md' && fs.statSync(path.join(extractedDir, file)).isFile()
+    const hasReadme = files.some(
+      file => file.toLowerCase() === 'readme.md' && fs.statSync(path.join(extractedDir, file)).isFile()
     );
 
     if (!hasReadme) {
@@ -325,7 +309,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(409).json({
         success: false,
         error: `工具 "${toolName}" 已存在`,
-        toolName: toolName,
+        toolName,
         canOverwrite: true
       });
     }
@@ -341,7 +325,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
     // 检查工具文件是否可导入（语法验证）
     const toolFilePath = path.join(targetToolDir, toolFileName);
-    if (!await pathExists(toolFilePath)) {
+    if (!(await pathExists(toolFilePath))) {
       return res.status(500).json({
         success: false,
         error: `工具文件 ${toolFileName} 不存在`
@@ -353,19 +337,19 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     try {
       const toolModule = await import(`file://${toolFilePath}`);
       tool = toolModule.default || toolModule;
-      
+
       // 验证工具接口是否符合规范
       if (typeof tool.execute !== 'function') {
         return res.status(400).json({
           success: false,
-          error: `工具文件缺少必需的 execute 方法`
+          error: '工具文件缺少必需的 execute 方法'
         });
       }
-      
+
       // 运行测试验证工具是否能正常工作
       const { createToolContext } = await import('../toolm/tool-context.service.js');
-      const toolContext = await createToolContext(toolName, tool);
-      
+      await createToolContext(toolName, tool);
+
       // 执行一个简单的测试，检查工具是否能被正确初始化
       if (typeof tool.getMetadata === 'function') {
         try {
@@ -377,13 +361,12 @@ router.post('/upload', upload.single('file'), async (req, res) => {
           logger.warn(`工具 ${toolName} 的 getMetadata 方法调用失败:`, metaError.message);
         }
       }
-      
+
       // 简单测试 execute 方法是否存在
       if (tool.execute && typeof tool.execute === 'function') {
         // 为了安全起见，不实际执行工具，只验证其签名
         logger.info(`工具 ${toolName} 的 execute 方法存在，签名验证通过`);
       }
-      
     } catch (importError) {
       // 清理失败的工具目录
       await fse.remove(targetToolDir);
@@ -423,7 +406,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         // 重新加载工具
         await toolLoaderService.reload();
       }
-      
+
       // 验证工具是否可以被加载
       if (toolLoaderService.hasTool(toolName)) {
         logger.info(`工具 ${toolName} 验证通过并已加载`);
@@ -435,22 +418,21 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     res.json({
       success: true,
       message: `工具 ${toolName} 上传成功`,
-      toolName: toolName,
+      toolName,
       overwritten: toolExists && req.body.overwrite === 'true'
     });
-
   } catch (error) {
     logger.error('工具上传失败:', error);
-    
+
     // 清理临时文件
     try {
-      if (extractedDir && await pathExists(extractedDir)) {
+      if (extractedDir && (await pathExists(extractedDir))) {
         await fse.remove(extractedDir);
       }
     } catch (cleanupError) {
       logger.error('清理临时文件失败:', cleanupError);
     }
-    
+
     res.status(500).json({
       success: false,
       error: error.message
@@ -458,16 +440,16 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   } finally {
     // 确保临时上传的ZIP文件被清理
     try {
-      if (tempZipPath && await pathExists(tempZipPath)) {
+      if (tempZipPath && (await pathExists(tempZipPath))) {
         await fse.remove(tempZipPath);
       }
     } catch (cleanupError) {
       logger.error('清理上传文件失败:', cleanupError);
     }
-    
+
     // 确保临时解压目录被清理
     try {
-      if (extractedDir && await pathExists(extractedDir)) {
+      if (extractedDir && (await pathExists(extractedDir))) {
         await fse.remove(extractedDir);
       }
     } catch (cleanupError) {

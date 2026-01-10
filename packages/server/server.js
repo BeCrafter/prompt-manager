@@ -6,7 +6,7 @@ import { util } from './utils/util.js';
 import { syncSystemTools } from './toolm/tool-sync.service.js';
 import { startLogCleanupTask } from './toolm/tool-logger.service.js';
 import { webSocketService } from './services/WebSocketService.js';
-import { checkPortAvailable, findAvailablePort } from './utils/port-checker.js';
+import { checkPortAvailable } from './utils/port-checker.js';
 
 // 动态导入 promptManager，以处理 Electron 打包后的路径问题
 let promptManager;
@@ -33,34 +33,39 @@ export async function isServerRunning() {
   if (!serverInstance) {
     return false;
   }
-  
+
   // 实际验证服务器是否在监听
-  return new Promise((resolve) => {
-    import('http').then(http => {
-      // 设置超时以避免长时间等待
-      const req = http.request({
-        hostname: 'localhost',
-        port: config.getPort(),
-        path: '/health',
-        method: 'GET',
-        timeout: 2000
-      }, (res) => {
-        resolve(true);
-      });
-      
-      req.on('error', () => {
+  return new Promise(resolve => {
+    import('http')
+      .then(http => {
+        // 设置超时以避免长时间等待
+        const req = http.request(
+          {
+            hostname: 'localhost',
+            port: config.getPort(),
+            path: '/health',
+            method: 'GET',
+            timeout: 2000
+          },
+          _res => {
+            resolve(true);
+          }
+        );
+
+        req.on('error', () => {
+          resolve(false);
+        });
+
+        req.on('timeout', () => {
+          req.destroy();
+          resolve(false);
+        });
+
+        req.end();
+      })
+      .catch(() => {
         resolve(false);
       });
-      
-      req.on('timeout', () => {
-        req.destroy();
-        resolve(false);
-      });
-      
-      req.end();
-    }).catch(() => {
-      resolve(false);
-    });
   });
 }
 
@@ -86,19 +91,19 @@ export async function startServer(options = {}) {
   serverStartingPromise = (async () => {
     try {
       await _handleConfig(options);
-      
+
       // 检查端口可用性
       const port = config.getPort();
       const isPortAvailable = await checkPortAvailable(port);
-      
+
       if (!isPortAvailable) {
         const errorMsg = `端口 ${port} 已被占用，请检查是否有其他服务在使用该端口，或手动指定其他端口`;
         logger.error(errorMsg);
         throw new Error(errorMsg);
       }
-      
+
       await promptManager.loadPrompts();
-      
+
       // 加载优化模板和模型
       try {
         const { templateManager } = await import('./services/template.service.js');
@@ -115,17 +120,17 @@ export async function startServer(options = {}) {
       } catch (error) {
         logger.warn('加载优化模型失败，继续启动服务', { error: error.message });
       }
-      
+
       // 同步系统工具到沙箱环境
       try {
         await syncSystemTools();
       } catch (error) {
         logger.error('同步系统工具失败，继续启动服务', { error: error.message });
       }
-      
-    // MCP 长连接可能长时间空闲（IDE 侧保持会话），若沿用 Node 默认超时（requestTimeout 5 分钟、keepAliveTimeout 5 秒、headersTimeout 60 秒）
-    // 会导致连接被动关闭。这里将相关超时调高/关闭以避免 IDE 定期断开。
-    const MCP_LONG_TIMEOUT = 24 * 60 * 60 * 1000; // 24h
+
+      // MCP 长连接可能长时间空闲（IDE 侧保持会话），若沿用 Node 默认超时（requestTimeout 5 分钟、keepAliveTimeout 5 秒、headersTimeout 60 秒）
+      // 会导致连接被动关闭。这里将相关超时调高/关闭以避免 IDE 定期断开。
+      const MCP_LONG_TIMEOUT = 24 * 60 * 60 * 1000; // 24h
 
       // 启动日志清理任务
       startLogCleanupTask();
@@ -137,7 +142,9 @@ export async function startServer(options = {}) {
             logger.info(`MCP服务启动成功  http://localhost:${port}/mcp`);
             if (config.adminEnable) {
               logger.info(`管理员界面可通过 http://localhost:${port}${config.adminPath} 访问`);
-              process.stderr.write('\n======================================================================================\n');
+              process.stderr.write(
+                '\n======================================================================================\n'
+              );
             }
 
             // 放宽 HTTP 服务器超时，防止 MCP 流式会话被意外回收
@@ -149,17 +156,17 @@ export async function startServer(options = {}) {
 
             // 设置服务器实例
             serverInstance = server;
-            
+
             // 启动WebSocket服务，传入 HTTP 服务器端口
             try {
-                await webSocketService.start({ port: config.getPort() });
-                const wsPort = webSocketService.getPort();
-                logger.info(`WebSocket服务启动成功，端口: ${wsPort}`);
+              await webSocketService.start({ port: config.getPort() });
+              const wsPort = webSocketService.getPort();
+              logger.info(`WebSocket服务启动成功，端口: ${wsPort}`);
             } catch (wsError) {
               logger.error('WebSocket服务启动失败:', wsError.message);
               // WebSocket服务失败不影响主服务器运行
             }
-            
+
             resolve(server);
           } catch (error) {
             logger.error('服务器启动后处理失败:', error.message);
@@ -168,7 +175,7 @@ export async function startServer(options = {}) {
           }
         });
 
-        server.on('error', (err) => {
+        server.on('error', err => {
           logger.error('服务器启动失败:', err.message);
           if (err.code === 'EADDRINUSE') {
             logger.error(`端口 ${port} 已被占用，请检查是否有其他服务在使用该端口`);
@@ -220,7 +227,7 @@ export async function stopServer() {
   }
 
   await new Promise((resolve, reject) => {
-    serverInstance.close((err) => {
+    serverInstance.close(err => {
       if (err) {
         logger.error('停止服务器失败:', err.message);
         reject(err);
@@ -255,7 +262,7 @@ const isDirectRun = (() => {
 })();
 
 if (isDirectRun) {
-  startServer().catch((error) => {
+  startServer().catch(error => {
     logger.error('服务器启动失败:', error.message);
     process.exit(1);
   });

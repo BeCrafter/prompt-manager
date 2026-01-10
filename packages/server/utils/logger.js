@@ -22,7 +22,7 @@ export class Logger {
   /**
    * 格式化日志消息
    */
-  formatMessage(level, message, ...args) {
+  formatMessage(level, message) {
     const timestamp = new Date().toISOString();
     return `[${timestamp}] [${level.toUpperCase()}] ${message}`;
   }

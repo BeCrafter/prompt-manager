@@ -49,8 +49,7 @@ npm run test:module-loading # Module loading tests
 
 ### Verification Commands
 ```bash
-npm run verify             # Run comprehensive E2E verification (recommended before commits)
-npm run verify:e2e        # Detailed E2E verification (parallel checks)
+npm run verify             # Run comprehensive publish verification (recommended before commits)
 npm run verify:publish     # Verify npm package publish readiness
 npm run check:deps        # Check and install all dependencies
 npm run check:env         # Check development environment
@@ -84,21 +83,17 @@ This command checks:
 - ESLint and Prettier compliance
 - All tests pass
 - All files listed in package.json exist
-- Admin UI is built
 - Version consistency across all files
+- Publish readiness
 
-### E2E Verification (Recommended before commits/PRs)
+### Verification (Recommended before commits/PRs)
 ```bash
-# Run comprehensive E2E verification (parallel checks)
-npm run verify:e2e
+# Run comprehensive verification
+npm run verify
 ```
-This command performs **parallel end-to-end verification** across all components:
+This command performs comprehensive verification:
 - **Code Quality**: ESLint, Prettier, all tests
-- **Dependencies**: Root, server, desktop, admin-ui packages
-- **Builds**: Admin UI, core package, desktop app
 - **NPM Package**: File existence, version consistency, publish readiness
-- **Desktop App**: Configuration, Electron installation, packable configuration
-- **Module Loading**: Development and production module loading
 
 **Use this before**:
 - Creating pull requests
@@ -201,8 +196,9 @@ describe('FeatureName', () => {
 - Test both success and error paths
 
 ### Key Configuration Files
-- ESLint: `packages/server/.eslintrc.js`
+- ESLint: `packages/server/.eslintrc.cjs`
 - Prettier: `packages/server/.prettierrc`
+- Prettier Ignore: `packages/server/.prettierignore`
 - Vitest: `packages/server/vitest.config.js`
 - Webpack: `packages/admin-ui/webpack.config.js`
 
@@ -253,7 +249,7 @@ Triggered by pushing a version tag (e.g., `v0.1.21`) to GitHub. GitHub Actions w
 ### Before Publishing
 ```bash
 # 1. Verify all checks pass
-npm run publish:verify
+npm run verify
 
 # 2. Update version if needed
 npm version <major|minor|patch> -m "Release version %s"
@@ -292,14 +288,14 @@ The project uses a **multi-layered verification approach** to ensure npm package
 2. **Integration Tests** (`npm run test:server:integration`) - Module interaction testing
 3. **Module Loading Tests** (`npm run test:module-loading`) - Dependency resolution testing
 4. **E2E Tests** (`npm run test:e2e`) - Packaged app functionality testing
-5. **Comprehensive Verification** (`npm run verify:e2e`) - Parallel full-stack verification
+5. **Comprehensive Verification** (`npm run verify`) - Full-stack verification
 
 ### Running E2E Verification
 
 #### Comprehensive Parallel Verification
 ```bash
 # Run all verification checks in parallel (RECOMMENDED)
-npm run verify:e2e
+npm run verify
 ```
 This performs parallel checks across:
 - Code quality (lint, format, tests)
@@ -337,7 +333,7 @@ Tests:
 # Legacy verification (manual test)
 npm run desktop:verify
 ```
-**Note**: This runs `desktop:dev` which requires manual exit. Use `verify:e2e` instead.
+**Note**: This runs `desktop:dev` which requires manual exit. Use `verify` instead.
 
 ### Verification Coverage
 
@@ -367,7 +363,7 @@ The verification is designed to catch issues at each stage:
 ```
 Code Changes → [Pre-commit Hook] → [Unit Tests] → [Integration Tests]
      ↓
-[verify:e2e] (Parallel Full Verification)
+[verify] (Full Verification)
      ↓
 [NPM Publish or Desktop Build]
      ↓
@@ -380,7 +376,7 @@ Before any release or major commit:
 
 ```bash
 # 1. Run comprehensive E2E verification
-npm run verify:e2e
+npm run verify
 
 # 2. If all checks pass, proceed with release flow
 # For NPM publish:
@@ -424,7 +420,7 @@ npm run check:deps
 **Symptom**: Packaged app fails E2E tests
 **Solution**: Ensure all previous checks pass first
 ```bash
-npm run verify:e2e
+npm run verify
 npm run desktop:build
 npm run test:e2e
 ```
@@ -435,7 +431,7 @@ To ensure ongoing quality:
 
 1. **Pre-commit**: Husky runs `lint-staged` + tests automatically
 2. **Pre-push**: Husky runs full test suite + build verification
-3. **Manual**: Run `npm run verify:e2e` before major changes
+3. **Manual**: Run `npm run verify` before major changes
 4. **CI/CD**: GitHub Actions run full verification on all PRs and main branch pushes
 
 ## Documentation Maintenance
@@ -499,8 +495,9 @@ Update documentation **immediately** when any of the following changes occur:
 
 **Affected Files**:
 - `AGENTS.md` - Code Style Guidelines, Testing Patterns
-- `packages/server/.eslintrc.js` - Rule documentation
+- `packages/server/.eslintrc.cjs` - Rule documentation
 - `packages/server/.prettierrc` - Formatting rules
+- `packages/server/.prettierignore` - Ignore patterns
 - `packages/server/vitest.config.js` - Test configuration
 
 ### Documentation Update Checklist
@@ -518,7 +515,7 @@ When making any of the changes above, complete this checklist:
 - [ ] Update `E2E Verification` if verification process changed
 - [ ] **Run verification commands** to ensure they still work:
   ```bash
-  npm run verify:e2e
+  npm run verify
   npm run verify:publish
   ```
 
@@ -557,7 +554,7 @@ Always update documentation **before** or **at the same time** as code changes:
 After updating documentation, verify commands still work:
 ```bash
 # Verify all npm scripts are valid
-npm run verify:e2e
+npm run verify
 
 # Verify specific command categories
 npm run dev
@@ -593,13 +590,13 @@ npm run build
 npm run dev
 
 # Test verification commands
-npm run verify:e2e
+npm run verify
 ```
 
 #### **5. Automated Verification**
 Leverage existing verification tools:
 - **Pre-commit hooks**: Ensure code quality before commits
-- **CI/CD workflows**: Run `npm run verify:e2e` on all PRs
+- **CI/CD workflows**: Run `npm run verify` on all PRs
 - **Documentation checks**: Add script to verify documentation consistency (optional)
 
 ### Documentation Files Summary
@@ -620,12 +617,12 @@ Leverage existing verification tools:
 2. **Architecture changed** → Update `AGENTS.md` + `README.md`
 3. **Features added** → Update `AGENTS.md` + `README.md` + JSDoc
 4. **Build changed** → Update `AGENTS.md` + `.github/workflows/*`
-5. **Any change** → Run `npm run verify:e2e` to verify
+5. **Any change** → Run `npm run verify` to verify
 
 **Before committing documentation:**
 ```bash
 # 1. Verify documentation consistency
-npm run verify:e2e
+npm run verify
 
 # 2. Verify specific commands work
 npm run build

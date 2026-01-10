@@ -28,7 +28,7 @@ vi.mock('node-pty', () => {
 vi.mock('fs-extra', async () => {
   const actual = await vi.importActual('fs-extra');
   return {
-    ...actual,
+    ...actual
     // 可以在这里添加特定的mock
   };
 });
@@ -41,5 +41,5 @@ global.console = {
   debug: vi.fn(),
   info: vi.fn(),
   warn: vi.fn(),
-  error: vi.fn(),
+  error: vi.fn()
 };

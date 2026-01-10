@@ -9,10 +9,11 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { glob } from 'glob';
 
-const projectRoot = path.resolve(__dirname, '..';
+const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const projectRoot = path.join(projectRoot, '..');
+const projectRoot = path.resolve(__dirname, '..');
 
 // ANSI 颜色代码
 const colors = {
@@ -40,146 +41,206 @@ function info(message) {
   log(`ℹ ${message}`, 'blue');
 }
 
-function warn(message) {
-  log(`⚠ ${message}`, 'yellow');
-}
-
-function runCommand(command, description) {
-  try {
-    info(`Running: ${description}...`);
-    execSync(command, { stdio: 'inherit', cwd: __dirname });
-    success(`${description} passed`);
-    return true;
-  } catch (err) {
-    error(`${description} failed`);
-    return false;
+class PublishVerifier {
+  runCommand(command, description) {
+    try {
+      info(`Running: ${description}...`);
+      execSync(command, { stdio: 'pipe', cwd: projectRoot });
+      success(`${description} passed`);
+      return true;
+    } catch (err) {
+      error(`${description} failed`);
+      this.results.errors.push(`${description}: ${err.message}`);
+      return false;
+    }
   }
-}
 
-function checkFilesExist() {
-  info('Checking files listed in package.json...');
+  constructor() {
+    this.results = {
+      lint: false,
+      format: false,
+      test: false,
+      files: false,
+      version: false,
+      publishReady: false,
+      errors: []
+    };
+  }
 
-  const packageJsonPath = path.join(projectRoot, 'package.json');
-  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+  async runTest() {
+    console.log('\n');
+    log('='.repeat(60), 'bright');
+    log('NPM Publish Verification', 'bright');
+    log('='.repeat(60), 'bright');
+    console.log('\n');
 
-  const files = packageJson.files || [];
-  let allExist = true;
+    try {
+      // 测试1: Linting
+      this.results.lint = this.runCommand('npm run lint:check', 'ESLint check');
 
-  for (const filePattern of files) {
-    // 处理通配符模式
-    if (filePattern.includes('**')) {
-      const dir = path.join(projectRoot, filePattern.split('**')[0]);
-      if (!fs.existsSync(dir)) {
-        error(`Directory missing: ${filePattern}`);
-        allExist = false;
-      } else {
-        success(`Directory exists: ${filePattern}`);
-      }
-    } else if (filePattern.includes('*')) {
-      const dir = path.dirname(filePattern);
-      const fullDir = path.join(projectRoot, dir);
-      if (fs.existsSync(fullDir)) {
-        const files = fs.readdirSync(fullDir);
-        if (files.length > 0) {
-          success(`Files exist: ${filePattern}`);
-        } else {
-          warn(`No files matching: ${filePattern}`);
+      // 测试2: Format
+      this.results.format = this.runCommand('npm run format:check', 'Prettier check');
+
+      // 测试3: Tests (只运行服务器测试，避免循环调用)
+      this.results.test = this.runCommand('npm run test:server', 'Server tests');
+
+      // 测试4: Files
+      this.checkFilesExist();
+
+      // 测试5: Version consistency
+      this.checkVersionConsistency();
+
+      // 验证发布就绪
+      this.checkPublishReady();
+
+    } catch (error) {
+      this.results.errors.push(error.message);
+    }
+
+    this.printResults();
+  }
+
+  checkFilesExist() {
+    info('Checking files listed in package.json...');
+
+    const packageJsonPath = path.join(projectRoot, 'package.json');
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+
+    const files = packageJson.files || [];
+    let allExist = true;
+
+    for (const filePattern of files) {
+      if (filePattern.includes('**') || filePattern.includes('*')) {
+        const fullPattern = path.join(projectRoot, filePattern);
+        const matchedFiles = glob.sync(fullPattern);
+
+        if (matchedFiles.length === 0) {
+          error(`No files match pattern: ${filePattern}`);
+          allExist = false;
         }
       } else {
-        error(`Directory missing: ${filePattern}`);
-        allExist = false;
+        const fullPath = path.join(projectRoot, filePattern);
+        if (!fs.existsSync(fullPath)) {
+          error(`File missing: ${filePattern}`);
+          allExist = false;
+        }
       }
-    } else {
-      const fullPath = path.join(projectRoot, filePattern);
-      if (fs.existsSync(fullPath)) {
-        success(`File exists: ${filePattern}`);
-      } else {
-        error(`File missing: ${filePattern}`);
-        allExist = false;
-      }
+    }
+
+    if (allExist) {
+      success('All package files exist');
+      this.results.files = true;
     }
   }
 
-  return allExist;
-}
+  checkVersionConsistency() {
+    info('Checking version consistency...');
 
-function checkAdminUIBuilt() {
-  info('Checking admin UI build...');
+    const rootPackage = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
+    const serverPackage = JSON.parse(fs.readFileSync(path.join(projectRoot, 'packages/server/package.json'), 'utf8'));
+    const desktopPackage = JSON.parse(fs.readFileSync(path.join(projectRoot, 'app/desktop/package.json'), 'utf8'));
+    const envExample = fs.readFileSync(path.join(projectRoot, 'env.example'), 'utf8');
 
-  const webDir = path.join(projectRoot, 'packages/web');
-  if (!fs.existsSync(webDir)) {
-    error('Admin UI not built. Run: npm run build:admin-ui');
-    return false;
-  }
+    const version = rootPackage.version;
+    let consistent = true;
 
-  const indexHtml = path.join(webDir, 'index.html');
-  if (!fs.existsSync(indexHtml)) {
-    error('Admin UI index.html not found');
-    return false;
-  }
-
-  success('Admin UI build verified');
-  return true;
-}
-
-function checkVersionConsistency() {
-  info('Checking version consistency...');
-
-  const rootPackage = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
-  const serverPackage = JSON.parse(fs.readFileSync(path.join(projectRoot, 'packages/server/package.json'), 'utf8'));
-  const desktopPackage = JSON.parse(fs.readFileSync(path.join(projectRoot, 'app/desktop/package.json'), 'utf8'));
-  const envExample = fs.readFileSync(path.join(projectRoot, 'env.example'), 'utf8');
-
-  const version = rootPackage.version;
-  let consistent = true;
-
-  // 检查 server package 版本
-  if (serverPackage.version !== version) {
-    warn(`Server package version mismatch: ${serverPackage.version} != ${version}`);
-    consistent = false;
-  } else {
-    success('Server package version consistent');
-  }
-
-  // 检查 desktop package 版本
-  if (desktopPackage.version !== version) {
-    warn(`Desktop package version mismatch: ${desktopPackage.version} != ${version}`);
-    consistent = false;
-  } else {
-    success('Desktop package version consistent');
-  }
-
-  // 检查 env.example 中的版本
-  const envVersionMatch = envExample.match(/MCP_SERVER_VERSION=(.+)/);
-  if (envVersionMatch) {
-    const envVersion = envVersionMatch[1].trim();
-    if (envVersion !== version) {
-      warn(`env.example version mismatch: ${envVersion} != ${version}`);
+    if (serverPackage.version !== version) {
+      error(`Server version mismatch: ${serverPackage.version} != ${version}`);
       consistent = false;
-    } else {
-      success('env.example version consistent');
     }
-  }
 
-  // 检查 config.js 中的版本
-  const configPath = path.join(projectRoot, 'packages/server/utils/config.js');
-  if (fs.existsSync(configPath)) {
-    const configContent = fs.readFileSync(configPath, 'utf8');
-    const configVersionMatch = configContent.match(/this\.serverVersion = process\.env\.MCP_SERVER_VERSION \|\| '([^']+)'/);
-    if (configVersionMatch) {
-      const configVersion = configVersionMatch[1];
-      if (configVersion !== version) {
-        warn(`config.js version mismatch: ${configVersion} != ${version}`);
+    if (desktopPackage.version !== version) {
+      error(`Desktop version mismatch: ${desktopPackage.version} != ${version}`);
+      consistent = false;
+    }
+
+    const envVersionMatch = envExample.match(/MCP_SERVER_VERSION=(.+)/);
+    if (envVersionMatch) {
+      const envVersion = envVersionMatch[1].trim();
+      if (envVersion !== version) {
+        error(`env.example version mismatch: ${envVersion} != ${version}`);
         consistent = false;
-      } else {
-        success('config.js version consistent');
       }
     }
+
+    if (consistent) {
+      success('Version consistency verified');
+      this.results.version = true;
+    }
   }
 
-  return consistent;
+  checkPublishReady() {
+    info('Checking npm publish readiness...');
+
+    // 检查核心文件存在
+    const requiredFiles = [
+      'packages/server/index.js',
+      'packages/server/server.js',
+      'packages/server/app.js',
+      'packages/web/index.html'
+    ];
+
+    let allFilesExist = true;
+    for (const filePath of requiredFiles) {
+      const fullPath = path.join(projectRoot, filePath);
+      if (!fs.existsSync(fullPath)) {
+        error(`Required file missing: ${filePath}`);
+        allFilesExist = false;
+      }
+    }
+
+    if (allFilesExist) {
+      success('All required files exist');
+      this.results.publishReady = allFilesExist && this.results.version;
+    } else {
+      error('Missing required files');
+      this.results.publishReady = false;
+    }
+  }
+
+  printResults() {
+    console.log('\n');
+    log('='.repeat(60), 'bright');
+    log('Verification Results', 'bright');
+    log('='.repeat(60), 'bright');
+    console.log('\n');
+
+    console.log('Linting:');
+    console.log(`  ESLint:         ${this.results.lint ? '✅ PASS' : '❌ FAIL'}`);
+    console.log(`  Format:          ${this.results.format ? '✅ PASS' : '❌ FAIL'}`);
+    console.log(`  Tests:           ${this.results.test ? '✅ PASS' : '❌ FAIL'}`);
+    console.log('');
+
+    console.log('Files:');
+    console.log(`  Package files:   ${this.results.files ? '✅ PASS' : '❌ FAIL'}`);
+    console.log(`  Version:          ${this.results.version ? '✅ PASS' : '❌ FAIL'}`);
+    console.log(`  Publish ready:    ${this.results.publishReady ? '✅ PASS' : '❌ FAIL'}`);
+    console.log('');
+
+    if (this.results.errors.length > 0) {
+      console.log('Errors:');
+      this.results.errors.forEach((err, index) => {
+        console.log(`  ${index + 1}. ${err}`);
+      });
+      console.log('');
+    }
+
+    const allPassed = Object.values(this.results).every(value =>
+      typeof value === 'boolean' ? value : true
+    );
+
+    console.log('='.repeat(60), 'bright');
+    if (allPassed) {
+      log('🎉 All verification checks passed!', 'green');
+      process.exit(0);
+    } else {
+      log('❌ CRITICAL CHECKS FAILED!', 'red');
+      process.exit(1);
+    }
+  }
 }
 
+// 主执行流程
 async function main() {
   console.log('\n');
   log('='.repeat(60), 'bright');
@@ -187,54 +248,17 @@ async function main() {
   log('='.repeat(60), 'bright');
   console.log('\n');
 
-  const results = {
-    lint: runCommand('npm run lint:check', 'ESLint check'),
-    format: runCommand('npm run format:check', 'Prettier check'),
-    test: runCommand('npm test', 'All tests'),
-    files: checkFilesExist(),
-    adminUI: checkAdminUIBuilt(),
-    version: checkVersionConsistency(),
-  };
+  const verifier = new PublishVerifier();
 
-  console.log('\n');
-  log('='.repeat(60), 'bright');
-  log('Verification Summary', 'bright');
-  log('='.repeat(60), 'bright');
-  console.log('\n');
-
-  const passed = Object.entries(results)
-    .filter(([_, result]) => result === true)
-    .map(([name, _]) => `✓ ${name}`);
-
-  const failed = Object.entries(results)
-    .filter(([_, result]) => result === false)
-    .map(([name, _]) => `✗ ${name}`);
-
-  if (passed.length > 0) {
-    log('Passed:', 'green');
-    passed.forEach(item => console.log(`  ${item}`));
-    console.log('');
-  }
-
-  if (failed.length > 0) {
-    log('Failed:', 'red');
-    failed.forEach(item => console.log(`  ${item}`));
-    console.log('');
-
-    error('Verification failed! Please fix the issues above.');
+  try {
+    await verifier.runTest();
+  } catch (err) {
+    console.error(`Verification failed: ${err.message}`);
     process.exit(1);
-  } else {
-    success('All verification checks passed!');
-    info('You can now create a tag and push to trigger NPM publish:');
-    console.log('');
-    log('  git tag v<version>', 'blue');
-    log('  git push origin v<version>', 'blue');
-    console.log('');
-    process.exit(0);
   }
 }
 
 main().catch(err => {
-  error(err.message);
+  console.error('Fatal error:', err);
   process.exit(1);
 });

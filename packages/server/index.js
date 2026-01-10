@@ -1,6 +1,6 @@
 /**
  * Prompt Manager Core Library
- * 
+ *
  * This is the main entry point for the Prompt Manager core library.
  * It exports the main server functionality and utility functions.
  */
@@ -21,11 +21,7 @@ export { promptManager } from './services/manager.js';
 
 // Export MCP functionality
 export { getMcpServer } from './mcp/mcp.server.js';
-export { 
-  handleGetPrompt, 
-  handleSearchPrompts, 
-  handleReloadPrompts 
-} from './mcp/prompt.handler.js';
+export { handleGetPrompt, handleSearchPrompts, handleReloadPrompts } from './mcp/prompt.handler.js';
 export { handleSequentialThinking } from './mcp/sequential-thinking.handler.js';
 export { handleThinkPlan } from './mcp/think-plan.handler.js';
 export { handleToolM } from './toolm/index.js';

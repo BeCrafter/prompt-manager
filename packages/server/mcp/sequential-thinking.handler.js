@@ -1,8 +1,8 @@
 /**
  * Sequential Thinking 工具处理器
- * 
+ *
  * 参考: https://github.com/spences10/mcp-sequentialthinking-tools
- * 
+ *
  * 功能：
  * - 通过顺序思维实现动态和反思性的问题解决
  * - 支持思维过程的分支和修订
@@ -29,10 +29,10 @@ class ThinkingState {
       timestamp: new Date().toISOString(),
       ...metadata
     };
-    
+
     this.thoughts.push(thoughtObj);
     this.currentThoughtNumber = thoughtObj.number;
-    
+
     return thoughtObj;
   }
 
@@ -47,22 +47,22 @@ class ThinkingState {
       newContent: newThought,
       timestamp: new Date().toISOString()
     };
-    
+
     this.revisions.push(revision);
     originalThought.revised = true;
     originalThought.revision = revision;
-    
+
     return revision;
   }
 
   createBranch(fromThoughtNumber, branchId, branchThought) {
     const branch = {
       fromThought: fromThoughtNumber,
-      branchId: branchId,
+      branchId,
       thoughts: [branchThought],
       timestamp: new Date().toISOString()
     };
-    
+
     this.branches.set(branchId, branch);
     return branch;
   }
@@ -124,33 +124,32 @@ export async function handleSequentialThinking(args) {
 
     // 处理思考记录
     let thoughtRecord;
-    
+
     if (isRevision && revisesThought) {
       // 修订现有思考
       thinkingState.reviseThought(revisesThought, thought);
       thoughtRecord = {
         number: revisesThought,
         type: 'revision',
-        revisesThought: revisesThought,
+        revisesThought,
         content: thought
       };
     } else if (branchFromThought && branchId) {
       // 创建分支
-      const branch = thinkingState.createBranch(branchFromThought, branchId, thought);
       thoughtRecord = {
         number: branchFromThought,
         type: 'branch',
-        branchFromThought: branchFromThought,
-        branchId: branchId,
+        branchFromThought,
+        branchId,
         content: thought
       };
     } else {
       // 添加新思考
       const addedThought = thinkingState.addThought(thought, {
-        thoughtNumber: thoughtNumber,
-        totalThoughts: totalThoughts,
-        nextThoughtNeeded: nextThoughtNeeded,
-        needsMoreThoughts: needsMoreThoughts
+        thoughtNumber,
+        totalThoughts,
+        nextThoughtNeeded,
+        needsMoreThoughts
       });
       thoughtRecord = {
         number: addedThought.number,
@@ -169,7 +168,7 @@ export async function handleSequentialThinking(args) {
     const response = {
       success: true,
       thought: thoughtRecord,
-      summary: summary,
+      summary,
       progress: {
         current: thoughtNumber || summary.currentThought,
         total: totalThoughts,
@@ -181,8 +180,8 @@ export async function handleSequentialThinking(args) {
         content: t.content,
         revised: t.revised || false
       })),
-      ...(branches.length > 0 && { branches: branches }),
-      ...(revisions.length > 0 && { revisions: revisions })
+      ...(branches.length > 0 && { branches }),
+      ...(revisions.length > 0 && { revisions })
     };
 
     // 如果不需要更多思考，可以生成最终总结
@@ -195,12 +194,11 @@ export async function handleSequentialThinking(args) {
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: formatThinkingOutput(response)
         }
       ]
     };
-
   } catch (error) {
     logger.error('Sequential thinking error:', error);
     throw error;
@@ -210,7 +208,7 @@ export async function handleSequentialThinking(args) {
 /**
  * 生成最终总结
  */
-function generateFinalSummary(thoughts, branches, revisions) {
+function generateFinalSummary(thoughts) {
   const summary = {
     totalSteps: thoughts.length,
     keyInsights: [],
@@ -243,7 +241,7 @@ function generateFinalSummary(thoughts, branches, revisions) {
  */
 function formatThinkingOutput(response) {
   let output = '';
-  
+
   output += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
   output += '🧠 **顺序思考工具**\n';
   output += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
@@ -315,4 +313,3 @@ export function resetThinkingState() {
     message: '思考状态已重置'
   };
 }
-
