@@ -12,9 +12,9 @@
 
 import fs from 'fs-extra';
 import path from 'path';
-import os from 'os';
 import { fileURLToPath } from 'url';
 import { pathExists } from './tool-utils.js';
+import { config } from '../utils/config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -98,7 +98,7 @@ async function validateDirectoryStructure() {
   const paths = {
     tools目录: path.join(__dirname),
     系统工具目录: path.join(rootDir, 'packages', 'resources', 'tools'),
-    用户工具目录: path.join(os.homedir(), '.prompt-manager', 'tools')
+    用户工具目录: config.getToolboxDir()
   };
 
   for (const [name, dirPath] of Object.entries(paths)) {

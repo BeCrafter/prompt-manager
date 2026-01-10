@@ -11,10 +11,10 @@
 
 import fs from 'fs-extra';
 import path from 'path';
-import os from 'os';
 import { logger } from '../utils/logger.js';
 import { pathExists } from './tool-utils.js';
 import PackageInstaller from './package-installer.service.js';
+import { config } from '../utils/config.js';
 
 /**
  * 确保工具依赖已安装
@@ -22,7 +22,7 @@ import PackageInstaller from './package-installer.service.js';
  * @param {object} toolModule - 工具模块（可选，用于自动创建 package.json）
  */
 export async function ensureToolDependencies(toolName, toolModule = null) {
-  const toolDir = path.join(os.homedir(), '.prompt-manager', 'toolbox', toolName);
+  const toolDir = config.getToolDir(toolName);
   const packageJsonPath = path.join(toolDir, 'package.json');
   const nodeModulesPath = path.join(toolDir, 'node_modules');
 

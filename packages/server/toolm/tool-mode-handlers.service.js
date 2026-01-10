@@ -9,13 +9,13 @@
 
 import fs from 'fs-extra';
 import path from 'path';
-import os from 'os';
 import { logger } from '../utils/logger.js';
 import { toolLoaderService } from './tool-loader.service.js';
 import { saveToolEnvironment, getToolEnvironmentInfo } from './tool-environment.service.js';
 import { flushAllLogQueues } from './tool-logger.service.js';
 import { pathExists } from './tool-utils.js';
 import { executeTool } from './tool-execution.service.js';
+import { config } from '../utils/config.js';
 
 /**
  * 处理 manual 模式 - 显示工具手册
@@ -163,7 +163,7 @@ export async function handleLogMode(toolName, parameters) {
     // 先刷新日志队列，确保最新日志已写入
     await flushAllLogQueues();
 
-    const toolDir = path.join(os.homedir(), '.prompt-manager', 'toolbox', toolName);
+    const toolDir = config.getToolDir(toolName);
     const logFilePath = path.join(toolDir, 'run.log');
 
     // 检查日志文件是否存在

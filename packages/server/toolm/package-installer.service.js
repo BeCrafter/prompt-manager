@@ -8,7 +8,6 @@
 
 import path from 'path';
 import fs from 'fs-extra';
-import os from 'os';
 import { logger } from '../utils/logger.js';
 
 class PackageInstaller {
@@ -112,7 +111,7 @@ class PackageInstaller {
       const arb = new Arborist({
         path: workingDir,
         registry,
-        cache: path.join(os.homedir(), '.npm', '_cacache'),
+        cache: path.join(process.env.HOME, '.npm', '_cacache'),
         save: false, // 不需要再次更新 package.json
         omit: [], // 安装所有依赖
         force: false,

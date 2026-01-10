@@ -11,13 +11,13 @@ import fse from 'fs-extra';
 import { logger } from '../utils/logger.js';
 import { toolLoaderService } from '../toolm/tool-loader.service.js';
 import { pathExists } from '../toolm/tool-utils.js';
-import os from 'os';
+import { config } from '../utils/config.js';
 
 // 配置 multer 用于处理文件上传
 const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
-      const uploadDir = path.join(os.homedir(), '.prompt-manager', 'temp');
+      const uploadDir = config.getTempDir();
       fs.ensureDirSync(uploadDir);
       cb(null, uploadDir);
     },
@@ -200,7 +200,7 @@ router.get('/readme/:toolName', async (req, res) => {
     }
 
     // 查找 README.md 文件
-    const toolboxDir = path.join(os.homedir(), '.prompt-manager', 'toolbox', toolName);
+    const toolboxDir = config.getToolDir(toolName);
     const readmePath = path.join(toolboxDir, 'README.md');
 
     if (!(await pathExists(readmePath))) {
@@ -259,7 +259,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     }
 
     // 创建临时解压目录
-    const tempDir = path.join(os.homedir(), '.prompt-manager', 'temp');
+    const tempDir = config.getTempDir();
     fs.ensureDirSync(tempDir);
     extractedDir = path.join(tempDir, `extracted_${Date.now()}_${Math.round(Math.random() * 1e9)}`);
     fs.ensureDirSync(extractedDir);
@@ -300,7 +300,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     }
 
     // 检查工具是否已存在
-    const toolboxDir = path.join(os.homedir(), '.prompt-manager', 'toolbox');
+    const toolboxDir = config.getToolboxDir();
     const targetToolDir = path.join(toolboxDir, toolName);
     const toolExists = await pathExists(targetToolDir);
 

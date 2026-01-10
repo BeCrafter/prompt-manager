@@ -107,7 +107,7 @@ export class Config {
 
     // 确定prompts目录
     this.promptsDir = expandPath(cliArgs.promptsDir) || expandPath(process.env.PROMPTS_DIR) || DEFAULT_PROMPTS_DIR;
-    this.configHome = path.dirname(this.promptsDir);
+    this.configHome = DEFAULT_HOME_DIR;
 
     // 服务器端口
     this.port = cliArgs.port || process.env.SERVER_PORT || 5621;
@@ -176,7 +176,6 @@ export class Config {
 
     if (promptsDir) {
       this.promptsDir = expandPath(promptsDir);
-      this.configHome = path.dirname(this.promptsDir);
     }
     if (port) {
       this.port = port;
@@ -255,6 +254,67 @@ export class Config {
   }
 
   /**
+   * 获取临时文件目录
+   * @returns {string} 临时文件目录路径
+   */
+  getTempDir() {
+    return path.join(this.getConfigHome(), 'temp');
+  }
+
+  /**
+   * 获取工具箱目录
+   * @returns {string} 工具箱目录路径
+   */
+  getToolboxDir() {
+    return path.join(this.getConfigHome(), 'toolbox');
+  }
+
+  /**
+   * 获取指定工具的目录
+   * @param {string} toolName - 工具名称
+   * @returns {string} 工具目录路径
+   * @throws {Error} 如果 toolName 未提供
+   */
+  getToolDir(toolName) {
+    if (!toolName) {
+      throw new Error('toolName is required for getToolDir()');
+    }
+    return path.join(this.getToolboxDir(), toolName);
+  }
+
+  /**
+   * 获取模型配置目录
+   * @returns {string} 模型配置目录路径
+   */
+  getModelsDir() {
+    return path.join(this.getConfigHome(), 'configs', 'models');
+  }
+
+  /**
+   * 获取模板配置目录
+   * @returns {string} 模板配置目录路径
+   */
+  getTemplatesDir() {
+    return path.join(this.getConfigHome(), 'configs', 'templates');
+  }
+
+  /**
+   * 获取用户配置目录
+   * @returns {string} 用户配置目录路径
+   */
+  getConfigsDir() {
+    return path.join(this.getConfigHome(), 'configs');
+  }
+
+  /**
+   * 获取环境变量文件路径
+   * @returns {string} .env 文件路径
+   */
+  getEnvFilePath() {
+    return path.join(this.getConfigHome(), '.env');
+  }
+
+  /**
    * 获取服务器名称
    */
   getServerName() {
@@ -300,6 +360,36 @@ export class Config {
     } catch (error) {
       throw new Error(`配置验证失败: ${error.message}`);
     }
+  }
+
+  /**
+   * 验证配置路径一致性
+   * @throws {Error} 如果路径配置不一致
+   */
+  validatePaths() {
+    const configHome = this.getConfigHome();
+    const expectedHome = DEFAULT_HOME_DIR;
+
+    if (configHome !== expectedHome) {
+      throw new Error(`ConfigHome不一致: 期望 ${expectedHome}, 实际 ${configHome}`);
+    }
+
+    // 仅验证路径格式，不实际创建目录
+    const dirsToCheck = [
+      this.getPromptsDir(),
+      this.getTempDir(),
+      this.getToolboxDir(),
+      this.getModelsDir(),
+      this.getTemplatesDir()
+    ];
+
+    for (const dir of dirsToCheck) {
+      if (!dir || typeof dir !== 'string') {
+        throw new Error(`无效的目录路径: ${dir}`);
+      }
+    }
+
+    return true;
   }
 
   /**

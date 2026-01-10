@@ -3,9 +3,9 @@ import path from 'path';
 import YAML from 'yaml';
 import { z } from 'zod';
 import crypto from 'crypto';
-import os from 'os';
 import { logger } from '../utils/logger.js';
 import { util } from '../utils/util.js';
+import { config } from '../utils/config.js';
 
 /**
  * 模板数据结构验证schema
@@ -27,7 +27,7 @@ const TemplateSchema = z.object({
 class TemplateManager {
   constructor() {
     this.builtInDir = path.join(util.getBuiltInConfigsDir(), 'templates/built-in');
-    this.customDir = path.join(os.homedir(), '.prompt-manager/configs/templates');
+    this.customDir = config.getTemplatesDir();
     this.loadedTemplates = new Map();
     this.idToPathMap = new Map();
   }

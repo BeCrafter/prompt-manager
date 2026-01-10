@@ -7,12 +7,12 @@
  */
 
 import path from 'path';
-import os from 'os';
 import { createRequire } from 'module';
 import { logger } from '../utils/logger.js';
 import { getLogger } from './tool-logger.service.js';
 import { getStorage } from './tool-storage.service.js';
 import { loadToolEnvironment, saveToolEnvironment } from './tool-environment.service.js';
+import { config } from '../utils/config.js';
 
 /**
  * 创建工具执行上下文
@@ -21,7 +21,7 @@ import { loadToolEnvironment, saveToolEnvironment } from './tool-environment.ser
  * @returns {object} 工具执行上下文
  */
 export async function createToolContext(toolName, toolModule) {
-  const toolDir = path.join(os.homedir(), '.prompt-manager', 'toolbox', toolName);
+  const toolDir = config.getToolDir(toolName);
 
   // 1. 加载工具环境变量
   const toolEnvVars = await loadToolEnvironment(toolName);
@@ -71,7 +71,7 @@ export async function createToolContext(toolName, toolModule) {
       const { api } = this;
 
       // 默认值
-      let allowedDirs = ['~/.prompt-manager'];
+      let allowedDirs = [config.getConfigHome()];
 
       if (api && api.environment) {
         try {
@@ -113,7 +113,7 @@ export async function createToolContext(toolName, toolModule) {
 
       // 展开 ~ 到主目录并规范化路径
       return allowedDirs.map(dir => {
-        const expanded = dir.replace(/^~/, os.homedir());
+        const expanded = dir.replace(/^~/, config.getConfigHome());
         return path.resolve(expanded);
       });
     },
@@ -145,7 +145,7 @@ export async function createToolContext(toolName, toolModule) {
       }
 
       // 处理 ~ 开头的路径
-      const expandedPath = inputPath.replace(/^~/, os.homedir());
+      const expandedPath = inputPath.replace(/^~/, config.getConfigHome());
 
       // 如果是绝对路径
       if (path.isAbsolute(expandedPath)) {

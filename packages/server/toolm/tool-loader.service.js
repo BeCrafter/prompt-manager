@@ -11,10 +11,10 @@
 
 import fs from 'fs-extra';
 import path from 'path';
-import os from 'os';
 import { logger } from '../utils/logger.js';
 import { pathExists } from './tool-utils.js';
 import { generateManual as generateManualFromService } from './tool-manual-generator.service.js';
+import { config } from '../utils/config.js';
 
 class ToolLoaderService {
   constructor() {
@@ -24,7 +24,7 @@ class ToolLoaderService {
     // 工具目录列表（所有工具都在沙箱环境中）
     this.toolDirectories = [
       // 沙箱工具目录（系统工具和用户工具都在这里）
-      path.join(os.homedir(), '.prompt-manager', 'toolbox')
+      config.getToolboxDir()
     ];
 
     // 已初始化标志
@@ -43,7 +43,7 @@ class ToolLoaderService {
     logger.info('初始化工具加载器...');
 
     // 确保工具箱目录存在
-    const toolboxDir = path.join(os.homedir(), '.prompt-manager', 'toolbox');
+    const toolboxDir = config.getToolboxDir();
     await fs.ensureDir(toolboxDir);
 
     // 扫描并加载所有工具

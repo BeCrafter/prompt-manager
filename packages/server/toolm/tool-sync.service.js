@@ -13,10 +13,10 @@
 
 import fs from 'fs-extra';
 import path from 'path';
-import os from 'os';
 import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 import { pathExists } from './tool-utils.js';
+import { config } from '../utils/config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -51,7 +51,7 @@ export async function syncSystemTools() {
   }
 
   // 目标沙箱目录
-  const toolboxDir = path.join(os.homedir(), '.prompt-manager', 'toolbox');
+  const toolboxDir = config.getToolboxDir();
 
   // 确保工具箱目录存在
   await fs.ensureDir(toolboxDir);

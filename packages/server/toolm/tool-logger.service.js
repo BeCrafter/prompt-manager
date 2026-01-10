@@ -10,9 +10,9 @@
 
 import fs from 'fs-extra';
 import path from 'path';
-import os from 'os';
 import { logger } from '../utils/logger.js';
 import { pathExists } from './tool-utils.js';
+import { config } from '../utils/config.js';
 
 // 日志队列，用于批量写入
 const logQueues = new Map();
@@ -83,7 +83,7 @@ async function flushLogQueue(toolName) {
     return;
   }
 
-  const toolDir = path.join(os.homedir(), '.prompt-manager', 'toolbox', toolName);
+  const toolDir = config.getToolDir(toolName);
   const logFilePath = path.join(toolDir, 'run.log');
 
   try {
@@ -171,7 +171,7 @@ function keepRecentLogs(logs) {
  */
 export function startLogCleanupTask() {
   setInterval(async () => {
-    const toolboxDir = path.join(os.homedir(), '.prompt-manager', 'toolbox');
+    const toolboxDir = config.getToolboxDir();
 
     if (!(await pathExists(toolboxDir))) {
       return;

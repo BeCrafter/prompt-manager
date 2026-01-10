@@ -9,9 +9,9 @@
 
 import fs from 'fs-extra';
 import path from 'path';
-import os from 'os';
 import { logger } from '../utils/logger.js';
 import { pathExists } from './tool-utils.js';
+import { config } from '../utils/config.js';
 
 /**
  * 加载工具环境变量
@@ -19,7 +19,7 @@ import { pathExists } from './tool-utils.js';
  * @returns {object} 环境变量对象
  */
 export async function loadToolEnvironment(toolName) {
-  const toolDir = path.join(os.homedir(), '.prompt-manager', 'toolbox', toolName);
+  const toolDir = config.getToolDir(toolName);
   const envFilePath = path.join(toolDir, '.env');
 
   // 检查 .env 文件是否存在
@@ -91,7 +91,7 @@ export async function loadToolEnvironment(toolName) {
  * @param {object} envVars - 环境变量对象
  */
 export async function saveToolEnvironment(toolName, envVars) {
-  const toolDir = path.join(os.homedir(), '.prompt-manager', 'toolbox', toolName);
+  const toolDir = config.getToolDir(toolName);
   await fs.ensureDir(toolDir);
 
   const envFilePath = path.join(toolDir, '.env');
@@ -157,7 +157,7 @@ export async function saveToolEnvironment(toolName, envVars) {
  * @returns {object} 配置信息对象
  */
 export async function getToolEnvironmentInfo(toolName, schema) {
-  const toolDir = path.join(os.homedir(), '.prompt-manager', 'toolbox', toolName);
+  const toolDir = config.getToolDir(toolName);
   const envFilePath = path.join(toolDir, '.env');
 
   // 加载当前配置

@@ -3,9 +3,9 @@ import { logger } from './logger.js';
 import fse from 'fs-extra';
 import { fileURLToPath } from 'url';
 import path from 'path';
-import os from 'os';
 import fs from 'fs';
 import yaml from 'js-yaml';
+import { config } from './config.js';
 
 // 允许中文、空格、emoji 等字符，禁止路径分隔符及常见非法文件名字符
 export const GROUP_NAME_REGEX = /^(?![.]{1,2}$)[^\\/:*?"<>|\r\n]{1,64}$/;
@@ -16,7 +16,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '../../..');
 const examplesPromptsRoot = path.join(projectRoot, 'examples', 'prompts');
-const promptsDir = path.join(os.homedir(), '.prompt-manager', 'prompts');
+const promptsDir = config.getPromptsDir();
 
 let _promptManager;
 
@@ -57,7 +57,7 @@ export class Util {
    */
   async seedBuiltInConfigsIfEmpty() {
     try {
-      const userConfigDir = path.join(os.homedir(), '.prompt-manager', 'configs');
+      const userConfigDir = config.getConfigsDir();
       const builtInConfigsDir = this.getBuiltInConfigsDir();
 
       // 检查内置配置目录是否存在

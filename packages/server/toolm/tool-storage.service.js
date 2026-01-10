@@ -9,9 +9,9 @@
 
 import fs from 'fs-extra';
 import path from 'path';
-import os from 'os';
 import { logger } from '../utils/logger.js';
 import { pathExists } from './tool-utils.js';
+import { config } from '../utils/config.js';
 
 // 存储缓存：toolName -> storage data
 const storageCache = new Map();
@@ -69,7 +69,7 @@ export function getStorage(toolName) {
  * @returns {string} 存储文件路径
  */
 function getStorageFilePath(toolName) {
-  const toolDir = path.join(os.homedir(), '.prompt-manager', 'toolbox', toolName);
+  const toolDir = config.getToolDir(toolName);
   return path.join(toolDir, 'data', 'storage.json');
 }
 

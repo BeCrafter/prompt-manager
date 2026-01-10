@@ -3,9 +3,9 @@ import path from 'path';
 import YAML from 'yaml';
 import { z } from 'zod';
 import crypto from 'crypto';
-import os from 'os';
 import { logger } from '../utils/logger.js';
 import { util } from '../utils/util.js';
+import { config } from '../utils/config.js';
 
 /**
  * 模型数据结构验证schema
@@ -35,7 +35,7 @@ const ALGORITHM = 'aes-256-cbc';
 class ModelManager {
   constructor() {
     this.builtInDir = path.join(util.getBuiltInConfigsDir(), 'models/built-in');
-    this.customDir = path.join(os.homedir(), '.prompt-manager/configs/models');
+    this.customDir = config.getModelsDir();
     this.loadedModels = new Map();
     this.idToPathMap = new Map();
     this.providersConfig = null;
