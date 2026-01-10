@@ -274,7 +274,7 @@ class WebSocketConnection {
 export class WebSocketService {
   constructor(options = {}) {
     this.options = {
-      port: options.port || 8081, // 默认端口
+      port: options.port !== undefined ? options.port : 0, // 0 表示让系统自动分配端口
       host: '0.0.0.0',
       maxConnections: 100,
       heartbeatInterval: 30000, // 30秒心跳

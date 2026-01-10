@@ -80,7 +80,7 @@ describe('WebSocketService', () => {
   describe('constructor', () => {
     it('应该使用默认选项初始化', () => {
       const service = new WebSocketService();
-      expect(service.options.port).toBe(8081);
+      expect(service.options.port).toBe(0); // 0 表示动态端口
       expect(service.options.maxConnections).toBe(100);
       expect(service.connections.size).toBe(0);
       expect(service.isRunning).toBe(false);
@@ -118,7 +118,7 @@ describe('WebSocketService', () => {
 
       expect(webSocketService.isRunning).toBe(true);
       expect(WebSocketServer).toHaveBeenCalledWith({
-        port: 8081,
+        port: 8081, // 测试中使用的固定端口
         host: '0.0.0.0',
         maxConnections: 5
       });
@@ -238,7 +238,7 @@ describe('WebSocketService', () => {
   describe('getStatus', () => {
     it('应该返回正确的服务状态', () => {
       webSocketService.isRunning = true;
-      webSocketService.options.port = 8081;
+      webSocketService.actualPort = 8081; // 使用实际分配的端口
       webSocketService.options.host = '0.0.0.0';
       webSocketService.options.maxConnections = 5;
 

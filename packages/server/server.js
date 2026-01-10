@@ -158,7 +158,8 @@ export async function startServer(options = {}) {
             serverInstance = server;
 
             try {
-              await webSocketService.start({ port: config.getWebsocketPort() });
+              // WebSocket服务使用动态端口（端口0，由系统自动分配）
+              await webSocketService.start();
               const wsPort = webSocketService.getPort();
               logger.info(`WebSocket服务启动成功，端口: ${wsPort}`);
             } catch (wsError) {

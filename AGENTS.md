@@ -235,6 +235,7 @@ describe('FeatureName', () => {
 - **Console**: Only use `console.log` in scripts (warned elsewhere)
 - **Zod validation**: Preferred runtime type checking
 - **MCP Protocol**: This project implements Model Context Protocol
+- **WebSocket Dynamic Port**: WebSocket service MUST use dynamic port allocation (port 0), fixed ports are NOT allowed
 
 ## NPM Publish Workflow
 

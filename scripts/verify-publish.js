@@ -9,9 +9,7 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import globPkg from 'glob';
-
-const { glob } = globPkg;
+import { glob } from 'glob';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
