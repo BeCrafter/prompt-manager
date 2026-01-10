@@ -118,7 +118,15 @@ npm run check:env
 - **Order**: Node built-ins → third-party → local modules
 - **Relative paths**: Use `../` and `./` for local imports
 
-### Formatting (Prettier)
+### Formatting (Prettier + ESLint Integration)
+
+**Integrated Configuration:**
+- ESLint and Prettier are integrated via `eslint-config-prettier` and `eslint-plugin-prettier`
+- `npm run lint` checks both code quality (ESLint) and formatting (Prettier)
+- `npm run lint:fix` automatically fixes both issues in one command
+- Formatting rules are managed by Prettier and reported as ESLint errors
+
+**Prettier Rules:**
 - **Indentation**: 2 spaces (no tabs)
 - **Quotes**: Single quotes for strings
 - **Semicolons**: Required
@@ -126,6 +134,8 @@ npm run check:env
 - **Trailing commas**: None
 - **Arrow parens**: Avoid for single parameter: `arg => expr`
 - **Line endings**: LF only
+
+**Important:** Do NOT configure formatting rules (quotes, semi, indent, etc.) in ESLint - they are managed by Prettier via `plugin:prettier/recommended`.
 
 ### Type Definitions (Zod)
 ```javascript
@@ -196,9 +206,10 @@ describe('FeatureName', () => {
 - Test both success and error paths
 
 ### Key Configuration Files
-- ESLint: `packages/server/.eslintrc.cjs`
-- Prettier: `packages/server/.prettierrc`
-- Prettier Ignore: `packages/server/.prettierignore`
+- ESLint: `packages/server/.eslintrc.cjs` - Integrated with Prettier via `plugin:prettier/recommended`
+- ESLint Ignore: `packages/server/.eslintignore` - Files to exclude from linting
+- Prettier: `packages/server/.prettierrc` - Formatting rules (managed by ESLint integration)
+- Prettier Ignore: `packages/server/.prettierignore` - Files to exclude from formatting
 - Vitest: `packages/server/vitest.config.js`
 - Webpack: `packages/admin-ui/webpack.config.js`
 

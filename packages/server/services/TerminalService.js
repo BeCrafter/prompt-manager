@@ -106,14 +106,14 @@ class TerminalSession {
    */
   getDefaultShell() {
     switch (process.platform) {
-    case 'win32':
-      return process.env.COMSPEC || 'cmd.exe';
-    case 'darwin':
-      return process.env.SHELL || '/bin/bash';
-    case 'linux':
-      return process.env.SHELL || '/bin/bash';
-    default:
-      return '/bin/sh';
+      case 'win32':
+        return process.env.COMSPEC || 'cmd.exe';
+      case 'darwin':
+        return process.env.SHELL || '/bin/bash';
+      case 'linux':
+        return process.env.SHELL || '/bin/bash';
+      default:
+        return '/bin/sh';
     }
   }
 
@@ -517,14 +517,14 @@ export class TerminalService {
    */
   getDefaultShellForPlatform() {
     switch (process.platform) {
-    case 'win32':
-      return process.env.COMSPEC || 'cmd.exe';
-    case 'darwin':
-      return process.env.SHELL || '/bin/bash';
-    case 'linux':
-      return process.env.SHELL || '/bin/bash';
-    default:
-      return '/bin/sh';
+      case 'win32':
+        return process.env.COMSPEC || 'cmd.exe';
+      case 'darwin':
+        return process.env.SHELL || '/bin/bash';
+      case 'linux':
+        return process.env.SHELL || '/bin/bash';
+      default:
+        return '/bin/sh';
     }
   }
 

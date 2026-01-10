@@ -38,6 +38,7 @@
     "test:server:integration": "cd packages/server && npm run test:integration",
     "test:e2e": "node test/e2e/test-packaged-app.js",
     "test:module-loading": "node test/e2e/test-module-loading.js",
+    "test:install": "node scripts/test-install.js",
     "lint": "cd packages/server && npm run lint",
     "lint:fix": "cd packages/server && npm run lint",
     "lint:check": "cd packages/server && npm run lint:check",

@@ -59,23 +59,23 @@ class WebSocketConnection {
 
       // 根据消息类型处理
       switch (message.type) {
-      case 'terminal.create':
-        await this.handleTerminalCreate(message);
-        break;
-      case 'terminal.data':
-        await this.handleTerminalData(message);
-        break;
-      case 'terminal.resize':
-        await this.handleTerminalResize(message);
-        break;
-      case 'terminal.close':
-        await this.handleTerminalClose(message);
-        break;
-      case 'ping':
-        this.handlePing(message);
-        break;
-      default:
-        this.sendError('Unknown message type', message.type);
+        case 'terminal.create':
+          await this.handleTerminalCreate(message);
+          break;
+        case 'terminal.data':
+          await this.handleTerminalData(message);
+          break;
+        case 'terminal.resize':
+          await this.handleTerminalResize(message);
+          break;
+        case 'terminal.close':
+          await this.handleTerminalClose(message);
+          break;
+        case 'ping':
+          this.handlePing(message);
+          break;
+        default:
+          this.sendError('Unknown message type', message.type);
       }
     } catch (error) {
       logger.error(`Error handling message from client ${this.clientId}:`, error);
@@ -291,16 +291,21 @@ export class WebSocketService {
 
   /**
    * 启动WebSocket服务
+   * @param {Object} options - 可选配置
+   * @param {number} options.port - WebSocket 端口（会覆盖构造函数中的配置）
    */
-  async start() {
+  async start(options = {}) {
     if (this.isRunning) {
       throw new Error('WebSocket service is already running');
     }
 
+    // 合并传入的端口配置
+    const port = options.port || this.options.port;
+
     return new Promise((resolve, reject) => {
       try {
         this.wss = new WebSocketServer({
-          port: this.options.port,
+          port,
           host: this.options.host,
           maxConnections: this.options.maxConnections
         });

@@ -73,16 +73,17 @@ MCP Prompt Server - 智能 Prompt 管理服务器
   -h, --help                 显示此帮助信息
   -v, --version              显示版本信息
 
-环境变量:
-  SERVER_PORT                服务器端口 (默认: 5621)
-  PROMPTS_DIR                Prompts目录路径
-  LOG_LEVEL                  日志级别 (默认: info)
-  MAX_PROMPTS                最大prompt数量限制 (默认: 1000)
-  RECURSIVE_SCAN             是否启用递归扫描子目录 (默认: true)
-  ADMIN_ENABLE               是否启用管理界面 (默认: true)
-  ADMIN_REQUIRE_AUTH         是否需要登录认证 (默认: true)
-  ADMIN_USERNAME             管理员用户名 (默认: admin)
-  ADMIN_PASSWORD             管理员密码 (默认: admin)
+  环境变量:
+   SERVER_PORT                服务器端口 (默认: 5621)
+   WEBSOCKET_PORT            WebSocket 端口 (默认: HTTP端口 + 1)
+   PROMPTS_DIR                Prompts目录路径
+   LOG_LEVEL                  日志级别 (默认: info)
+   MAX_PROMPTS                最大prompt数量限制 (默认: 1000)
+   RECURSIVE_SCAN             是否启用递归扫描子目录 (默认: true)
+   ADMIN_ENABLE               是否启用管理界面 (默认: true)
+   ADMIN_REQUIRE_AUTH         是否需要登录认证 (默认: true)
+   ADMIN_USERNAME             管理员用户名 (默认: admin)
+   ADMIN_PASSWORD             管理员密码 (默认: admin)
 
 示例:
   node packages/server/server.js --prompts-dir /path/to/prompts
@@ -111,6 +112,9 @@ export class Config {
 
     // 服务器端口
     this.port = cliArgs.port || process.env.SERVER_PORT || 5621;
+
+    // WebSocket 端口（默认为 HTTP 端口 + 1）
+    this.websocketPort = process.env.WEBSOCKET_PORT || parseInt(this.port) + 1;
 
     // 其他配置
     this.serverName = 'prompt-manager';
@@ -252,6 +256,20 @@ export class Config {
    */
   setPort(port) {
     this.port = port;
+  }
+
+  /**
+   * 获取 WebSocket 端口
+   */
+  getWebsocketPort() {
+    return this.websocketPort;
+  }
+
+  /**
+   * 设置 WebSocket 端口
+   */
+  setWebsocketPort(port) {
+    this.websocketPort = port;
   }
 
   /**

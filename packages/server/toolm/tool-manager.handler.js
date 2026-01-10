@@ -45,20 +45,20 @@ export async function handleToolM(args) {
 
     // 根据模式路由到对应的处理器
     switch (mode) {
-    case 'manual':
-      return handleManualMode(toolName);
+      case 'manual':
+        return handleManualMode(toolName);
 
-    case 'execute':
-      return await handleExecuteMode(toolName, parameters);
+      case 'execute':
+        return await handleExecuteMode(toolName, parameters);
 
-    case 'configure':
-      return await handleConfigureMode(toolName, parameters);
+      case 'configure':
+        return await handleConfigureMode(toolName, parameters);
 
-    case 'log':
-      return await handleLogMode(toolName, parameters);
+      case 'log':
+        return await handleLogMode(toolName, parameters);
 
-    default:
-      throw new Error(`不支持的模式: ${mode}\n支持的模式: manual, execute, configure, log`);
+      default:
+        throw new Error(`不支持的模式: ${mode}\n支持的模式: manual, execute, configure, log`);
     }
   } catch (error) {
     // 错误已经在 parseToolYaml 中处理，直接抛出

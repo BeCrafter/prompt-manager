@@ -251,14 +251,14 @@ function formatDetailOutput(result) {
 function convertToText(result, format) {
   let ret = '';
   switch (format) {
-  case 'list':
-    ret = formatListOutput(result);
-    break;
-  case 'detail':
-    ret = formatDetailOutput(result);
-    break;
-  default:
-    ret = JSON.stringify(result, null, 2);
+    case 'list':
+      ret = formatListOutput(result);
+      break;
+    case 'detail':
+      ret = formatDetailOutput(result);
+      break;
+    default:
+      ret = JSON.stringify(result, null, 2);
   }
   return {
     content: [
@@ -282,16 +282,16 @@ export async function handlePrompts(args) {
   }
 
   switch (action) {
-  case 'search':
-    return handleSearchPrompts({ name: query });
+    case 'search':
+      return handleSearchPrompts({ name: query });
 
-  case 'get':
-    if (!query) {
-      throw new Error('get操作需要提供query参数指定提示词ID或名称');
-    }
-    return handleGetPrompt({ prompt_id: query });
+    case 'get':
+      if (!query) {
+        throw new Error('get操作需要提供query参数指定提示词ID或名称');
+      }
+      return handleGetPrompt({ prompt_id: query });
 
-  default:
-    throw new Error(`不支持的操作类型: ${action}。支持的操作: search, get`);
+    default:
+      throw new Error(`不支持的操作类型: ${action}。支持的操作: search, get`);
   }
 }

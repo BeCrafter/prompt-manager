@@ -53,7 +53,7 @@ export async function loadToolEnvironment(toolName) {
       let value = trimmedLine.substring(equalIndex + 1).trim();
 
       // 处理带引号的值
-      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith('\'') && value.endsWith('\''))) {
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
         value = value.substring(1, value.length - 1);
       }
 

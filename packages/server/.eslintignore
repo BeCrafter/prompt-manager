@@ -1,12 +1,19 @@
-# Ignore packaged and generated files
-html/
+# Ignore dependencies
+node_modules/
+
+# Ignore build output
 dist/
+build/
+
+# Ignore test coverage
 coverage/
+
+# Ignore test reports
 test-results/
 playwright-report/
 
-# Ignore dependencies
-node_modules/
+# Ignore generated HTML files
+html/
 
 # Ignore config files
 *.config.js

@@ -8,13 +8,16 @@ module.exports = {
     es2021: true,
     node: true
   },
-  extends: ['eslint:recommended'],
+  extends: [
+    'eslint:recommended',
+    'plugin:prettier/recommended' // 继承 Prettier 集成预设（解决冲突+集成格式化）
+  ],
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module'
   },
   rules: {
-    // 启用的规则
+    // 代码质量规则（由 ESLint 管理）
     'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     'no-console': 'warn',
     'prefer-const': 'error',
@@ -23,14 +26,9 @@ module.exports = {
     'prefer-arrow-callback': 'error',
     'prefer-template': 'error',
     'template-curly-spacing': 'error',
-    'arrow-spacing': 'error',
-    'comma-dangle': ['error', 'never'],
-    quotes: ['error', 'single'],
-    semi: ['error', 'always'],
-    indent: ['error', 2],
-    'max-len': ['warn', { code: 120 }],
-    'no-trailing-spaces': 'error',
-    'eol-last': 'error'
+    'arrow-spacing': 'error'
+    // 注意：格式化规则（quotes, semi, indent, comma-dangle, max-len, no-trailing-spaces, eol-last）
+    // 已由 Prettier 通过 plugin:prettier/recommended 自动管理，无需在此配置
   },
   overrides: [
     {

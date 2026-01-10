@@ -125,12 +125,13 @@ cd -
 echo "Cleaning up cache..."
 rm -rf ~/Library/Application\ Support/@becrafter/prompt-desktop/prompt-manager
 
-  # 构建 admin-ui
-  echo -e "${BLUE}========================================${NC}"
-  echo -e "${BLUE}构建前端资源${NC}"
-  echo -e "${BLUE}========================================${NC}"
-  echo "Building admin-ui..."
-  unset_npm_config && cd packages/admin-ui && npm run build
+# 构建 admin-ui
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}构建前端资源${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo "Building admin-ui..."
+unset_npm_config && cd packages/admin-ui && npm run build
+cd -
 
 # 构建根目录环境
 echo -e "${BLUE}========================================${NC}"

@@ -64,6 +64,8 @@
     "@vitest/ui": "^1.6.0",
     "esbuild": "^0.27.0",
     "eslint": "^8.57.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
     "husky": "^9.1.6",
     "jsdoc": "^4.0.3",
     "lint-staged": "^15.2.10",
