@@ -529,21 +529,31 @@ cd packages/admin-ui && npm install
 Error: Electron failed to install correctly, please delete node_modules/electron and try installing again
 ```
 
-**Root Cause**: Electron package installation corrupted or incomplete.
+**Root Cause**: Electron package installation corrupted or incomplete (missing critical files like `path.txt`, `dist` directory).
 
 **How to Fix**:
 ```bash
-# Remove corrupted electron package
+# 1. COMPLETELY remove corrupted electron package
 cd app/desktop && rm -rf node_modules/electron
 
-# Reinstall electron
-npm install electron
+# 2. Reinstall electron with CORRECT VERSION
+cd app/desktop && npm install electron@39.2.7
 
-# Then run dev:desktop again
+# 3. Verify installation completeness
+cd app/desktop && ls node_modules/electron/
+# Should include: cli.js, dist/, index.js, package.json, path.txt, etc.
+
+# 4. Then run dev:desktop
 npm run dev:desktop
 ```
 
 **Prevention**: Run `npm run check:deps` to ensure all dependencies are correctly installed before desktop commands.
+
+**IMPORTANT: When reinstalling Electron, ALWAYS specify the correct version**:
+```bash
+cd app/desktop && rm -rf node_modules/electron
+cd app/desktop && npm install electron@39.2.7  # MUST match desktop package.json version!
+```
 
 ---
 

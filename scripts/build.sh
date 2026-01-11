@@ -93,14 +93,13 @@ npm config set registry https://registry.npmmirror.com
 # 检查环境
 check_environment
 
-# 安装 app/desktop 依赖
-echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}安装依赖${NC}"
-echo -e "${BLUE}========================================${NC}"
-echo "Installing dependencies for app/desktop..."
-# 使用 --ignore-scripts 跳过 postinstall 脚本，避免 Python 3.13 的 distutils 问题
-# 原生模块将在后面使用 electron-rebuild 统一重建
-(cd app/desktop && unset_npm_config && npm install --ignore-scripts)
+ # 安装 app/desktop 依赖
+ echo -e "${BLUE}========================================${NC}"
+ echo -e "${BLUE}安装依赖${NC}"
+ echo -e "${BLUE}========================================${NC}"
+ echo "Installing dependencies for app/desktop..."
+ # 不使用 --ignore-scripts，确保 Electron 的 postinstall 脚本执行以安装二进制文件
+ (cd app/desktop && unset_npm_config && npm install)
 
 # 重建 node-pty 以适配 Electron 的 Node.js 版本
 echo -e "${BLUE}========================================${NC}"
