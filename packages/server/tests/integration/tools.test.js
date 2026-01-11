@@ -4,8 +4,8 @@
  * 用于验证工具加载、工具管理等功能是否正常工作
  */
 
-import { toolLoaderService } from './tool-loader.service.js';
-import { handleToolM } from './tool-manager.handler.js';
+import { toolLoaderService } from '../../toolm/tool-loader.service.js';
+import { handleToolM } from '../../toolm/tool-manager.handler.js';
 
 // 测试工具加载服务
 async function testToolLoader() {

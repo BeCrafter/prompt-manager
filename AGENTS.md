@@ -291,6 +291,344 @@ Use `npm run publish:verify` before creating tags to catch:
 - Unbuilt admin UI
 - Version inconsistencies
 
+## Common Pitfalls & Critical Issues
+
+### ES Module vs CommonJS Conflicts
+
+**Problem**: Scripts using `require()` in ES Module project fail with:
+```
+ReferenceError: require is not defined in ES module scope
+```
+
+**Root Cause**: Root `package.json` has `"type": "module"`, which enforces ES Module syntax globally.
+
+**Affected Files**:
+- Scripts in `scripts/` directory
+- Any `.js` files loaded via Node.js
+
+**How to Avoid**:
+1. Always check root `package.json` type before creating scripts
+2. Use `import` syntax for all `.js` files:
+   ```javascript
+   // ❌ Wrong
+   const packageJson = require('../package.json');
+
+   // ✅ Correct
+   import { readFileSync } from 'fs';
+   import { fileURLToPath } from 'url';
+   const packageJson = JSON.parse(readFileSync('../package.json', 'utf-8'));
+   ```
+
+3. For CommonJS-only scripts, rename to `.cjs` extension
+
+**Example Fix** (`scripts/preinstall-check.js`):
+```javascript
+// Convert from CommonJS to ES Module
+import { readFileSync } from 'fs';
+import { fileURLToPath, dirname } from 'path';
+import { fileURLToPath as urlFileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'));
+```
+
+### Import Path Issues in Tests
+
+**Problem**: Import path errors like:
+```
+Error: Failed to load url ./tool-loader.service.js
+```
+
+**Root Cause**: Test files and target modules are in different directory levels.
+
+**Affected Files**:
+- All integration test files
+- Any test files importing from `../../toolm/` or similar
+
+**How to Avoid**:
+1. Always verify relative path count based on file location
+2. Use the actual file structure as reference:
+
+```
+packages/server/
+├── tests/
+│   └── integration/
+│       └── tools.test.js  (3 levels deep)
+└── toolm/
+    └── tool-loader.service.js  (1 level deep)
+```
+
+3. Import path calculation: `../` (test) → `../` (tests) → `../` (server) → `toolm/` = `../../toolm/`
+
+**Correct Import**:
+```javascript
+// ❌ Wrong
+import { toolLoaderService } from './tool-loader.service.js';
+
+// ✅ Correct
+import { toolLoaderService } from '../../toolm/tool-loader.service.js';
+```
+
+### Mock Configuration Completeness
+
+**Problem**: Missing mock exports cause:
+```
+Error: No "WebSocketServer" export is defined on "ws" mock
+```
+
+**Root Cause**: Code uses both `WebSocket` and `WebSocketServer` but only one is mocked.
+
+**Affected Files**:
+- All integration tests using external modules
+- Any test file with `vi.mock()`
+
+**How to Avoid**:
+1. Search code for all exports used from the module
+2. Mock all exports, not just the obvious ones:
+
+```javascript
+// ❌ Incomplete mock
+vi.mock('ws', () => ({
+  WebSocket: vi.fn().mockImplementation(() => ({...}))
+}));
+
+// ✅ Complete mock
+vi.mock('ws', () => ({
+  WebSocket: vi.fn().mockImplementation(() => ({...})),
+  WebSocketServer: vi.fn().mockImplementation(() => ({...})),
+  close: vi.fn()
+}));
+```
+
+### Test Logic & Operator Precedence
+
+**Problem**: Test assertions failing due to logical errors:
+```javascript
+// ❌ Returns object, not boolean
+expect(error.message).toContain('permission') || expect(error.message).toContain('denied');
+
+// ✅ Returns boolean as expected
+expect(
+  errorMsg.includes('permission') || errorMsg.includes('denied')
+).toBe(true);
+```
+
+**Root Cause**: JavaScript operator precedence: `||` returns the first truthy value, not a boolean.
+
+**Affected Files**:
+- All test files with compound assertions
+- Any logic using `||` with `expect()`
+
+**How to Avoid**:
+1. Always wrap logical expressions in parentheses when using with `expect()`
+2. Use `expect.toBe(true)` for boolean assertions
+3. Consider using `expect.stringContaining()` for multiple string checks
+
+### Direct Property Modification vs Public Methods
+
+**Problem**: Modifying object properties directly doesn't trigger internal logic:
+
+```javascript
+// ❌ May not work
+session.isActive = false;
+timeoutService.cleanupInactiveSessions();
+
+// ✅ Uses public method that triggers cleanup
+session.terminate();
+timeoutService.cleanupInactiveSessions();
+```
+
+**Root Cause**: Internal cleanup logic may check specific conditions or call methods that property setting doesn't trigger.
+
+**Affected Files**:
+- All tests manipulating service/session objects
+- Integration tests testing lifecycle methods
+
+**How to Avoid**:
+1. Always use public methods over direct property modification
+2. Check object's API for lifecycle methods (`terminate()`, `close()`, `shutdown()`)
+3. If no appropriate method exists, only then consider direct property modification
+
+### Dependency Cleanup Strategy
+
+**Problem**: Incomplete dependency cleanup causes cache issues or version conflicts.
+
+**Root Cause**: This is a monorepo-like structure with multiple node_modules.
+
+**Locations to Clean**:
+```
+├── node_modules/              (root dependencies)
+├── package-lock.json          (root lockfile)
+├── packages/
+│   ├── server/
+│   │   ├── node_modules/   (server-specific dependencies)
+│   │   └── package-lock.json
+│   └── admin-ui/
+│       ├── node_modules/   (admin-ui dependencies)
+│       └── package-lock.json
+└── app/
+    └── desktop/
+        ├── node_modules/   (desktop app dependencies)
+        └── package-lock.json
+```
+
+**Complete Cleanup Command**:
+```bash
+# Remove all node_modules and lockfiles
+rm -rf node_modules package-lock.json
+rm -rf packages/server/node_modules packages/server/package-lock.json
+rm -rf packages/admin-ui/node_modules packages/admin-ui/package-lock.json
+rm -rf app/desktop/node_modules app/desktop/package-lock.json
+
+# Clear npm cache
+npm cache clean --force
+
+# Reinstall all dependencies
+npm install
+cd packages/admin-ui && npm install
+```
+
+**How to Avoid Cache Issues**:
+1. Always run `npm run check:deps` to ensure all dependencies are installed
+2. Run `npm cache clean --force` before major dependency changes
+3. Use `--no-audit --no-fund` for faster installs in CI/CD
+
+### Pre-Verification Checklist
+
+**Before verifying any scripts or running tests, check these critical points:**
+
+#### Script Validation Checklist
+- [ ] Check `package.json` type field (ES Module vs CommonJS)
+- [ ] Verify all imports use correct module syntax
+- [ ] Check relative import paths are accurate
+- [ ] Ensure all mocks are complete for required exports
+- [ ] Verify test assertions use proper operator precedence
+
+#### Dependency Validation Checklist
+- [ ] Run `npm run check:deps` to verify all dependencies installed
+- [ ] Run `npm run fix:pty` if node-pty issues occur
+- [ ] Clean npm cache if unexpected errors occur: `npm cache clean --force`
+
+#### Test Environment Checklist
+- [ ] No conflicting services running on required ports
+- [ ] Sufficient timeouts configured for long-running tests
+- [ ] Mock configurations include all required exports
+- [ ] Test assertions properly wrapped with parentheses for logical operations
+
+#### Code Quality Checklist
+- [ ] Run `npm run format:fix` before committing
+- [ ] Run `npm run lint:fix` before committing
+- [ ] No `console.log` in production code (use `logger` instead)
+- [ ] No `require()` in ES Module files (use `import`)
+
+#### Desktop App Issues
+
+**Problem**: `dev:desktop` fails with:
+```
+Error: Electron failed to install correctly, please delete node_modules/electron and try installing again
+```
+
+**Root Cause**: Electron package installation corrupted or incomplete.
+
+**How to Fix**:
+```bash
+# Remove corrupted electron package
+cd app/desktop && rm -rf node_modules/electron
+
+# Reinstall electron
+npm install electron
+
+# Then run dev:desktop again
+npm run dev:desktop
+```
+
+**Prevention**: Run `npm run check:deps` to ensure all dependencies are correctly installed before desktop commands.
+
+---
+
+**Problem**: `build:desktop` or `dev:desktop` takes very long time or fails silently
+
+**Root Cause**: 
+- Previous build artifacts interfering
+- npm cache issues
+- Incomplete dependency installation
+
+**How to Fix**:
+```bash
+# 1. Clean npm cache
+npm cache clean --force
+
+# 2. Remove all build artifacts
+rm -rf dist/
+
+# 3. Clean and reinstall all dependencies
+npm run clean-reinstall
+
+# 4. Rebuild icons
+npm run build:icons
+
+# 5. Then try build:desktop
+npm run build:desktop
+```
+
+**Prevention**: Always run `npm run verify` before building to catch issues early.
+
+#### MANDATORY DESKTOP-RELATED COMMANDS VERIFICATION ⚠️
+
+**CRITICAL RULE**: Any changes that may affect desktop functionality MUST verify these commands:
+
+```bash
+# 1. Build desktop app
+npm run build:desktop
+
+# 2. Start desktop in dev mode
+npm run dev:desktop
+
+# 3. Run installation test
+npm run test:install
+```
+
+**When to verify**: Run ALL THREE commands after any of:
+- ✅ Changes to `app/desktop/` directory
+- ✅ Changes to `packages/server/` (core library)
+- ✅ Changes to electron-builder configuration
+- ✅ Changes to build scripts (`scripts/build.sh`)
+- ✅ Changes to `packages/resources/tools/` (tool sandbox)
+- ✅ Changes to package.json dependencies affecting desktop
+- ✅ Changes to any desktop-related configuration files
+
+**Verification Requirements**:
+- [ ] `npm run build:desktop` completes without errors
+- [ ] `npm run dev:desktop` starts successfully (check logs for errors)
+- [ ] `npm run test:install` passes all installation checks
+
+**Failure Protocol**: If ANY of these commands fail:
+1. **STOP** all further work
+2. **IDENTIFY** the root cause
+3. **FIX** the issue completely
+4. **RE-VERIFY** all three commands pass
+5. Only then proceed with other work
+
+**Rationale**: Desktop app depends on:
+- Core library (`packages/server/`)
+- Tool sandbox (`packages/resources/tools/`)
+- Build configuration (`electron-builder`)
+- Dependency installation correctness
+
+Changes to any of these areas can break desktop functionality if not properly verified.
+
+**Full Pre-Verification Command**:
+```bash
+# Run complete pre-verification
+npm run check:deps
+npm run format:fix
+npm run lint:fix
+npm run setup:env
+```
+
+---
+
 ## End-to-End (E2E) Verification
 
 ### Verification Strategy
