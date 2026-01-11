@@ -12,6 +12,7 @@ import { logger } from '../utils/logger.js';
 import { toolLoaderService } from '../toolm/tool-loader.service.js';
 import { pathExists } from '../toolm/tool-utils.js';
 import { config } from '../utils/config.js';
+import { authorConfigService } from '../services/author-config.service.js';
 
 // 配置 multer 用于处理文件上传
 const upload = multer({
@@ -94,21 +95,37 @@ router.get('/list', async (req, res) => {
     const endIndex = startIndex + limit;
     const paginatedTools = tools.slice(startIndex, endIndex);
 
-    // 格式化返回数据
-    const formattedTools = paginatedTools.map(tool => {
-      const metadata = tool.metadata || {};
-      return {
-        id: metadata.id || tool.name,
-        name: metadata.name || tool.name,
-        description: metadata.description || '',
-        version: metadata.version || '1.0.0',
-        category: metadata.category || 'other',
-        author: metadata.author || 'Prompt Manager',
-        tags: metadata.tags || [],
-        scenarios: metadata.scenarios || [],
-        limitations: metadata.limitations || []
-      };
-    });
+    const formattedTools = await Promise.all(
+      paginatedTools.map(async tool => {
+        const metadata = tool.metadata || {};
+        const authorName = metadata.author || 'BeCrafter';
+
+        const authorInfo = await authorConfigService.resolveAuthor(authorName);
+
+        return {
+          id: metadata.id || tool.name,
+          name: metadata.name || tool.name,
+          description: metadata.description || '',
+          version: metadata.version || '1.0.0',
+          category: metadata.category || 'other',
+          author: authorInfo.name,
+          author_info: {
+            id: authorInfo.id,
+            name: authorInfo.name,
+            github: authorInfo.github,
+            homepage: authorInfo.homepage,
+            bio: authorInfo.bio,
+            featured: authorInfo.featured,
+            sort_order: authorInfo.sort_order,
+            aliases: authorInfo.aliases,
+            avatar_url: authorInfo.avatar_url
+          },
+          tags: metadata.tags || [],
+          scenarios: metadata.scenarios || [],
+          limitations: metadata.limitations || []
+        };
+      })
+    );
 
     const response = {
       success: true,

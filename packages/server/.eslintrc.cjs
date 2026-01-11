@@ -18,8 +18,8 @@ module.exports = {
   },
   rules: {
     // 代码质量规则（由 ESLint 管理）
-    'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-    'no-console': 'warn',
+    'no-unused-vars': ['error', { argsIgnorePattern: '^_', args: 'none' }],
+    'no-console': 'off',
     'prefer-const': 'error',
     'no-var': 'error',
     'object-shorthand': 'error',
@@ -45,6 +45,12 @@ module.exports = {
       files: ['scripts/**/*.js', 'tools/**/*.js'],
       rules: {
         'no-console': 'off'
+      }
+    },
+    {
+      files: ['services/author-config.service.js'],
+      rules: {
+        'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }]
       }
     }
   ],

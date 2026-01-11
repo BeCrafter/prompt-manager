@@ -4,6 +4,7 @@ import { config } from './utils/config.js';
 import { logger } from './utils/logger.js';
 import { util } from './utils/util.js';
 import { syncSystemTools } from './toolm/tool-sync.service.js';
+import { syncAuthorConfig } from './toolm/author-sync.service.js';
 import { startLogCleanupTask } from './toolm/tool-logger.service.js';
 import { webSocketService } from './services/WebSocketService.js';
 import { checkPortAvailable } from './utils/port-checker.js';
@@ -126,6 +127,13 @@ export async function startServer(options = {}) {
         await syncSystemTools();
       } catch (error) {
         logger.error('同步系统工具失败，继续启动服务', { error: error.message });
+      }
+
+      // 同步作者配置到沙箱环境
+      try {
+        await syncAuthorConfig();
+      } catch (error) {
+        logger.error('同步作者配置失败，继续启动服务', { error: error.message });
       }
 
       // MCP 长连接可能长时间空闲（IDE 侧保持会话），若沿用 Node 默认超时（requestTimeout 5 分钟、keepAliveTimeout 5 秒、headersTimeout 60 秒）

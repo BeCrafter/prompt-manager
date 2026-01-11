@@ -764,9 +764,67 @@ npm run test:e2e
 **Check**: Verify `packages/web/` directory exists and contains `index.html`
 
 #### Version Inconsistencies
+
 **Symptom**: Version mismatch warnings in verification
 **Solution**: Update version in all package.json files using `npm version`
 **Check**: Ensure version matches in: root, server, desktop, env.example, config.js
+
+#### Built-in Directory Synchronization
+
+**Problem**: System built-in configurations (`built-in` directories in `configs/`) are being synced to user directory (`~/.prompt-manager/`), exposing system configurations that should remain internal.
+
+**Root Cause**: `runtime-sync.js` previously synced all contents from `runtime/configs/` to `~/.prompt-manager/configs/` without filtering, which caused system built-in configs (models and templates) to be copied to user-writable locations.
+
+**Why This Matters**:
+- System built-in configs should NOT be exposed to users
+- Users should NOT be able to modify or delete system configurations
+- Prevents configuration drift and inconsistency issues
+- Ensures system configs can be updated centrally without user interference
+
+**Fix**: Modified `app/desktop/src/utils/runtime-sync.js` to skip `built-in` directories during sync:
+
+**Changes Made**:
+1. **Top-level filter** in `_syncContents()` (line 220-226):
+   ```javascript
+   if (entry.name === "built-in") {
+     console.log('跳过 built-in 目录（系统内置配置不应暴露给用户）');
+     continue;
+   }
+   ```
+
+2. **Recursive filter** in `_syncDirectoryRecursive()` (line 235-243):
+   ```javascript
+   if (entry.isDirectory() && entry.name === "built-in") {
+     console.log('跳过 built-in 目录（系统内置配置不应暴露给用户）');
+     continue;
+   }
+   ```
+
+**Sync Behavior**:
+- ✅ `authors.json` → `~/.prompt-manager/configs/authors.json`
+- ✅ `models/providers.yaml` → `~/.prompt-manager/configs/models/providers.yaml`
+- ✅ `templates/providers.yaml` → `~/.prompt-manager/configs/templates/providers.yaml`
+- ❌ `models/built-in/` → NOT synced (protected)
+- ❌ `templates/built-in/` → NOT synced (protected)
+
+**Verification**: After desktop app startup, check:
+```bash
+# Should NOT exist
+ls ~/.prompt-manager/configs/models/built-in/   # No output expected
+ls ~/.prompt-manager/configs/templates/built-in/ # No output expected
+
+# Should exist
+ls ~/.prompt-manager/configs/authors.json       # Should exist
+ls ~/.prompt-manager/configs/models/providers.yaml  # Should exist
+```
+
+**Files Modified**:
+- ✅ `app/desktop/src/utils/runtime-sync.js`
+  - Added skip logic for built-in directories
+  - Double-protection (top-level + recursive)
+  - Clear logging explaining skip reason
+
+**When to verify**: Run `npm run dev:desktop` or `npm run build:desktop` and verify built-in directories are NOT synced to `~/.prompt-manager/configs/`
 
 #### Module Loading Issues
 **Symptom**: Desktop app fails to load core library

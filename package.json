@@ -97,7 +97,7 @@
     "packages/server/middlewares/*.js",
     "packages/server/toolm/*.js",
     "packages/server/toolm/**/*.js",
-    "packages/server/configs/**/*.yaml",
+    "packages/server/configs/",
     "packages/resources/tools/**/*.js",
     "packages/resources/tools/**/*.md",
     "packages/web/",
