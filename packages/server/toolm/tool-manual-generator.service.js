@@ -14,6 +14,26 @@
  * @returns {string} Markdown格式的手册
  */
 export function generateManual(toolName, tool) {
+  // 如果工具实现了自定义的 generateManual 方法，优先使用它
+  if (tool.module && tool.module.generateManual && typeof tool.module.generateManual === 'function') {
+    try {
+      const result = tool.module.generateManual();
+      // 如果返回的是字符串，直接返回
+      if (typeof result === 'string') {
+        return result;
+      }
+      // 如果返回的是对象（MCP格式），提取text内容
+      if (result && result.content && result.content[0] && result.content[0].text) {
+        return result.content[0].text;
+      }
+      // 其他情况转换为字符串
+      return String(result);
+    } catch (error) {
+      // 如果自定义方法出错，回退到通用生成器
+      console.warn(`工具 ${toolName} 的自定义 generateManual 方法出错，使用通用生成器:`, error.message);
+    }
+  }
+
   const { metadata, schema, businessErrors } = tool;
 
   let manual = '';

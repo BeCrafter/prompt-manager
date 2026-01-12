@@ -22,8 +22,6 @@ export { promptManager } from './services/manager.js';
 // Export MCP functionality
 export { getMcpServer } from './mcp/mcp.server.js';
 export { handleGetPrompt, handleSearchPrompts, handleReloadPrompts } from './mcp/prompt.handler.js';
-export { handleSequentialThinking } from './mcp/sequential-thinking.handler.js';
-export { handleThinkPlan } from './mcp/think-plan.handler.js';
 export { handleToolM } from './toolm/index.js';
 
 // Export API routes
