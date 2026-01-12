@@ -237,6 +237,159 @@ describe('FeatureName', () => {
 - **MCP Protocol**: This project implements Model Context Protocol
 - **WebSocket Dynamic Port**: WebSocket service MUST use dynamic port allocation (port 0), fixed ports are NOT allowed
 
+## Built-in Configuration Path Pattern
+
+### Problem
+When accessing built-in configuration files (e.g., authors.json, model configs, templates), the codebase runs in multiple environments:
+1. **Desktop app** (Electron packaged): Resources are in `process.resourcesPath/runtime/configs/`
+2. **NPM package**: Resources are in `node_modules/@becrafter/prompt-manager-core/configs/`
+3. **Development**: Resources are in `packages/server/configs/`
+
+Hardcoding paths for specific environments breaks when the code runs in different contexts.
+
+### Solution: Multi-Environment Path Resolution
+
+Use the pattern from `packages/server/utils/util.js`:
+
+#### Core Methods
+
+**1. `getBuiltInConfigsDir()` - Universal config directory resolver**
+
+```javascript
+getBuiltInConfigsDir() {
+  // Check packaged app (Electron)
+  if (process.resourcesPath) {
+    const packagedConfigPath = path.join(process.resourcesPath, 'runtime', 'configs');
+    if (this._pathExistsSync(packagedConfigPath)) {
+      return packagedConfigPath;
+    }
+  }
+
+  // Check npm package
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const npmConfigPath = path.resolve(__dirname, '../configs');
+  if (this._pathExistsSync(npmConfigPath)) {
+    return npmConfigPath;
+  }
+
+  // Fallback to development environment
+  return path.resolve(__dirname, '../configs');
+}
+```
+
+**2. `getDefaultUserConfigPath()` - Specific config file resolver**
+
+```javascript
+getDefaultUserConfigPath() {
+  return path.join(this.getBuiltInConfigsDir(), 'authors.json');
+}
+```
+
+**3. `_pathExistsSync()` - Safe path check helper**
+
+```javascript
+_pathExistsSync(filePath) {
+  try {
+    fs.accessSync(filePath, fs.constants.F_OK);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+```
+
+### Usage Pattern
+
+When you need to access built-in configuration files:
+
+```javascript
+import { util } from '../utils/util.js';
+
+// ✅ CORRECT - Use the pattern
+const configPath = util.getDefaultUserConfigPath();
+const configData = await fs.readJson(configPath);
+
+// ❌ WRONG - Hardcoded paths break in different environments
+const configPath = path.join(process.resourcesPath, 'runtime', 'configs', 'authors.json');
+```
+
+### Why This Pattern Works
+
+| Environment | Path | Detection Method |
+|-------------|------|------------------|
+| **Electron packaged** | `process.resourcesPath/runtime/configs/` | `process.resourcesPath` exists |
+| **NPM package** | `node_modules/@becrafter/prompt-manager-core/configs/` | `../configs` exists from `__dirname` |
+| **Development** | `packages/server/configs/` | Fallback when above checks fail |
+
+### When to Use This Pattern
+
+Use this pattern whenever accessing:
+- ✅ Built-in configuration files (`authors.json`, `providers.yaml`, etc.)
+- ✅ Model configuration directories (`models/`)
+- ✅ Template configuration directories (`templates/`)
+- ✅ Any resource bundled with the package
+
+**Example from `author-config.service.js`:**
+
+```javascript
+async loadConfig() {
+  const configPath = util.getDefaultUserConfigPath(); // ← Uses the pattern
+  logger.debug('Loading author config from path', { configPath });
+
+  const configData = await fs.readJson(configPath);
+  // ... process config
+}
+```
+
+### Common Mistakes
+
+**1. Assuming Electron environment always**
+```javascript
+// ❌ WRONG - Fails in npm package mode
+const path = path.join(process.resourcesPath, 'runtime', 'configs');
+```
+
+**2. Hardcoding relative paths**
+```javascript
+// ❌ WRONG - Breaks when called from different directory
+const path = path.join('packages', 'server', 'configs');
+```
+
+**3. Not checking path existence**
+```javascript
+// ❌ WRONG - May return invalid path
+return path.resolve(__dirname, '../configs');
+```
+
+### Extending the Pattern
+
+To add new built-in config file access:
+
+```javascript
+// In util.js
+getBuiltInModelsDir() {
+  return path.join(this.getBuiltInConfigsDir(), 'models');
+}
+
+getBuiltInTemplatesDir() {
+  return path.join(this.getBuiltInConfigsDir(), 'templates');
+}
+
+// Usage in services
+const modelsDir = util.getBuiltInModelsDir();
+const templatesDir = util.getBuiltInTemplatesDir();
+```
+
+### Key Benefits
+
+- **Environment-agnostic**: Works in desktop app, npm package, and development
+- **Safe fallback**: Gracefully degrades to development path if packaged paths don't exist
+- **Maintainable**: Single source of truth for config locations
+- **Testable**: Path resolution logic isolated in utility module
+
+**Remember**: This pattern was developed after extensive debugging of configuration access issues in the author avatar loading feature. Always use this pattern for built-in configuration access.
+
 ## NPM Publish Workflow
 
 ### Publish Process

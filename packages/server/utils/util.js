@@ -493,6 +493,14 @@ export class Util {
     return path.resolve(__dirname, '../configs');
   }
 
+  /**
+   * 获取默认用户配置文件路径
+   * @returns {string} 用户配置文件路径
+   */
+  getDefaultUserConfigPath() {
+    return path.join(this.getBuiltInConfigsDir(), 'authors.json');
+  }
+
   _pathExistsSync(filePath) {
     try {
       fs.accessSync(filePath, fs.constants.F_OK);

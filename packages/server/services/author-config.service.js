@@ -10,12 +10,8 @@
  */
 
 import fs from 'fs-extra';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { util } from '../utils/util.js';
 
 class AuthorConfigService {
   constructor() {
@@ -25,29 +21,6 @@ class AuthorConfigService {
     this.lastLoadTime = 0;
   }
 
-  getConfigPath() {
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-
-    const isNpmPackage = __dirname.includes('node_modules');
-    const isDist = __dirname.includes('dist');
-    const isElectronPackaged = process.resourcesPath != null;
-
-    if (isElectronPackaged) {
-      return path.join(process.resourcesPath, 'runtime', 'configs', 'authors.json');
-    }
-
-    if (isNpmPackage) {
-      return path.join(__dirname, '..', 'configs', 'authors.json');
-    }
-
-    if (isDist) {
-      return path.join(__dirname, '..', 'configs', 'authors.json');
-    }
-
-    return path.join(__dirname, '..', 'configs', 'authors.json');
-  }
-
   async loadConfig() {
     const now = Date.now();
 
@@ -55,7 +28,7 @@ class AuthorConfigService {
       return this.config;
     }
 
-    const configPath = this.getConfigPath();
+    const configPath = util.getDefaultUserConfigPath();
     logger.debug('Loading author config from path', { configPath });
 
     try {
