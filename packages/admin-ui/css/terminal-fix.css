@@ -4,18 +4,60 @@
     核心字体配置
     ============================================ */
 
-/* 中文IME输入支持 - 解决中文错位问题 */
-.composition-view {
+/* ============================================
+   中文IME输入完整修复（彻底解决重影和定位问题）
+   ============================================ */
+
+/* xterm.js helper 容器 - 必须设置正确的 z-index */
+.xterm .xterm-helpers {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
+  z-index: 5; /* 必须高于 canvas (z-index: 1) */
   pointer-events: none;
-  z-index: 100;
 }
 
+/* textarea 输入框 - 关键修复：字体匹配 + 去除边框 */
+.xterm .xterm-helper-textarea {
+  position: absolute;
+  opacity: 0;
+  left: -9999em; /* 默认在屏幕外，xterm.js 会动态调整 */
+  top: 0;
+  width: 0;
+  height: 0;
+  z-index: -5; /* 默认在 canvas 下面 */
+  white-space: nowrap; /* 防止换行，IME 必需 */
+  overflow: hidden;
+  resize: none;
+
+  /* 关键修复：字体必须与终端完全匹配（Issue #3034） */
+  font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 
+                 'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace !important;
+  font-size: 14px !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0 !important;
+
+  /* 关键修复：去除边框（Issue #3058） */
+  border: 0px !important;
+  outline: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* composition 预览视图 - IME 窗口 */
 .xterm .composition-view {
+  background: #000;
+  color: #FFF;
+  display: none;
+  position: absolute;
+  white-space: nowrap;
+  z-index: 1; /* 在 canvas 上面 */
+  pointer-events: none;
+}
+
+.xterm.composing .composition-view {
   display: block;
 }
 

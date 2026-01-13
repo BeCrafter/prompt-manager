@@ -341,6 +341,12 @@ export class TerminalComponent {
   setupEventListeners() {
     // 终端数据事件
     this.terminal.onData((data) => {
+      // 在 IME composition 期间阻止数据发送，防止中文输入重复显示
+      // 修复：macOS + Electron + 搜狗输入法等 IME 环境下的字符重复问题
+      if (this.isComposing) {
+        console.log('IME composing - ignoring data:', data);
+        return;
+      }
       this.sendData(data);
     });
 
