@@ -61,6 +61,9 @@ export class TerminalComponent {
     this.rendererType = 'unknown';
     this.isCanvasRenderer = false;
 
+    // IME输入状态
+    this.isComposing = false;
+
     // 初始化状态
     this.isInitialized = false;
     this.initPromise = null;
@@ -359,6 +362,25 @@ export class TerminalComponent {
     this.terminal.textarea?.addEventListener('blur', () => {
       this.container.classList.remove('terminal-focused');
     });
+
+    // 中文IME输入支持 - 直接监听textarea的composition事件
+    if (this.terminal.textarea) {
+      this.terminal.textarea.addEventListener('compositionstart', (e) => {
+        this.isComposing = true;
+        this.container.classList.add('composing');
+        console.log('Composition started', e);
+      });
+
+      this.terminal.textarea.addEventListener('compositionupdate', (e) => {
+        console.log('Composition update', e);
+      });
+
+      this.terminal.textarea.addEventListener('compositionend', (e) => {
+        this.isComposing = false;
+        this.container.classList.remove('composing');
+        console.log('Composition ended', e);
+      });
+    }
   }
 
   /**
@@ -366,7 +388,13 @@ export class TerminalComponent {
    */
   handleKey(event) {
     const { key, domEvent } = event;
-    
+
+    // 中文IME输入期间，阻止某些快捷键
+    if (this.isComposing) {
+      console.log('IME composing - ignoring key:', key);
+      return;
+    }
+
     // Ctrl+C 中断
     if (domEvent.ctrlKey && domEvent.key === 'c') {
       this.sendData('\x03');

@@ -180,41 +180,44 @@ start_backend() {
     echo ""
 }
 
-# 启动前端服务
-start_frontend() {
-    echo -e "${BLUE}========================================${NC}"
-    echo -e "${BLUE}启动前端开发服务器${NC}"
-    echo -e "${BLUE}========================================${NC}"
-    
-    cd "$ADMIN_UI_DIR"
-    
-    # 检查端口
-    check_port 6521 "前端服务"
-    
-    # 启动前端
-    echo -e "${GREEN}前端服务启动中...${NC}"
-    echo -e "${YELLOW}访问地址: http://localhost:6521${NC}"
-    echo ""
-    
-    npm run dev > "$PIDS_DIR/frontend.log" 2>&1 &
-    FRONTEND_PID=$!
-    echo $FRONTEND_PID > "$FRONTEND_PID_FILE"
-    
-    # 等待前端启动
-    echo -e "${YELLOW}等待前端服务启动...${NC}"
-    sleep 5
-    
-    # 检查前端是否启动成功
-    if ps -p $FRONTEND_PID > /dev/null 2>&1; then
+    # 启动前端服务
+    start_frontend() {
+      echo -e "${BLUE}========================================${NC}"
+      echo -e "${BLUE}启动前端开发服务器${NC}"
+      echo -e "${BLUE}========================================${NC}"
+      
+      cd "$ADMIN_UI_DIR"
+      
+      # 检查端口
+      check_port 6521 "前端服务"
+      
+      # 启动前端（使用watch模式保持运行）
+      echo -e "${GREEN}前端服务启动中...${NC}"
+      echo -e "${YELLOW}访问地址: http://localhost:9000${NC}"
+      echo -e "${YELLOW}后端地址: http://localhost:5621 (通过环境变量传递)${NC}"
+      echo ""
+      
+      # 使用 env 命令确保环境变量被传递到子进程
+      # 注意：使用 --watch 参数保持webpack-dev-server持续运行
+      env HTTP_PORT=5621 npx webpack serve --mode development --watch > "$PIDS_DIR/frontend.log" 2>&1 &
+      FRONTEND_PID=$!
+      echo $FRONTEND_PID > "$FRONTEND_PID_FILE"
+      
+      # 等待前端启动
+      echo -e "${YELLOW}等待前端服务启动...${NC}"
+      sleep 10
+      
+      # 检查前端是否启动成功
+      if ps -p $FRONTEND_PID > /dev/null 2>&1; then
         echo -e "${GREEN}✓ 前端服务启动成功 (PID: $FRONTEND_PID)${NC}"
-    else
+      else
         echo -e "${RED}✗ 前端服务启动失败${NC}"
         cat "$PIDS_DIR/frontend.log"
         exit 1
-    fi
-    
-    echo ""
-}
+      fi
+      
+      echo ""
+    }
 
 # 显示服务信息
 show_info() {

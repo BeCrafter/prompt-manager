@@ -107,11 +107,36 @@ let currentNav = 'prompts';
 // 终端组件实例
 let terminalComponent = null;
 
+// 初始化后端URL
 const API_HOST = getBackendUrl();
+console.log('🚀 前端应用启动调试信息:');
+console.log('  API_HOST:', API_HOST);
+console.log('  window.location.origin:', window.location.origin);
+console.log('  process.env.HTTP_PORT:', process.env.HTTP_PORT);
 
 // API 基础配置
 const API_BASE = `${API_HOST}/adminapi`;
 const API_SURGE = `${API_HOST}/surge/`;
+console.log('  API_BASE:', API_BASE);
+
+// 测试后端连接
+async function testBackendConnection() {
+  try {
+    console.log('🔍 测试后端连接...');
+    const response = await fetch(`${API_BASE}/config/public`);
+    const data = await response.json();
+    console.log('✅ 后端连接成功:', data);
+    return true;
+  } catch (error) {
+    console.error('❌ 后端连接失败:', error);
+    return false;
+  }
+}
+
+// 页面加载完成后测试连接
+window.addEventListener('load', () => {
+  setTimeout(testBackendConnection, 1000);
+});
 
 /**
  * 初始化 DOM 组件

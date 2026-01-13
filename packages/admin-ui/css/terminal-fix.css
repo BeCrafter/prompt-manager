@@ -1,11 +1,22 @@
 /* 终端字体修复 - Warp终端样式（优化版） */
 
 /* ============================================
-   核心字体配置
-   ============================================ */
+    核心字体配置
+    ============================================ */
 
+/* 中文IME输入支持 - 解决中文错位问题 */
 .composition-view {
-  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.xterm .composition-view {
+  display: block;
 }
 
 /* 为xterm设置合适的等宽字体，解决字体重叠问题 */
@@ -101,20 +112,22 @@
    光标样式优化
    ============================================ */
 
-/* 深色主题光标 */
+/* 深色主题光标 - 增强对比度和可见性 */
 .xterm.theme-dark .xterm-cursor {
-  background: #ffffff !important;
-  border: none !important;
-  width: 8px !important;
-  box-shadow: 0 0 4px rgba(255, 255, 255, 0.5) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(0, 0, 0, 0.3) !important;
+  width: 10px !important;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.6) !important;
+  display: block !important; /* 确保在IME期间也可见 */
 }
 
-/* 浅色主题光标 */
+/* 浅色主题光标 - 增强对比度和可见性 */
 .xterm.theme-light .xterm-cursor {
-  background: #1a1a1a !important;
-  border: none !important;
-  width: 8px !important;
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3) !important;
+  background: rgba(0, 0, 0, 0.85) !important;
+  border: 1px solid rgba(0, 0, 0, 0.2) !important;
+  width: 10px !important;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.4) !important;
+  display: block !important;
 }
 
 /* ============================================
@@ -135,18 +148,18 @@
   background-color: rgba(74, 144, 226, 0.4) !important;
 }
 
-/* 浅色主题下的选中效果 - 更明显的对比度 */
+/* 浅色主题下的选中效果 - VS Code风格高对比度 */
 .xterm.theme-light .xterm-rows > div.xterm-focus .xterm-selection,
 .xterm.theme-light .xterm-rows .xterm-selection {
-  background-color: rgba(24, 144, 255, 0.25) !important;
-  border: 1px solid rgba(24, 144, 255, 0.4) !important;
+  background-color: rgba(74, 144, 226, 0.4) !important; /* 更明显的蓝色选中 */
+  border: 1px solid rgba(74, 144, 226, 0.6) !important; /* 添加明显的边框 */
 }
 
-/* 深色主题下的选中效果 */
+/* 深色主题下的选中效果 - VS Code风格高对比度 */
 .xterm.theme-dark .xterm-rows > div.xterm-focus .xterm-selection,
 .xterm.theme-dark .xterm-rows .xterm-selection {
-  background-color: rgba(100, 181, 246, 0.35) !important;
-  border: 1px solid rgba(100, 181, 246, 0.5) !important;
+  background-color: rgba(74, 144, 226, 0.6) !important; /* 更高的透明度，类似VS Code */
+  border: 1px solid rgba(74, 144, 226, 0.8) !important; /* 添加明显的边框 */
 }
 
 /* xterm-selection span 选中样式 */
@@ -568,4 +581,10 @@ body .xterm.theme-dark .xterm-selection .xterm-char {
 
 .theme-light .xterm-container {
   background: #ffffff;
+}
+
+/* 隐藏xterm默认光标，使用自定义样式 */
+.xterm-cursor-block,
+.xterm-cursor-bar {
+  display: none !important;
 }
