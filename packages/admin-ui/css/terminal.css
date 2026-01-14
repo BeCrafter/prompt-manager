@@ -43,6 +43,7 @@
   padding: 4px 12px;
   border-radius: 16px;
   margin-right: 4px;
+  padding: 8px;
 }
 
 .status-indicator {
@@ -245,8 +246,8 @@
   }
   
   .terminal-actions .btn {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     font-size: 10px;
   }
   
@@ -290,8 +291,8 @@
 }
 
 .terminal-actions .btn {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   font-size: 12px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -526,6 +527,7 @@
 
 /* 图标样式（使用Unicode字符代替图标字体） */
 .icon-back::before { content: "←"; }
+.icon-opencode::before { content: "⚡"; }
 .icon-refresh::before { content: "↻"; }
 .icon-clear::before { content: "✕"; }
 .icon-search::before { content: "🔍"; }
@@ -798,14 +800,7 @@
   display: block !important;
 }
 
-/* ============================================
-   选中效果优化（改进对比度）
-   ============================================ */
 
-/* 默认选中效果 */
-.xterm .xterm-rows {
-  position: relative;
-}
 
 .xterm .xterm-rows > div {
   position: relative;

@@ -370,6 +370,74 @@ export class TerminalService {
     const args = this.getShellArgs(shell);
     const cwd = options.workingDirectory || os.homedir();
 
+    // 构建优化的 PATH 环境变量
+    const buildOptimizedPath = () => {
+      const platform = process.platform;
+      const existingPaths = process.env.PATH ? process.env.PATH.split(':') : [];
+      const pathSet = new Set(existingPaths);
+
+      // 添加常见的系统工具路径（按优先级排序）
+      const systemPaths = [];
+
+      if (platform === 'darwin') {
+        // macOS 特定路径
+        systemPaths.push(
+          '/opt/homebrew/bin', // Apple Silicon Homebrew
+          '/opt/homebrew/sbin',
+          '/usr/local/bin', // Intel Homebrew
+          '/usr/local/sbin',
+          '/usr/bin',
+          '/usr/sbin',
+          '/bin',
+          '/sbin',
+          '/Library/Apple/usr/bin', // Apple 系统工具
+          '/usr/local/MacGPG2/bin', // GPG 工具
+          '~/.opencode/bin',
+          '~/.local/bin', // 用户本地工具
+          '~/bin' // 用户 bin 目录
+        );
+      } else if (platform === 'linux') {
+        // Linux 特定路径
+        systemPaths.push(
+          '/usr/local/bin',
+          '/usr/local/sbin',
+          '/usr/bin',
+          '/usr/sbin',
+          '/bin',
+          '/sbin',
+          '/snap/bin', // Snap 应用
+          '~/.local/bin',
+          '~/bin'
+        );
+      } else if (platform === 'win32') {
+        // Windows 特定路径（使用分号分隔）
+        const winPaths = [
+          `${process.env.ProgramFiles}\\Git\\bin`,
+          `${process.env.ProgramFiles}\\Git\\usr\\bin`,
+          `${process.env.ProgramFiles}\\nodejs`,
+          `${process.env['ProgramFiles(x86)']}\\Git\\bin`,
+          `${process.env['ProgramFiles(x86)']}\\Git\\usr\\bin`,
+          `${process.env['ProgramFiles(x86)']}\\nodejs`,
+          `${process.env.LOCALAPPDATA}\\Programs\\Git\\bin`,
+          `${process.env.APPDATA}\\npm`,
+          `${process.env.LOCALAPPDATA}\\Programs\\Microsoft VS Code\\bin`,
+          `${process.env.ProgramFiles}\\Microsoft VS Code\\bin`
+        ].filter(Boolean);
+        return `${winPaths.join(';')};${process.env.PATH || ''}`;
+      }
+
+      // 添加路径到集合（保持优先级顺序）
+      systemPaths.forEach(path => {
+        if (!pathSet.has(path)) {
+          pathSet.add(path);
+        }
+      });
+
+      // 合并所有路径，保持原有 PATH 的顺序，但优先添加系统路径
+      const optimizedPaths = [...pathSet];
+      return optimizedPaths.join(':');
+    };
+
     // 确保环境变量正确，特别是 PATH
     const env = {
       ...process.env,
@@ -381,11 +449,14 @@ export class TerminalService {
       LC_ALL: process.env.LC_ALL || process.env.LANG || 'en_US.UTF-8',
       LC_CTYPE: process.env.LC_CTYPE || process.env.LANG || 'en_US.UTF-8',
       // 确保 TERM 变量设置
-      TERM: process.env.TERM || 'xterm-256color'
+      TERM: process.env.TERM || 'xterm-256color',
+      // 设置优化的 PATH
+      PATH: buildOptimizedPath()
     };
 
     logger.info(`🔧 创建终端会话 - Shell: ${shell}, Args: [${args.join(', ')}], CWD: ${cwd}`);
     logger.info(`🔧 环境变量 - SHELL: ${env.SHELL}, TERM: ${env.TERM}, LANG: ${env.LANG}`);
+    logger.info(`🔧 PATH 已优化，包含 ${env.PATH.split(':').length} 个路径`);
     logger.info(`🔧 Shell 可执行性检查: ${shell} ${args.join(' ')}`);
 
     // 检查 shell 是否可执行
