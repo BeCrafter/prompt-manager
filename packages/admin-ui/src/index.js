@@ -2,7 +2,7 @@
 
 // 导入样式
 import '../css/main.css';
-import '../css/terminal-fix.css';
+import '../css/terminal.css';
 import '../css/recommended-prompts.css';
 import '../css/markdown.css';
 import '../css/optimization.css';

@@ -86,7 +86,7 @@ module.exports = (env, argv) => {
          patterns: [
            { from: 'css/codemirror.css', to: 'css/' },
            { from: 'css/codemirror-theme_xq-light.css', to: 'css/' },
-           { from: 'css/terminal-fix.css', to: 'css/' },
+           { from: 'css/terminal.css', to: 'css/' },
            { from: 'css/main.css', to: 'css/' },
          ],
        }),
