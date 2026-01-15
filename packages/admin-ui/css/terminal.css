@@ -47,8 +47,8 @@
 }
 
 .status-indicator {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: #4caf50;
   box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
@@ -277,10 +277,12 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  /* background: rgba(255, 255, 255, 0.05); */
+  /* border-bottom: 1px solid rgba(255, 255, 255, 0.1); */
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  position: relative;
+  overflow: visible; /* 确保展开的按钮可见 */
 }
 
 /* 已删除重复的 terminal-status 和 status-indicator 样式，这些在上面已有定义 */
@@ -315,6 +317,89 @@
 
 .terminal-actions .btn:active {
   transform: scale(0.95);
+}
+
+/* 可展开的按钮组样式 - 连接状态触发展开 */
+.terminal-status {
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 16px;
+  padding: 8px;
+  border: 1px solid transparent;
+}
+
+.terminal-status:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: scale(1.02);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 8px rgba(0, 162, 255, 0.2);
+}
+
+.action-buttons-expanded {
+  position: absolute;
+  left: -82px; /* 在terminal-actions左侧定位 (74px按钮宽度 + 8px间距) */
+  top: 50%;
+  transform: translateY(-50%) translateX(-20px); /* 初始位置向左偏移隐藏 */
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  /* visibility: hidden; */
+  transition: all 0.3s ease;
+  pointer-events: none;
+  z-index: 10;
+  white-space: nowrap; /* 防止换行 */
+}
+
+.action-buttons-expanded .btn {
+  transform: scale(0.8);
+  transition: all 0.3s ease;
+}
+
+/* 悬停时展开按钮组 - 扩大hover区域到整个toolbar */
+.terminal-toolbar:hover .action-buttons-expanded {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(-8px); /* 从左侧滑入到正确位置 (-82px + 102px = 20px) */
+  pointer-events: auto;
+}
+
+.terminal-toolbar:hover .action-buttons-expanded .btn {
+  transform: scale(1);
+}
+
+/* 错开动画效果 */
+.terminal-toolbar:hover .action-buttons-expanded .btn:nth-child(1) {
+  transition-delay: 0.05s;
+}
+
+.terminal-toolbar:hover .action-buttons-expanded .btn:nth-child(2) {
+  transition-delay: 0.1s;
+}
+
+.terminal-toolbar:hover .action-buttons-expanded .btn:nth-child(3) {
+  transition-delay: 0.15s;
+}
+
+.terminal-toolbar:hover .action-buttons-expanded .btn:nth-child(4) {
+  transition-delay: 0.2s;
+}
+
+/* 鼠标离开时的收敛动画 */
+.terminal-toolbar:not(:hover) .action-buttons-expanded .btn:nth-child(1) {
+  transition-delay: 0.15s;
+}
+
+.terminal-toolbar:not(:hover) .action-buttons-expanded .btn:nth-child(2) {
+  transition-delay: 0.1s;
+}
+
+.terminal-toolbar:not(:hover) .action-buttons-expanded .btn:nth-child(3) {
+  transition-delay: 0.05s;
+}
+
+.terminal-toolbar:not(:hover) .action-buttons-expanded .btn:nth-child(4) {
+  transition-delay: 0s;
 }
 
 /* XTerm.js 样式覆盖 */
@@ -499,13 +584,6 @@
 }
 
 /* xterm容器样式 */
-/* .xterm-container {
-  flex: 1;
-  height: 100%;
-  background: #1e1e1e;
-  position: relative;
-} */
-
 .xterm-container .xterm {
   height: 100% !important;
   width: 100% !important;
@@ -513,15 +591,10 @@
 
 .xterm-container .terminal-toolbar {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 10px;
+  right: 12px;
   z-index: 100;
-  background: rgb(30 30 30 / 58%);
-  backdrop-filter: blur(10px);
-  padding: 8px 12px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 
@@ -532,6 +605,7 @@
 .icon-clear::before { content: "✕"; }
 .icon-search::before { content: "🔍"; }
 .icon-theme::before { content: "🌙"; }
+.icon-menu::before { content: "☰"; }
 
 /* 终端加载状态样式 */
 .terminal-loading {
@@ -969,73 +1043,15 @@ body .xterm.theme-dark .xterm-selection .xterm-char {
    终端容器样式
    ============================================ */
 
-/* 确保终端容器正确显示 */
-/* .terminal-content {
-  background: #0a0a0a !important;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-} */
-
 /* 浅色主题容器 */
 .terminal-content.theme-light {
   background: #ffffff !important;
 }
 
-/* 旧版终端输出样式（兼容性） */
-/* .terminal-output {
-  font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
-  font-size: 14px !important;
-  line-height: 1.2 !important;
-  background: #0a0a0a !important;
-  color: #f0f0f0 !important;
-  font-weight: 400 !important;
-  -webkit-font-smoothing: antialiased !important;
-  -moz-osx-font-smoothing: grayscale !important;
-  padding: 10px;
-  overflow-y: auto;
-  flex: 1;
-} */
-
-/* .terminal-input-area {
-  font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
-  font-size: 14px !important;
-  background: #0a0a0a !important;
-  line-height: 1.2 !important;
-  padding: 10px;
-  border-top: 1px solid #333;
-} */
-
-/* .terminal-prompt {
-  font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
-  font-size: 14px !important;
-  line-height: 1.2 !important;
-} */
-
-/* #terminalInput {
-  font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
-  font-size: 14px !important;
-  line-height: 1.2 !important;
-  font-weight: 400 !important;
-  background: transparent !important;
-  border: none !important;
-  color: inherit !important;
-  outline: none !important;
-  flex: 1;
-} */
 
 /* ============================================
    终端工具栏样式（保留上面的完整定义）
    ============================================ */
-
-/* .terminal-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
-} */
 
 .renderer-info {
   font-size: 11px;
@@ -1049,21 +1065,6 @@ body .xterm.theme-dark .xterm-selection .xterm-char {
 .renderer-info:hover {
   background: rgba(255, 255, 255, 0.2);
 }
-
-/* .status-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #666;
-  transition: background-color 0.3s ease;
-} */
-
-/* .status-indicator.connected {
-  background: #4caf50;
-  box-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
-} */
-
-/* 已删除重复的 status-indicator 和 terminal-actions 样式，这些在上面已有完整定义 */
 
 /* 浅色主题工具栏 */
 .theme-light .terminal-toolbar {
@@ -1098,4 +1099,120 @@ body .xterm.theme-dark .xterm-selection .xterm-char {
 .xterm-cursor-block,
 .xterm-cursor-bar {
   display: none !important;
+}
+
+/* ============================================
+   ASCII 艺术动画效果
+   ============================================ */
+
+/* 彩虹渐变动画 */
+@keyframes rainbow-shift {
+  0% { filter: hue-rotate(0deg); }
+  25% { filter: hue-rotate(90deg); }
+  50% { filter: hue-rotate(180deg); }
+  75% { filter: hue-rotate(270deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+/* 文字发光效果 */
+@keyframes text-glow {
+  0%, 100% {
+    text-shadow: 0 0 5px currentColor, 0 0 10px currentColor, 0 0 15px currentColor;
+  }
+  50% {
+    text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor, 0 0 40px currentColor;
+  }
+}
+
+/* 打字机效果 */
+@keyframes typewriter {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+/* 闪烁效果 */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* 渐变背景动画 */
+@keyframes gradient-bg {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* 为终端容器添加背景渐变动画 */
+.terminal-area {
+  background: linear-gradient(-45deg, #1a1a1a, #2a2a2a, #1a1a1a, #0a0a0a);
+  background-size: 400% 400%;
+  animation: gradient-bg 15s ease infinite;
+}
+
+/* 终端容器内的特殊样式 */
+.terminal-area .xterm-screen {
+  /* 为ASCII艺术添加特殊效果 */
+  position: relative;
+}
+
+/* 为特定的ASCII艺术行添加动画类 */
+.terminal-area .ascii-art-line {
+  transition: all 0.3s ease;
+}
+
+/* 添加悬停效果 */
+.terminal-area:hover {
+  filter: brightness(1.1);
+}
+
+/* 光标闪烁动画 */
+.terminal-cursor-blink {
+  animation: blink 1s infinite;
+}
+
+/* 彩虹文字效果 */
+.rainbow-text {
+  animation: rainbow-shift 3s linear infinite;
+  background: linear-gradient(45deg, #ff0000, #ff8000, #ffff00, #80ff00, #00ff00, #00ff80, #00ffff, #0080ff, #0000ff, #8000ff, #ff00ff, #ff0080);
+  background-size: 400% 400%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: rainbow-shift 3s linear infinite, text-glow 2s ease-in-out infinite alternate;
+}
+
+/* 发光边框效果 */
+.ascii-art-border {
+  filter: drop-shadow(0 0 10px rgba(0, 162, 255, 0.5));
+  animation: text-glow 3s ease-in-out infinite alternate;
+}
+
+/* 脉冲效果 */
+@keyframes pulse-glow {
+  0% {
+    filter: drop-shadow(0 0 5px rgba(0, 162, 255, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(0, 162, 255, 0.8));
+  }
+  100% {
+    filter: drop-shadow(0 0 5px rgba(0, 162, 255, 0.3));
+  }
+}
+
+.ascii-art-pulse {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* 波浪效果 */
+@keyframes wave {
+  0%, 100% { transform: translateY(0px); }
+  25% { transform: translateY(-2px); }
+  50% { transform: translateY(-4px); }
+  75% { transform: translateY(-2px); }
+}
+
+.ascii-art-wave {
+  animation: wave 4s ease-in-out infinite;
 }

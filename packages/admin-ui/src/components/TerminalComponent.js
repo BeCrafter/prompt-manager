@@ -569,22 +569,25 @@ export class TerminalComponent {
       <span class="renderer-info" title="渲染器类型" style="display: none;">${this.isCanvasRenderer ? '🎨 Canvas' : '📄 DOM'}</span>
     `;
     
-    // 操作按钮
+    // 操作按钮 - 连接状态触发展开
     const actions = document.createElement('div');
     actions.className = 'terminal-actions';
     actions.innerHTML = `
-      <button class="btn btn-sm" title="安装 opencode" id="opencodeBtn">
-        <i class="icon-opencode"></i>
-      </button>
-      <button class="btn btn-sm" title="重新连接" id="reconnectBtn">
-        <i class="icon-refresh"></i>
-      </button>
-      <button class="btn btn-sm" title="清除" id="clearBtn">
-        <i class="icon-clear"></i>
-      </button>
-      <!-- <button class="btn btn-sm" title="主题" id="themeBtn">
-        <i class="icon-theme"></i>
-      </button> -->
+      <!-- 展开的按钮列表 -->
+      <div class="action-buttons-expanded">
+        <button class="btn btn-sm" title="清除" id="clearBtn">
+          <i class="icon-clear"></i>
+        </button>
+        <button class="btn btn-sm" title="重新连接" id="reconnectBtn">
+          <i class="icon-refresh"></i>
+        </button>
+        <button class="btn btn-sm" title="安装 opencode" id="opencodeBtn">
+          <i class="icon-opencode"></i>
+        </button>
+        <!-- <button class="btn btn-sm" title="主题" id="themeBtn">
+          <i class="icon-theme"></i>
+        </button> -->
+      </div>
     `;
     
     toolbar.appendChild(status);
@@ -807,12 +810,20 @@ export class TerminalComponent {
         console.log('终端会话已创建:', this.sessionId);
         // this.write(`\r\n✓ 终端会话已创建 (ID: ${this.sessionId})\r\n`);
         if (message.info) {
+          // 显示 ASCII 艺术，等待完成后再继续
+          this.displayAsciiArt().then(() => {
+            // ASCII艺术显示完成后，确保焦点
+            this.ensureTextareaFocus();
+          });
+          // this.write(`\r\nWelcome to the world of terminals！\r\n`);
           // this.write(`\r\nShell: ${message.info.shell}\r\n`);
-          this.write(`\r\n尝试运行 OpenCode AI... \r\n`);
+          // this.write(`\r\n尝试运行 OpenCode AI... \r\n`);
           // this.write(`工作目录: ${message.info.workingDirectory}\r\n`);
+        } else {
+          // 如果没有info信息，直接确保焦点
+          this.ensureTextareaFocus();
         }
-        this.sendData('opencode 2>/dev/null\n');
-        // this.ensureTextareaFocus();
+        // this.sendData('opencode 2>/dev/null\n');
         break;
         
       case 'terminal.data':
@@ -1025,7 +1036,7 @@ export class TerminalComponent {
 
     // 首先检查是否已安装
     const versionCommand = 'opencode --version';
-    this.write(`\x1b[33m执行命令: ${versionCommand}\x1b[0m\r\n`);
+    // this.write(`\x1b[33m执行命令: ${versionCommand}\x1b[0m\r\n`);
 
     // 设置状态跟踪
     this.installState = {
@@ -1046,7 +1057,7 @@ export class TerminalComponent {
     if (this.installState) {
       this.writeError('\r\n安装检查超时，请手动执行安装命令\r\n');
       this.write('\x1b[90m手动安装命令:\x1b[0m\r\n');
-      this.write('\x1b[90m  npm i -g opencode-ai\x1b[0m\r\n');
+      this.write('\x1b[90m  curl -fsSL https://opencode.ai/install | bash\x1b[0m\r\n');
       this.write('\x1b[90m检查版本命令:\x1b[0m\r\n');
       this.write('\x1b[90m  opencode --version\x1b[0m\r\n\r\n');
       this.installState = null;
@@ -1070,8 +1081,8 @@ export class TerminalComponent {
         this.write('\r\n\x1b[33m❌ opencode 未安装，开始安装...\x1b[0m\r\n');
         this.installState.step = 'installing';
 
-        const installCommand = 'npm i -g opencode-ai';
-        this.write(`\x1b[33m执行命令: ${installCommand}\x1b[0m\r\n`);
+        const installCommand = 'curl -fsSL https://opencode.ai/install | bash';
+        // this.write(`\x1b[33m执行命令: ${installCommand}\x1b[0m\r\n`);
 
         // 重置超时
         clearTimeout(this.installState.timeout);
@@ -1082,10 +1093,11 @@ export class TerminalComponent {
         this.sendData(`${installCommand}\n`);
       } else if (output.match(/\d+\.\d+\.\d+/)) {
         // 已安装，提取版本
-        const versionMatch = output.match(/(\d+\.\d+\.\d+)/);
-        const version = versionMatch ? versionMatch[1] : '未知版本';
-        this.write(`\r\n\x1b[32m✓ opencode 已安装 (版本: ${version})\x1b[0m\r\n\r\n`);
+        // const versionMatch = output.match(/(\d+\.\d+\.\d+)/);
+        // const version = versionMatch ? versionMatch[1] : '未知版本';
+        // this.write(`\r\n\x1b[32m✓ opencode 已安装 (版本: ${version})\x1b[0m\r\n\r\n`);
         this.cleanupInstallState();
+        this.sendData(`opencode\n`);
       }
     } else if (this.installState.step === 'installing') {
       // 检查安装结果
@@ -1093,11 +1105,9 @@ export class TerminalComponent {
         // 安装失败
         this.write('\r\n\x1b[31m❌ 安装失败，请手动安装\x1b[0m\r\n');
         this.write('\x1b[90m手动安装命令:\x1b[0m\r\n');
-        this.write('\x1b[90m  npm i -g opencode-ai\x1b[0m\r\n');
-        this.write('\x1b[90m如果遇到权限问题，请使用:\x1b[0m\r\n');
-        this.write('\x1b[90m  sudo npm i -g opencode-ai\x1b[0m\r\n\r\n');
+        this.write('\x1b[90m  curl -fsSL https://opencode.ai/install | bash\x1b[0m\r\n');
         this.cleanupInstallState();
-      } else if (output.includes('installed') || output.includes('+ opencode-ai')) {
+      } else if (output.includes('installed') || output.includes('+ opencode')) {
         // 安装成功，检查版本
         this.write('\r\n\x1b[32m✓ 安装完成，正在检查版本...\x1b[0m\r\n');
         this.installState.step = 'verifying';
@@ -1141,6 +1151,45 @@ export class TerminalComponent {
       clearTimeout(this.installState.timeout);
       this.installState = null;
     }
+  }
+
+  /**
+   * 显示 ASCII 艺术
+   */
+  displayAsciiArt() {
+    // 使用清晰的ASCII字符创建彩虹色效果，确保字符正确显示，所有行长度对齐
+    const asciiArt = [
+      '\x1b[38;5;39m╔══════════════════════════════════════════════════════════════╗\x1b[0m',
+      '\x1b[38;5;39m║                                                              ║\x1b[0m',
+      '\x1b[38;5;196m║   ██████╗  ██████╗   ██████╗  ███╗   ███╗ ██████╗ ████████╗  ║\x1b[0m',
+      '\x1b[38;5;202m║   ██╔══██╗ ██╔══██╗ ██╔═══██╗ ████╗ ████║ ██╔══██╗╚══██╔══╝  ║\x1b[0m',
+      '\x1b[38;5;208m║   ██████╔╝ ██████╔╝ ██║   ██║ ██╔████╔██║ ██████╔╝   ██║     ║\x1b[0m',
+      '\x1b[38;5;214m║   ██╔═══╝  ██╔══██╗ ██║   ██║ ██║╚██╔╝██║ ██╔═══╝    ██║     ║\x1b[0m',
+      '\x1b[38;5;220m║   ██║      ██║  ██║ ╚██████╔╝ ██║ ╚═╝ ██║ ██║        ██║     ║\x1b[0m',
+      '\x1b[38;5;226m║   ╚═╝      ╚═╝  ╚═╝  ╚═════╝  ╚═╝     ╚═╝ ╚═╝        ╚═╝     ║\x1b[0m',
+      '\x1b[38;5;39m║                                                              ║\x1b[0m',
+      '\x1b[38;5;45m║               🔧 Intelligent Prompt Management 🔧            ║\x1b[0m',
+      '\x1b[38;5;39m║                                                              ║\x1b[0m',
+      '\x1b[38;5;39m╚══════════════════════════════════════════════════════════════╝\x1b[0m'
+    ];
+
+    // Write all ASCII art at once with callback for synchronization and explicit cursor positioning
+    // This fixes cursor positioning issues by avoiding timing gaps during animation
+    const asciiLineCount = asciiArt.length;
+    const messageLineCount = 1;
+    const blankLineCount = 2;
+    const finalRow = asciiLineCount + messageLineCount + blankLineCount + 1;
+
+    return new Promise((resolve) => {
+      const fullText = '\r\n' + asciiArt.join('\r\n') + '\r\n';
+      const finalMessage = '\x1b[38;5;45m>\x1b[0m \x1b[5mReady for your prompts!\x1b[0m\r\n\r\n';
+      const cursorPosition = `\x1b[${finalRow};1H`;
+
+      this.terminal.write(fullText + finalMessage + cursorPosition, () => {
+        console.log(`✓ ASCII art displayed, cursor positioned to row ${finalRow}, column 1`);
+        resolve();
+      });
+    });
   }
 
   /**
