@@ -16,7 +16,7 @@ class VersionManager {
       'package.json',
       'packages/server/package.json',
       'app/desktop/package.json',
-      'env.example',
+      // 'env.example',
       'README.md',
       'packages/server/utils/config.js'
     ];
