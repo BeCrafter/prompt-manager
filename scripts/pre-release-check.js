@@ -118,6 +118,26 @@ class PreReleaseChecker {
     }
   }
 
+  async runLinting() {
+    try {
+      info('Running ESLint...');
+      execSync('cd packages/server && npm run lint:check', { stdio: 'pipe', cwd: this.projectRoot, timeout: 30000 });
+      return { success: true, message: 'No linting errors' };
+    } catch (error) {
+      return { success: false, message: 'Linting errors found' };
+    }
+  }
+
+  async runFormatting() {
+    try {
+      info('Checking code formatting...');
+      execSync('cd packages/server && npm run format:check', { stdio: 'pipe', cwd: this.projectRoot, timeout: 30000 });
+      return { success: true, message: 'Code formatting is correct' };
+    } catch (error) {
+      return { success: false, message: 'Code formatting issues found' };
+    }
+  }
+
   async checkVersionFormat() {
     const semverRegex = /^(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z0-9\-\.]+))?$/;
     const prefixedRegex = /^(beta|canary)-(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z0-9\-\.]+))?$/;
@@ -163,7 +183,7 @@ class PreReleaseChecker {
   async runUnitTests() {
     try {
       info('Running unit tests...');
-      execSync('npm run test:server', { stdio: 'pipe', cwd: this.projectRoot });
+      execSync('cd packages/server && npm run test', { stdio: 'pipe', cwd: this.projectRoot, timeout: 30000 });
       return { success: true, message: 'All unit tests passed' };
     } catch (error) {
       return { success: false, message: 'Some unit tests failed' };
@@ -173,7 +193,7 @@ class PreReleaseChecker {
   async runIntegrationTests() {
     try {
       info('Running integration tests...');
-      execSync('npm run test:server:integration', { stdio: 'pipe', cwd: this.projectRoot });
+      execSync('cd packages/server && npm run test:integration', { stdio: 'pipe', cwd: this.projectRoot, timeout: 60000 });
       return { success: true, message: 'All integration tests passed' };
     } catch (error) {
       return { success: false, message: 'Some integration tests failed' };
