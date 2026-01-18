@@ -1,0 +1,371 @@
+name: Optimized Release
+
+on:
+  push:
+    tags:
+      - 'v*'           # 正式版本: v1.0.0
+      - 'beta-v*'      # Beta版本: beta-v1.0.0
+      - 'canary-v*'    # Canary版本: canary-v1.0.0
+
+env:
+  NODE_VERSION: '20.x'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  # 提取版本信息和设置参数
+  extract-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      clean-version: ${{ steps.version.outputs.clean-version }}
+      is-beta: ${{ steps.version.outputs.is-beta }}
+      is-canary: ${{ steps.version.outputs.is-canary }}
+      publish-tag: ${{ steps.version.outputs.publish-tag }}
+      commit-sha: ${{ steps.version.outputs.commit-sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Extract version information
+        id: version
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          echo "version=${TAG}" >> $GITHUB_OUTPUT
+          
+          # 提取纯净版本号
+          if [[ $TAG == beta-* ]]; then
+            CLEAN_VERSION=${TAG#beta-}
+            echo "is-beta=true" >> $GITHUB_OUTPUT
+            echo "publish-tag=beta" >> $GITHUB_OUTPUT
+          elif [[ $TAG == canary-* ]]; then
+            CLEAN_VERSION=${TAG#canary-}
+            echo "is-canary=true" >> $GITHUB_OUTPUT
+            echo "publish-tag=canary" >> $GITHUB_OUTPUT
+          else
+            CLEAN_VERSION=${TAG#v}
+            echo "is-beta=false" >> $GITHUB_OUTPUT
+            echo "is-canary=false" >> $GITHUB_OUTPUT
+            echo "publish-tag=latest" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "clean-version=${CLEAN_VERSION}" >> $GITHUB_OUTPUT
+          echo "commit-sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          
+          echo "Version: ${TAG}"
+          echo "Clean Version: ${CLEAN_VERSION}"
+          echo "Publish Tag: $(echo $publish-tag)"
+
+  # 预发布检查
+  pre-release-checks:
+    runs-on: ubuntu-latest
+    needs: extract-version
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install server dependencies
+        run: cd packages/server && npm ci
+      
+      - name: Install admin-ui dependencies
+        run: cd packages/admin-ui && npm ci
+      
+      - name: Run pre-release checks
+        run: node scripts/pre-release-check.js ${{ needs.extract-version.outputs.version }}
+      
+      - name: Quick validation for beta/canary
+        if: needs.extract-version.outputs.is-beta == 'true' || needs.extract-version.outputs.is-canary == 'true'
+        run: node scripts/pre-release-check.js ${{ needs.extract-version.outputs.version }} --quick
+
+  # 并行测试矩阵
+  test-matrix:
+    needs: extract-version
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node-version: [18.x, 20.x]
+        exclude:
+          # 优化矩阵大小，只在Ubuntu上测试多个Node版本
+          - os: windows-latest
+            node-version: 18.x
+          - os: macos-latest
+            node-version: 18.x
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install server dependencies
+        run: cd packages/server && npm ci
+      
+      - name: Run unit tests
+        run: cd packages/server && npm run test:server
+      
+      - name: Run integration tests
+        run: cd packages/server && npm run test:server:integration
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: test-results-${{ matrix.os }}-${{ matrix.node-version }}
+          path: |
+            packages/server/coverage/
+            packages/server/test-results/
+          retention-days: 7
+
+  # 安全和依赖检查（并行）
+  security-checks:
+    runs-on: ubuntu-latest
+    needs: extract-version
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install server dependencies
+        run: cd packages/server && npm ci
+      
+      - name: Security audit (root)
+        run: npm audit --audit-level moderate
+      
+      - name: Security audit (server)
+        run: cd packages/server && npm audit --audit-level moderate
+      
+      - name: Security audit (admin-ui)
+        run: cd packages/admin-ui && npm audit --audit-level moderate
+
+  # 构建验证
+  build-verification:
+    runs-on: ${{ matrix.os }}
+    needs: [extract-version, pre-release-checks]
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install server dependencies
+        run: cd packages/server && npm ci
+      
+      - name: Install admin-ui dependencies
+        run: cd packages/admin-ui && npm ci
+      
+      - name: Build admin UI
+        run: npm run build:admin-ui
+      
+      - name: Build core package
+        run: npm run build:core
+      
+      - name: Verify build artifacts
+        run: |
+          # 检查关键构建产物
+          if [ ! -d "packages/web" ]; then
+            echo "❌ packages/web directory not found"
+            exit 1
+          fi
+          
+          if [ ! -f "packages/server/dist/index.js" ]; then
+            echo "❌ Server build artifact not found"
+            exit 1
+          fi
+          
+          echo "✅ Build artifacts verified"
+
+  # 版本更新和发布
+  release:
+    runs-on: ubuntu-latest
+    needs: [extract-version, pre-release-checks, test-matrix, security-checks, build-verification]
+    if: always() && needs.pre-release-checks.result == 'success'
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Update version files
+        run: node scripts/update-version.js ${{ needs.extract-version.outputs.clean-version }}
+      
+      - name: Commit version updates
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+          git add .
+          git diff --staged --quiet || git commit -m "chore: update version to ${{ needs.extract-version.outputs.version }} [skip ci]"
+          git push origin HEAD:main
+      
+      - name: Build packages
+        run: |
+          npm run build:admin-ui
+          npm run build:core
+      
+      - name: Rebuild native modules
+        run: npm rebuild node-pty
+      
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.extract-version.outputs.version }}
+          release_name: Release ${{ needs.extract-version.outputs.version }}
+          draft: false
+          prerelease: ${{ needs.extract-version.outputs.is-beta == 'true' || needs.extract-version.outputs.is-canary == 'true' }}
+          body: |
+            ## Changes in ${{ needs.extract-version.outputs.version }}
+            
+            ### 🚀 Features
+            <!-- Add new features here -->
+            
+            ### 🐛 Bug Fixes  
+            <!-- Add bug fixes here -->
+            
+            ### 💬 Breaking Changes
+            <!-- Add breaking changes here -->
+            
+            ---
+            
+            **📦 Installation:**
+            ```bash
+            npm install @becrafter/prompt-manager@${{ needs.extract-version.outputs.publish-tag }}
+            ```
+      
+      - name: Publish to NPM
+        run: npm publish --access public --tag ${{ needs.extract-version.outputs.publish-tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      
+      - name: Update release with package info
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data: release } = await github.rest.repos.getRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: ${{ steps.create_release.outputs.id }}
+            });
+            
+            const packageInfo = {
+              version: '${{ needs.extract-version.outputs.clean-version }}',
+              tag: '${{ needs.extract-version.outputs.publish-tag }}',
+              commit: '${{ needs.extract-version.outputs.commit-sha }}',
+              timestamp: new Date().toISOString()
+            };
+            
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.id,
+              body: release.body + '\n\n---\n\n**Package Info:**\n```json\n' + JSON.stringify(packageInfo, null, 2) + '\n```'
+            });
+
+  # 回滚准备（仅在失败时）
+  prepare-rollback:
+    runs-on: ubuntu-latest
+    needs: [extract-version, test-matrix, security-checks, build-verification, release]
+    if: failure() && needs.extract-version.result == 'success'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create rollback tag
+        run: |
+          ROLLBACK_TAG="rollback-${{ needs.extract-version.outputs.version }}-$(date +%s)"
+          git tag $ROLLBACK_TAG
+          git push origin $ROLLBACK_TAG
+          echo "Created rollback tag: $ROLLBACK_TAG"
+      
+      - name: Create rollback issue
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const failedJobs = ['test-matrix', 'security-checks', 'build-verification', 'release'].filter(job => 
+              needs[job].result === 'failure'
+            );
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 Release Failed: ${{ needs.extract-version.outputs.version }}`,
+              body: `
+              **Version:** ${{ needs.extract-version.outputs.version }}
+              **Tag:** rollback-${{ needs.extract-version.outputs.version }}-$(date +%s)
+              **Failed Jobs:** ${failedJobs.join(', ')}
+              **Time:** ${new Date().toISOString()}
+              **Action:** Manual rollback required
+              
+              ### 🔧 Rollback Commands:
+              \`\`\`bash
+              # Option 1: Use rollback script
+              node scripts/rollback-release.js rollback ${{ needs.extract-version.outputs.clean-version }} --reason "Release failure"
+              
+              # Option 2: Manual unpublish
+              npm unpublish @becrafter/prompt-manager@${{ needs.extract-version.outputs.clean-version }} --force
+              \`\`\`
+              `,
+              labels: ['rollback', 'critical', 'release-failed']
+            });
+
+  # 发布成功通知
+  notify-success:
+    runs-on: ubuntu-latest
+    needs: [extract-version, release]
+    if: needs.release.result == 'success'
+    
+    steps:
+      - name: Success notification
+        run: |
+          echo "🎉 Release ${{ needs.extract-version.outputs.version }} completed successfully!"
+          echo "📦 Published to NPM with tag: ${{ needs.extract-version.outputs.publish-tag }}"
+          echo "🔗 GitHub Release: https://github.com/${{ github.repository }}/releases/tag/${{ needs.extract-version.outputs.version }}"
+          echo "📚 Package: https://www.npmjs.com/package/@becrafter/prompt-manager/v/${{ needs.extract-version.outputs.clean-version }}"

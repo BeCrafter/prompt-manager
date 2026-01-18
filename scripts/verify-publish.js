@@ -60,6 +60,9 @@ class PublishVerifier {
       lint: false,
       format: false,
       test: false,
+      integration: false,
+      build: false,
+      security: false,
       files: false,
       version: false,
       publishReady: false,
@@ -70,7 +73,7 @@ class PublishVerifier {
   async runTest() {
     console.log('\n');
     log('='.repeat(60), 'bright');
-    log('NPM Publish Verification', 'bright');
+    log('Enhanced NPM Publish Verification', 'bright');
     log('='.repeat(60), 'bright');
     console.log('\n');
 
@@ -81,13 +84,22 @@ class PublishVerifier {
       // 测试2: Format
       this.results.format = this.runCommand('npm run format:check', 'Prettier check');
 
-      // 测试3: Tests (只运行服务器测试，避免循环调用)
-      this.results.test = this.runCommand('npm run test:server', 'Server tests');
+      // 测试3: Unit Tests
+      this.results.test = this.runCommand('npm run test:server', 'Unit tests');
 
-      // 测试4: Files
+      // 测试4: Integration Tests
+      this.results.integration = this.runCommand('npm run test:server:integration', 'Integration tests');
+
+      // 测试5: Build Verification
+      this.results.build = this.checkBuildArtifacts();
+
+      // 测试6: Security Check
+      this.results.security = this.runSecurityCheck();
+
+      // 测试7: Files
       this.checkFilesExist();
 
-      // 测试5: Version consistency
+      // 测试8: Version consistency
       this.checkVersionConsistency();
 
       // 验证发布就绪
@@ -130,6 +142,51 @@ class PublishVerifier {
     if (allExist) {
       success('All package files exist');
       this.results.files = true;
+    }
+  }
+
+  checkBuildArtifacts() {
+    info('Checking build artifacts...');
+    
+    const requiredArtifacts = [
+      'packages/web/index.html',
+      'packages/web/assets/',
+      'packages/server/dist/index.js'
+    ];
+    
+    let allArtifactsExist = true;
+    
+    for (const artifact of requiredArtifacts) {
+      const fullPath = path.join(projectRoot, artifact);
+      if (!fs.existsSync(fullPath)) {
+        error(`Build artifact missing: ${artifact}`);
+        allArtifactsExist = false;
+      }
+    }
+    
+    if (allArtifactsExist) {
+      success('All build artifacts exist');
+      return true;
+    }
+    
+    return false;
+  }
+
+  runSecurityCheck() {
+    info('Running security checks...');
+    
+    try {
+      // Check root package security
+      execSync('npm audit --audit-level moderate', { stdio: 'pipe', cwd: projectRoot });
+      
+      // Check server package security
+      execSync('npm audit --audit-level moderate', { stdio: 'pipe', cwd: path.join(projectRoot, 'packages/server') });
+      
+      success('Security audit passed');
+      return true;
+    } catch (error) {
+      error(`Security audit failed: ${error.message}`);
+      return false;
     }
   }
 
@@ -189,11 +246,33 @@ class PublishVerifier {
       }
     }
 
-    if (allFilesExist) {
-      success('All required files exist');
-      this.results.publishReady = allFilesExist && this.results.version;
+    // 检查所有关键项目
+    const allChecksPass = [
+      this.results.lint,
+      this.results.format,
+      this.results.test,
+      this.results.integration,
+      this.results.build,
+      this.results.security,
+      this.results.files,
+      this.results.version
+    ].every(check => check);
+
+    if (allFilesExist && allChecksPass) {
+      success('All checks passed - Ready for publish');
+      this.results.publishReady = true;
     } else {
-      error('Missing required files');
+      const failedChecks = [];
+      if (!this.results.lint) failedChecks.push('ESLint');
+      if (!this.results.format) failedChecks.push('Format');
+      if (!this.results.test) failedChecks.push('Unit Tests');
+      if (!this.results.integration) failedChecks.push('Integration Tests');
+      if (!this.results.build) failedChecks.push('Build');
+      if (!this.results.security) failedChecks.push('Security');
+      if (!this.results.files) failedChecks.push('Files');
+      if (!this.results.version) failedChecks.push('Version');
+      
+      error(`Not ready for publish. Failed checks: ${failedChecks.join(', ')}`);
       this.results.publishReady = false;
     }
   }
@@ -205,16 +284,25 @@ class PublishVerifier {
     log('='.repeat(60), 'bright');
     console.log('\n');
 
-    console.log('Linting:');
-    console.log(`  ESLint:         ${this.results.lint ? '✅ PASS' : '❌ FAIL'}`);
-    console.log(`  Format:          ${this.results.format ? '✅ PASS' : '❌ FAIL'}`);
-    console.log(`  Tests:           ${this.results.test ? '✅ PASS' : '❌ FAIL'}`);
+    console.log('Code Quality:');
+    console.log(`  ESLint:           ${this.results.lint ? '✅ PASS' : '❌ FAIL'}`);
+    console.log(`  Format:            ${this.results.format ? '✅ PASS' : '❌ FAIL'}`);
     console.log('');
-
-    console.log('Files:');
-    console.log(`  Package files:   ${this.results.files ? '✅ PASS' : '❌ FAIL'}`);
-    console.log(`  Version:          ${this.results.version ? '✅ PASS' : '❌ FAIL'}`);
-    console.log(`  Publish ready:    ${this.results.publishReady ? '✅ PASS' : '❌ FAIL'}`);
+    
+    console.log('Testing:');
+    console.log(`  Unit Tests:        ${this.results.test ? '✅ PASS' : '❌ FAIL'}`);
+    console.log(`  Integration Tests: ${this.results.integration ? '✅ PASS' : '❌ FAIL'}`);
+    console.log('');
+    
+    console.log('Build & Security:');
+    console.log(`  Build Artifacts:   ${this.results.build ? '✅ PASS' : '❌ FAIL'}`);
+    console.log(`  Security Audit:    ${this.results.security ? '✅ PASS' : '❌ FAIL'}`);
+    console.log('');
+    
+    console.log('Files & Version:');
+    console.log(`  Package Files:     ${this.results.files ? '✅ PASS' : '❌ FAIL'}`);
+    console.log(`  Version Consistency: ${this.results.version ? '✅ PASS' : '❌ FAIL'}`);
+    console.log(`  Publish Ready:     ${this.results.publishReady ? '✅ PASS' : '❌ FAIL'}`);
     console.log('');
 
     if (this.results.errors.length > 0) {
