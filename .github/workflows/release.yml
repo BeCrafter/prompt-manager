@@ -1,4 +1,4 @@
-name: Optimized Release
+name: Simplified Release
 
 on:
   push:
@@ -15,7 +15,7 @@ permissions:
   packages: write
 
 jobs:
-  # 提取版本信息和设置参数
+  # 提取版本信息
   extract-version:
     runs-on: ubuntu-latest
     outputs:
@@ -24,7 +24,6 @@ jobs:
       is-beta: ${{ steps.version.outputs.is-beta }}
       is-canary: ${{ steps.version.outputs.is-canary }}
       publish-tag: ${{ steps.version.outputs.publish-tag }}
-      commit-sha: ${{ steps.version.outputs.commit-sha }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,7 +35,6 @@ jobs:
           TAG=${GITHUB_REF#refs/tags/}
           echo "version=${TAG}" >> $GITHUB_OUTPUT
           
-          # 提取纯净版本号
           if [[ $TAG == beta-* ]]; then
             CLEAN_VERSION=${TAG#beta-}
             echo "is-beta=true" >> $GITHUB_OUTPUT
@@ -53,14 +51,12 @@ jobs:
           fi
           
           echo "clean-version=${CLEAN_VERSION}" >> $GITHUB_OUTPUT
-          echo "commit-sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-          
           echo "Version: ${TAG}"
           echo "Clean Version: ${CLEAN_VERSION}"
           echo "Publish Tag: $(echo $publish-tag)"
 
   # 预发布检查
-  pre-release-checks:
+  pre-checks:
     runs-on: ubuntu-latest
     needs: extract-version
     steps:
@@ -75,146 +71,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      - name: Install server dependencies
-        run: cd packages/server && npm ci
-      
-      - name: Install admin-ui dependencies
-        run: cd packages/admin-ui && npm ci
-      
-      - name: Run pre-release checks
-        run: node scripts/pre-release-check.js ${{ needs.extract-version.outputs.version }}
-      
-      - name: Quick validation for beta/canary
-        if: needs.extract-version.outputs.is-beta == 'true' || needs.extract-version.outputs.is-canary == 'true'
+      - name: Run quick pre-release checks
         run: node scripts/pre-release-check.js ${{ needs.extract-version.outputs.version }} --quick
 
-  # 并行测试矩阵
-  test-matrix:
-    needs: extract-version
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        node-version: [18.x, 20.x]
-        exclude:
-          # 优化矩阵大小，只在Ubuntu上测试多个Node版本
-          - os: windows-latest
-            node-version: 18.x
-          - os: macos-latest
-            node-version: 18.x
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Install server dependencies
-        run: cd packages/server && npm ci
-      
-      - name: Run unit tests
-        run: cd packages/server && npm run test:server
-      
-      - name: Run integration tests
-        run: cd packages/server && npm run test:server:integration
-      
-      - name: Upload test results
-        uses: actions/upload-artifact@v3
-        if: failure()
-        with:
-          name: test-results-${{ matrix.os }}-${{ matrix.node-version }}
-          path: |
-            packages/server/coverage/
-            packages/server/test-results/
-          retention-days: 7
-
-  # 安全和依赖检查（并行）
-  security-checks:
+  # 发布到NPM
+  publish:
     runs-on: ubuntu-latest
-    needs: extract-version
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Install server dependencies
-        run: cd packages/server && npm ci
-      
-      - name: Security audit (root)
-        run: npm audit --audit-level moderate
-      
-      - name: Security audit (server)
-        run: cd packages/server && npm audit --audit-level moderate
-      
-      - name: Security audit (admin-ui)
-        run: cd packages/admin-ui && npm audit --audit-level moderate
-
-  # 构建验证
-  build-verification:
-    runs-on: ${{ matrix.os }}
-    needs: [extract-version, pre-release-checks]
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Install server dependencies
-        run: cd packages/server && npm ci
-      
-      - name: Install admin-ui dependencies
-        run: cd packages/admin-ui && npm ci
-      
-      - name: Build admin UI
-        run: npm run build:admin-ui
-      
-      - name: Build core package
-        run: npm run build:core
-      
-      - name: Verify build artifacts
-        run: |
-          # 检查关键构建产物
-          if [ ! -d "packages/web" ]; then
-            echo "❌ packages/web directory not found"
-            exit 1
-          fi
-          
-          if [ ! -f "packages/server/dist/index.js" ]; then
-            echo "❌ Server build artifact not found"
-            exit 1
-          fi
-          
-          echo "✅ Build artifacts verified"
-
-  # 版本更新和发布
-  release:
-    runs-on: ubuntu-latest
-    needs: [extract-version, pre-release-checks, test-matrix, security-checks, build-verification]
-    if: always() && needs.pre-release-checks.result == 'success'
+    needs: [extract-version, pre-checks]
+    if: needs.pre-checks.result == 'success'
     
     steps:
       - uses: actions/checkout@v4
@@ -243,13 +107,18 @@ jobs:
           git diff --staged --quiet || git commit -m "chore: update version to ${{ needs.extract-version.outputs.version }} [skip ci]"
           git push origin HEAD:main
       
-      - name: Build packages
-        run: |
-          npm run build:admin-ui
-          npm run build:core
+      - name: Build admin UI
+        run: npm run build:admin-ui
+        env:
+          DISPLAY: ':99'
+      
+      - name: Build core package
+        run: npm run build:core
       
       - name: Rebuild native modules
         run: npm rebuild node-pty
+        env:
+          DISPLAY: ':99'
       
       - name: Create GitHub Release
         id: create_release
@@ -262,20 +131,9 @@ jobs:
           draft: false
           prerelease: ${{ needs.extract-version.outputs.is-beta == 'true' || needs.extract-version.outputs.is-canary == 'true' }}
           body: |
-            ## Changes in ${{ needs.extract-version.outputs.version }}
+            ## Release ${{ needs.extract-version.outputs.version }}
             
-            ### 🚀 Features
-            <!-- Add new features here -->
-            
-            ### 🐛 Bug Fixes  
-            <!-- Add bug fixes here -->
-            
-            ### 💬 Breaking Changes
-            <!-- Add breaking changes here -->
-            
-            ---
-            
-            **📦 Installation:**
+            ### 📦 Installation
             ```bash
             npm install @becrafter/prompt-manager@${{ needs.extract-version.outputs.publish-tag }}
             ```
@@ -284,83 +142,12 @@ jobs:
         run: npm publish --access public --tag ${{ needs.extract-version.outputs.publish-tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      
-      - name: Update release with package info
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const { data: release } = await github.rest.repos.getRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: ${{ steps.create_release.outputs.id }}
-            });
-            
-            const packageInfo = {
-              version: '${{ needs.extract-version.outputs.clean-version }}',
-              tag: '${{ needs.extract-version.outputs.publish-tag }}',
-              commit: '${{ needs.extract-version.outputs.commit-sha }}',
-              timestamp: new Date().toISOString()
-            };
-            
-            await github.rest.repos.updateRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: release.id,
-              body: release.body + '\n\n---\n\n**Package Info:**\n```json\n' + JSON.stringify(packageInfo, null, 2) + '\n```'
-            });
-
-  # 回滚准备（仅在失败时）
-  prepare-rollback:
-    runs-on: ubuntu-latest
-    needs: [extract-version, test-matrix, security-checks, build-verification, release]
-    if: failure() && needs.extract-version.result == 'success'
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Create rollback tag
-        run: |
-          ROLLBACK_TAG="rollback-${{ needs.extract-version.outputs.version }}-$(date +%s)"
-          git tag $ROLLBACK_TAG
-          git push origin $ROLLBACK_TAG
-          echo "Created rollback tag: $ROLLBACK_TAG"
-      
-      - name: Create rollback issue
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const failedJobs = ['test-matrix', 'security-checks', 'build-verification', 'release'].filter(job => 
-              needs[job].result === 'failure'
-            );
-            
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `🚨 Release Failed: ${{ needs.extract-version.outputs.version }}`,
-              body: `
-              **Version:** ${{ needs.extract-version.outputs.version }}
-              **Tag:** rollback-${{ needs.extract-version.outputs.version }}-$(date +%s)
-              **Failed Jobs:** ${failedJobs.join(', ')}
-              **Time:** ${new Date().toISOString()}
-              **Action:** Manual rollback required
-              
-              ### 🔧 Rollback Commands:
-              \`\`\`bash
-              # Option 1: Use rollback script
-              node scripts/rollback-release.js rollback ${{ needs.extract-version.outputs.clean-version }} --reason "Release failure"
-              
-              # Option 2: Manual unpublish
-              npm unpublish @becrafter/prompt-manager@${{ needs.extract-version.outputs.clean-version }} --force
-              \`\`\`
-              `,
-              labels: ['rollback', 'critical', 'release-failed']
-            });
 
   # 发布成功通知
   notify-success:
     runs-on: ubuntu-latest
-    needs: [extract-version, release]
-    if: needs.release.result == 'success'
+    needs: [extract-version, publish]
+    if: needs.publish.result == 'success'
     
     steps:
       - name: Success notification
@@ -368,4 +155,3 @@ jobs:
           echo "🎉 Release ${{ needs.extract-version.outputs.version }} completed successfully!"
           echo "📦 Published to NPM with tag: ${{ needs.extract-version.outputs.publish-tag }}"
           echo "🔗 GitHub Release: https://github.com/${{ github.repository }}/releases/tag/${{ needs.extract-version.outputs.version }}"
-          echo "📚 Package: https://www.npmjs.com/package/@becrafter/prompt-manager/v/${{ needs.extract-version.outputs.clean-version }}"
