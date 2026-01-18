@@ -121,12 +121,13 @@ class PreReleaseChecker {
   async checkVersionFormat() {
     const semverRegex = /^(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z0-9\-\.]+))?$/;
     const prefixedRegex = /^(beta|canary)-(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z0-9\-\.]+))?$/;
+    const vPrefixedRegex = /^v(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z0-9\-\.]+))?$/;
     
-    if (semverRegex.test(this.version) || prefixedRegex.test(this.version)) {
+    if (semverRegex.test(this.version) || prefixedRegex.test(this.version) || vPrefixedRegex.test(this.version)) {
       return { success: true, message: 'Valid version format' };
     }
     
-    return { success: false, message: 'Invalid version format. Expected: 1.0.0 or beta-1.0.0' };
+    return { success: false, message: 'Invalid version format. Expected: 1.0.0, v1.0.0, beta-1.0.0, or canary-1.0.0' };
   }
 
   async checkDependencies() {

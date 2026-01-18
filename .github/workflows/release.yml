@@ -53,7 +53,7 @@ jobs:
           echo "clean-version=${CLEAN_VERSION}" >> $GITHUB_OUTPUT
           echo "Version: ${TAG}"
           echo "Clean Version: ${CLEAN_VERSION}"
-          echo "Publish Tag: $(echo $publish-tag)"
+          echo "Publish Tag: ${{ steps.version.outputs.publish_tag }}"
 
   # 预发布检查
   pre-checks:
