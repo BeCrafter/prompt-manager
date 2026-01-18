@@ -117,8 +117,8 @@ jobs:
       #   env:
       #     DISPLAY: ':99'
       
-      - name: Build core package
-        run: npm run build:core
+      # - name: Build core package
+      #   run: npm run build:core
       
       - name: Rebuild native modules
         run: npm rebuild node-pty
