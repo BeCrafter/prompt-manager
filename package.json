@@ -26,8 +26,8 @@
     "fix:pty": "npm rebuild node-pty",
     "help": "cd packages/server && node server.js --help",
     "build": "npm run build:admin-ui && npm run build:core",
-    "build:core": "npm run build --prefix packages/server",
-    "build:admin-ui": "npm run build --prefix packages/admin-ui",
+    "build:core": "cd packages/server && npx esbuild ./index.js --bundle --outdir=dist --format=esm --platform=node --target=node18",
+    "build:admin-ui": "cd packages/admin-ui && npx webpack --mode production",
     "build:desktop": "bash scripts/build.sh",
     "build:desktop:all": "bash scripts/build.sh build:all",
     "build:icons": "node ./scripts/build-icons.js",
@@ -53,6 +53,8 @@
     "check:deps": "bash scripts/check-dependencies.sh",
     "check:env": "bash scripts/check-env.sh",
     "setup:env": "node scripts/preinstall-check.js",
+    "test:build": "bash scripts/build.sh test-build",
+    "verify:build": "node scripts/verify-build.js",
     "postinstall": "npm rebuild node-pty && chmod +x node_modules/node-pty/prebuilds/*/pty.node node_modules/node-pty/prebuilds/*/spawn-helper 2>/dev/null || true"
   },
   "keywords": [
