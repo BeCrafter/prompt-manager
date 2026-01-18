@@ -56,23 +56,23 @@ jobs:
           echo "Publish Tag: ${{ steps.version.outputs.publish-tag }}"
 
   # 预发布检查
-  # pre-checks:
-  #   runs-on: ubuntu-latest
-  #   needs: extract-version
-  #   steps:
-  #     - uses: actions/checkout@v4
+  pre-checks:
+    runs-on: ubuntu-latest
+    needs: extract-version
+    steps:
+      - uses: actions/checkout@v4
       
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: ${{ env.NODE_VERSION }}
-  #         cache: 'npm'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
       
-  #     - name: Install dependencies
-  #       run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-  #     - name: Check and install all dependencies
-  #       run: npm run check:deps
+      - name: Check and install all dependencies
+        run: npm run check:deps
 
   #     - name: Run quick pre-release checks
   #       run: node scripts/pre-release-check.js ${{ needs.extract-version.outputs.version }} --quick
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: 
       - extract-version
-      # - pre-checks
+      - pre-checks
     if: needs.pre-checks.result == 'success'
     
     steps:
