@@ -27,7 +27,7 @@ class OptimizationService {
         // 尝试获取第一个系统优化模板
         template = templateManager.getTemplates().find(t => (t.type || 'optimize') === 'optimize');
       }
-      
+
       if (!template) {
         throw new Error(`未找到可用模板: ${templateId}`);
       }
@@ -132,15 +132,17 @@ class OptimizationService {
 
       // 3. 构建迭代优化消息列表
       const messages = this.buildIterationMessages(
-        currentResult, 
+        currentResult,
         session.lastResult,
-        template, 
-        session.count, 
+        template,
+        session.count,
         guideText,
         session.originalPrompt // 传入原始提示词
       );
 
-      logger.info(`开始迭代优化（第 ${session.count + 1} 次），使用模板: ${template.name}，模型: ${model.name}${guideText ? '，有优化指导' : ''}`);
+      logger.info(
+        `开始迭代优化（第 ${session.count + 1} 次），使用模板: ${template.name}，模型: ${model.name}${guideText ? '，有优化指导' : ''}`
+      );
 
       // 4. 调用 AI API（流式）
       const result = await this.callAIModel(messages, model, onChunk);
@@ -186,10 +188,10 @@ class OptimizationService {
    */
   buildMessages(prompt, template) {
     if (template.format === 'advanced' && Array.isArray(template.content)) {
-      const variables = { 
+      const variables = {
         originalPrompt: prompt,
-        prompt: prompt, // 兼容旧模板
-        input: prompt   // 兼容旧模板
+        prompt, // 兼容旧模板
+        input: prompt // 兼容旧模板
       };
       return template.content.map(msg => ({
         role: msg.role,
@@ -239,7 +241,7 @@ class OptimizationService {
         iterationCount: iterationCount + 1,
         guideText: guideText || ''
       };
-      
+
       return template.content.map(msg => ({
         role: msg.role,
         content: this.replaceVariables(msg.content, variables)
@@ -261,21 +263,20 @@ class OptimizationService {
 
     // 构建默认迭代上下文（如果模板是简单的且没有包含占位符）
     let finalContent = '';
-    
+
     // 如果没有使用任何变量占位符，执行默认拼接逻辑
-    const hasVariables = ['{{prompt}}', '{{previousResult}}', '{{guideText}}']
-      .some(v => content.includes(v));
+    const hasVariables = ['{{prompt}}', '{{previousResult}}', '{{guideText}}'].some(v => content.includes(v));
 
     if (!hasVariables) {
       if (!content.includes('{{previousResult}}')) {
         finalContent += `这是第 ${variables.iterationCount} 次优化。上一次的优化结果如下：\n\n${variables.previousResult}\n\n`;
       }
-      
+
       if (guideText && !content.includes('{{guideText}}')) {
         finalContent += `本次优化的具体要求：\n${guideText}\n\n`;
       }
 
-      finalContent += `请基于以上上下文，继续优化以下内容：\n\n{{prompt}}`;
+      finalContent += '请基于以上上下文，继续优化以下内容：\n\n{{prompt}}';
     } else {
       finalContent = content;
     }
@@ -300,9 +301,11 @@ class OptimizationService {
       // 记录请求日志
       logger.info(`[AI Request] 模型: ${model.name}, 消息数: ${messages.length}`);
       messages.forEach((msg, i) => {
-        logger.debug(`[Message ${i}] Role: ${msg.role}, Content: ${msg.content.substring(0, 1000)}${msg.content.length > 1000 ? '...' : ''}`);
+        logger.debug(
+          `[Message ${i}] Role: ${msg.role}, Content: ${msg.content.substring(0, 1000)}${msg.content.length > 1000 ? '...' : ''}`
+        );
       });
-      
+
       // 构建 API 请求
       const requestBody = {
         model: model.model,
@@ -311,8 +314,8 @@ class OptimizationService {
       };
 
       const headers = {
-        'Content-Type': 'application/json',
-      }
+        'Content-Type': 'application/json'
+      };
       if (model.apiKey) {
         headers['Authorization'] = `Bearer ${model.apiKey}`;
       }
@@ -320,7 +323,7 @@ class OptimizationService {
       // 发起请求
       const response = await fetch(model.apiEndpoint, {
         method: 'POST',
-        headers: headers,
+        headers,
         body: JSON.stringify(requestBody)
       });
 
@@ -337,7 +340,7 @@ class OptimizationService {
         } catch (e) {
           // 如果不是 JSON，限制长度
           if (errorDetail.length > 200) {
-            errorDetail = errorDetail.substring(0, 200) + '...';
+            errorDetail = `${errorDetail.substring(0, 200)}...`;
           }
         }
         throw new Error(`API 请求失败 (${response.status} ${response.statusText}): ${errorDetail}`);
@@ -348,7 +351,7 @@ class OptimizationService {
       const decoder = new TextDecoder();
       let fullContent = '';
 
-      while (true) {
+      for (;;) {
         const { done, value } = await reader.read();
 
         if (done) {

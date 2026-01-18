@@ -61,13 +61,16 @@ export class TerminalComponent {
     this.rendererType = 'unknown';
     this.isCanvasRenderer = false;
 
+    // IME输入状态
+    this.isComposing = false;
+
     // 初始化状态
     this.isInitialized = false;
     this.initPromise = null;
     
     // 显示加载状态
     this.showLoadingState();
-    
+
     // 异步初始化
     this.initPromise = this.init().catch(error => {
       console.error('TerminalComponent异步初始化失败:', error);
@@ -231,7 +234,7 @@ export class TerminalComponent {
         foreground: '#f0f0f0',
         cursor: '#ffffff',
         cursorAccent: '#000000',
-        
+
         // 选中效果（优化 - 更明显的对比度）
         selection: 'rgba(100, 181, 246, 0.45)',
         selectionForeground: '#ffffff',
@@ -262,7 +265,7 @@ export class TerminalComponent {
         foreground: '#1a1a1a',
         cursor: '#1a1a1a',
         cursorAccent: '#ffffff',
-        
+
         // 选中效果（优化 - 更明显的对比度）
         selection: 'rgba(24, 144, 255, 0.3)',
         selectionForeground: '#000000',
@@ -338,6 +341,12 @@ export class TerminalComponent {
   setupEventListeners() {
     // 终端数据事件
     this.terminal.onData((data) => {
+      // 在 IME composition 期间阻止数据发送，防止中文输入重复显示
+      // 修复：macOS + Electron + 搜狗输入法等 IME 环境下的字符重复问题
+      if (this.isComposing) {
+        console.log('IME composing - ignoring data:', data);
+        return;
+      }
       this.sendData(data);
     });
 
@@ -359,6 +368,25 @@ export class TerminalComponent {
     this.terminal.textarea?.addEventListener('blur', () => {
       this.container.classList.remove('terminal-focused');
     });
+
+    // 中文IME输入支持 - 直接监听textarea的composition事件
+    if (this.terminal.textarea) {
+      this.terminal.textarea.addEventListener('compositionstart', (e) => {
+        this.isComposing = true;
+        this.container.classList.add('composing');
+        console.log('Composition started', e);
+      });
+
+      this.terminal.textarea.addEventListener('compositionupdate', (e) => {
+        console.log('Composition update', e);
+      });
+
+      this.terminal.textarea.addEventListener('compositionend', (e) => {
+        this.isComposing = false;
+        this.container.classList.remove('composing');
+        console.log('Composition ended', e);
+      });
+    }
   }
 
   /**
@@ -366,7 +394,13 @@ export class TerminalComponent {
    */
   handleKey(event) {
     const { key, domEvent } = event;
-    
+
+    // 中文IME输入期间，阻止某些快捷键
+    if (this.isComposing) {
+      console.log('IME composing - ignoring key:', key);
+      return;
+    }
+
     // Ctrl+C 中断
     if (domEvent.ctrlKey && domEvent.key === 'c') {
       this.sendData('\x03');
@@ -454,21 +488,30 @@ export class TerminalComponent {
    */
   render() {
     if (!this.container) return;
-    
+
     this.container.innerHTML = '';
     this.terminal.open(this.container);
-    
+
     // 设置初始主题class
     this.updateThemeClass();
-    
+
     // 创建工具栏
     this.createToolbar();
-    
+
     // 适应大小
     setTimeout(() => this.fit(), 100);
 
     // 检测实际使用的渲染器
     setTimeout(() => this.detectRenderer(), 200);
+
+    setTimeout(() => this.ensureTextareaFocus(), 300);
+  }
+
+  ensureTextareaFocus() {
+    if (this.terminal && this.terminal.textarea) {
+      this.terminal.textarea.focus();
+      console.log('✓ Textarea 已获得焦点，IME 输入法准备就绪');
+    }
   }
 
   /**
@@ -522,23 +565,29 @@ export class TerminalComponent {
     status.className = 'terminal-status';
     status.innerHTML = `
       <span class="status-indicator ${this.isConnected ? 'connected' : 'disconnected'}"></span>
-      <span class="status-text">${this.isConnected ? '已连接' : '未连接'}</span>
-      <span class="renderer-info" title="渲染器类型">${this.isCanvasRenderer ? '🎨 Canvas' : '📄 DOM'}</span>
+      <span class="status-text" style="display: none;">${this.isConnected ? '已连接' : '未连接'}</span>
+      <span class="renderer-info" title="渲染器类型" style="display: none;">${this.isCanvasRenderer ? '🎨 Canvas' : '📄 DOM'}</span>
     `;
     
-    // 操作按钮
+    // 操作按钮 - 连接状态触发展开
     const actions = document.createElement('div');
     actions.className = 'terminal-actions';
     actions.innerHTML = `
-      <button class="btn btn-sm" title="重新连接" id="reconnectBtn">
-        <i class="icon-refresh"></i>
-      </button>
-      <button class="btn btn-sm" title="清除" id="clearBtn">
-        <i class="icon-clear"></i>
-      </button>
-      <button class="btn btn-sm" title="主题" id="themeBtn">
-        <i class="icon-theme"></i>
-      </button>
+      <!-- 展开的按钮列表 -->
+      <div class="action-buttons-expanded">
+        <button class="btn btn-sm" title="清除" id="clearBtn">
+          <i class="icon-clear"></i>
+        </button>
+        <button class="btn btn-sm" title="重新连接" id="reconnectBtn">
+          <i class="icon-refresh"></i>
+        </button>
+        <button class="btn btn-sm" title="安装 opencode" id="opencodeBtn">
+          <i class="icon-opencode"></i>
+        </button>
+        <!-- <button class="btn btn-sm" title="主题" id="themeBtn">
+          <i class="icon-theme"></i>
+        </button> -->
+      </div>
     `;
     
     toolbar.appendChild(status);
@@ -556,10 +605,12 @@ export class TerminalComponent {
     const reconnectBtn = document.getElementById('reconnectBtn');
     const clearBtn = document.getElementById('clearBtn');
     const themeBtn = document.getElementById('themeBtn');
+    const opencodeBtn = document.getElementById('opencodeBtn');
     
     reconnectBtn?.addEventListener('click', async () => await this.reconnect());
     clearBtn?.addEventListener('click', () => this.clear());
     themeBtn?.addEventListener('click', () => this.toggleTheme());
+    opencodeBtn?.addEventListener('click', () => this.installOpenCode());
   }
 
 
@@ -757,17 +808,32 @@ export class TerminalComponent {
       case 'terminal.created':
         this.sessionId = message.sessionId;
         console.log('终端会话已创建:', this.sessionId);
-        this.write(`\r\n✓ 终端会话已创建 (ID: ${this.sessionId})\r\n`);
+        // this.write(`\r\n✓ 终端会话已创建 (ID: ${this.sessionId})\r\n`);
         if (message.info) {
-          this.write(`Shell: ${message.info.shell}\r\n`);
-          this.write(`工作目录: ${message.info.workingDirectory}\r\n`);
+          // 显示 ASCII 艺术，等待完成后再继续
+          this.displayAsciiArt().then(() => {
+            // ASCII艺术显示完成后，确保焦点
+            this.ensureTextareaFocus();
+          });
+          // this.write(`\r\nWelcome to the world of terminals！\r\n`);
+          // this.write(`\r\nShell: ${message.info.shell}\r\n`);
+          // this.write(`\r\n尝试运行 OpenCode AI... \r\n`);
+          // this.write(`工作目录: ${message.info.workingDirectory}\r\n`);
+        } else {
+          // 如果没有info信息，直接确保焦点
+          this.ensureTextareaFocus();
         }
-        this.write('\r\n');
+        // this.sendData('opencode 2>/dev/null\n');
         break;
         
       case 'terminal.data':
         if (message.data) {
           this.write(message.data);
+
+          // 处理安装相关的输出
+          this.handleInstallResult(message.data);
+
+          this.ensureTextareaFocus();
         }
         break;
         
@@ -958,11 +1024,183 @@ export class TerminalComponent {
   }
 
   /**
+   * 安装 opencode - 智能安装，支持检查版本和安装结果
+   */
+  installOpenCode() {
+    if (!this.isConnected || !this.sessionId) {
+      this.writeError('终端未连接，无法安装 opencode');
+      return;
+    }
+
+    this.write('\r\n\x1b[36m🚀 检查 opencode 安装状态...\x1b[0m\r\n');
+
+    // 首先检查是否已安装
+    const versionCommand = 'opencode --version';
+    // this.write(`\x1b[33m执行命令: ${versionCommand}\x1b[0m\r\n`);
+
+    // 设置状态跟踪
+    this.installState = {
+      step: 'checking',
+      timeout: setTimeout(() => {
+        this.handleInstallTimeout();
+      }, 10000) // 10秒超时
+    };
+
+    // 发送版本检查命令
+    this.sendData(`${versionCommand}\n`);
+  }
+
+  /**
+   * 处理安装超时
+   */
+  handleInstallTimeout() {
+    if (this.installState) {
+      this.writeError('\r\n安装检查超时，请手动执行安装命令\r\n');
+      this.write('\x1b[90m手动安装命令:\x1b[0m\r\n');
+      this.write('\x1b[90m  curl -fsSL https://opencode.ai/install | bash\x1b[0m\r\n');
+      this.write('\x1b[90m检查版本命令:\x1b[0m\r\n');
+      this.write('\x1b[90m  opencode --version\x1b[0m\r\n\r\n');
+      this.installState = null;
+    }
+  }
+
+  /**
+   * 处理安装结果（在 handleMessage 中调用）
+   */
+  handleInstallResult(data) {
+    if (!this.installState) return;
+
+    const output = data.toLowerCase();
+
+    if (this.installState.step === 'checking') {
+      // 检查版本命令的结果
+      if (output.includes('command not found') ||
+          output.includes('opencode: command not found') ||
+          output.includes('not recognized')) {
+        // 未安装，开始安装
+        this.write('\r\n\x1b[33m❌ opencode 未安装，开始安装...\x1b[0m\r\n');
+        this.installState.step = 'installing';
+
+        const installCommand = 'curl -fsSL https://opencode.ai/install | bash';
+        // this.write(`\x1b[33m执行命令: ${installCommand}\x1b[0m\r\n`);
+
+        // 重置超时
+        clearTimeout(this.installState.timeout);
+        this.installState.timeout = setTimeout(() => {
+          this.handleInstallTimeout();
+        }, 30000); // 安装给30秒超时
+
+        this.sendData(`${installCommand}\n`);
+      } else if (output.match(/\d+\.\d+\.\d+/)) {
+        // 已安装，提取版本
+        // const versionMatch = output.match(/(\d+\.\d+\.\d+)/);
+        // const version = versionMatch ? versionMatch[1] : '未知版本';
+        // this.write(`\r\n\x1b[32m✓ opencode 已安装 (版本: ${version})\x1b[0m\r\n\r\n`);
+        this.cleanupInstallState();
+        this.sendData(`opencode\n`);
+      }
+    } else if (this.installState.step === 'installing') {
+      // 检查安装结果
+      if (output.includes('npm err') || output.includes('error')) {
+        // 安装失败
+        this.write('\r\n\x1b[31m❌ 安装失败，请手动安装\x1b[0m\r\n');
+        this.write('\x1b[90m手动安装命令:\x1b[0m\r\n');
+        this.write('\x1b[90m  curl -fsSL https://opencode.ai/install | bash\x1b[0m\r\n');
+        this.cleanupInstallState();
+      } else if (output.includes('installed') || output.includes('+ opencode')) {
+        // 安装成功，检查版本
+        this.write('\r\n\x1b[32m✓ 安装完成，正在检查版本...\x1b[0m\r\n');
+        this.installState.step = 'verifying';
+
+        // 重置超时
+        clearTimeout(this.installState.timeout);
+        this.installState.timeout = setTimeout(() => {
+          this.handleInstallTimeout();
+        }, 10000);
+
+        // 等待一下再检查版本
+        setTimeout(() => {
+          if (this.installState && this.installState.step === 'verifying') {
+            this.sendData('opencode --version\n');
+          }
+        }, 1000);
+      }
+    } else if (this.installState.step === 'verifying') {
+      // 验证安装结果
+      if (output.match(/\d+\.\d+\.\d+/)) {
+        const versionMatch = output.match(/(\d+\.\d+\.\d+)/);
+        const version = versionMatch ? versionMatch[1] : '未知版本';
+        this.write(`\r\n\x1b[32m✓ opencode 安装成功 (版本: ${version})\x1b[0m\r\n\r\n`);
+        this.cleanupInstallState();
+      } else if (output.includes('command not found') ||
+                 output.includes('not recognized')) {
+        // 验证失败
+        this.write('\r\n\x1b[33m⚠️ 安装可能完成，但版本检查失败\x1b[0m\r\n');
+        this.write('\x1b[90m请手动验证安装:\x1b[0m\r\n');
+        this.write('\x1b[90m  opencode --version\x1b[0m\r\n\r\n');
+        this.cleanupInstallState();
+      }
+    }
+  }
+
+  /**
+   * 清理安装状态
+   */
+  cleanupInstallState() {
+    if (this.installState) {
+      clearTimeout(this.installState.timeout);
+      this.installState = null;
+    }
+  }
+
+  /**
+   * 显示 ASCII 艺术
+   */
+  displayAsciiArt() {
+    // 使用清晰的ASCII字符创建彩虹色效果，确保字符正确显示，所有行长度对齐
+    const asciiArt = [
+      '\x1b[38;5;39m╔══════════════════════════════════════════════════════════════╗\x1b[0m',
+      '\x1b[38;5;39m║                                                              ║\x1b[0m',
+      '\x1b[38;5;196m║   ██████╗  ██████╗   ██████╗  ███╗   ███╗ ██████╗ ████████╗  ║\x1b[0m',
+      '\x1b[38;5;202m║   ██╔══██╗ ██╔══██╗ ██╔═══██╗ ████╗ ████║ ██╔══██╗╚══██╔══╝  ║\x1b[0m',
+      '\x1b[38;5;208m║   ██████╔╝ ██████╔╝ ██║   ██║ ██╔████╔██║ ██████╔╝   ██║     ║\x1b[0m',
+      '\x1b[38;5;214m║   ██╔═══╝  ██╔══██╗ ██║   ██║ ██║╚██╔╝██║ ██╔═══╝    ██║     ║\x1b[0m',
+      '\x1b[38;5;220m║   ██║      ██║  ██║ ╚██████╔╝ ██║ ╚═╝ ██║ ██║        ██║     ║\x1b[0m',
+      '\x1b[38;5;226m║   ╚═╝      ╚═╝  ╚═╝  ╚═════╝  ╚═╝     ╚═╝ ╚═╝        ╚═╝     ║\x1b[0m',
+      '\x1b[38;5;39m║                                                              ║\x1b[0m',
+      '\x1b[38;5;45m║               🔧 Intelligent Prompt Management 🔧            ║\x1b[0m',
+      '\x1b[38;5;39m║                                                              ║\x1b[0m',
+      '\x1b[38;5;39m╚══════════════════════════════════════════════════════════════╝\x1b[0m'
+    ];
+
+    // Write all ASCII art at once with callback for synchronization and explicit cursor positioning
+    // This fixes cursor positioning issues by avoiding timing gaps during animation
+    const asciiLineCount = asciiArt.length;
+    const messageLineCount = 1;
+    const blankLineCount = 2;
+    const finalRow = asciiLineCount + messageLineCount + blankLineCount + 1;
+
+    return new Promise((resolve) => {
+      const fullText = '\r\n' + asciiArt.join('\r\n') + '\r\n';
+      const finalMessage = '\x1b[38;5;45m>\x1b[0m \x1b[5mReady for your prompts!\x1b[0m\r\n\r\n';
+      const cursorPosition = `\x1b[${finalRow};1H`;
+
+      this.terminal.write(fullText + finalMessage + cursorPosition, () => {
+        console.log(`✓ ASCII art displayed, cursor positioned to row ${finalRow}, column 1`);
+        resolve();
+      });
+    });
+  }
+
+  /**
    * 销毁组件（优化版 - 确保正确清理所有资源）
    */
   destroy() {
     console.log('销毁 TerminalComponent...');
-    
+
+    // 清理安装状态
+    this.cleanupInstallState();
+
     // 停止心跳
     this.stopHeartbeat();
     

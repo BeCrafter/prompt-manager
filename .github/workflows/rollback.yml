@@ -1,0 +1,346 @@
+name: Rollback Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to rollback (e.g., 1.0.0)'
+        required: true
+        type: string
+      reason:
+        description: 'Rollback reason'
+        required: false
+        type: string
+        default: 'Manual rollback'
+      dry_run:
+        description: 'Dry run only (no actual unpublish)'
+        required: false
+        type: boolean
+        default: false
+      force:
+        description: 'Skip confirmation prompts'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  # 验证版本和参数
+  validate-rollback:
+    runs-on: ubuntu-latest
+    outputs:
+      version-valid: ${{ steps.validate.outputs.valid }}
+      version-exists: ${{ steps.check-existence.outputs.exists }}
+      can-rollback: ${{ steps.validate.outputs.can-rollback }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+      
+      - name: Validate version format
+        id: validate
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          
+          # 验证语义版本格式
+          if [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9\-\.]+)?$ ]]; then
+            echo "valid=true" >> $GITHUB_OUTPUT
+            echo "can-rollback=true" >> $GITHUB_OUTPUT
+            echo "✓ Version format is valid: $VERSION"
+          else
+            echo "valid=false" >> $GITHUB_OUTPUT
+            echo "can-rollback=false" >> $GITHUB_OUTPUT
+            echo "✗ Invalid version format: $VERSION"
+            exit 1
+          fi
+      
+      - name: Check if version exists on NPM
+        id: check-existence
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          
+          echo "Checking if @becrafter/prompt-manager@$VERSION exists on NPM..."
+          
+          if npm view @becrafter/prompt-manager@$VERSION version &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✓ Version $VERSION exists on NPM"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Version $VERSION not found on NPM"
+            echo "This might be a pre-release version or already rolled back"
+          fi
+
+  # 执行回滚
+  execute-rollback:
+    runs-on: ubuntu-latest
+    needs: validate-rollback
+    if: needs.validate-rollback.outputs.can-rollback == 'true'
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Prepare rollback command
+        id: prepare
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          REASON="${{ github.event.inputs.reason }}"
+          DRY_RUN="${{ github.event.inputs.dry_run }}"
+          FORCE="${{ github.event.inputs.force }}"
+          
+          # 构建命令参数
+          COMMAND="node scripts/rollback-release.js rollback $VERSION"
+          
+          if [ "$DRY_RUN" = "true" ]; then
+            COMMAND="$COMMAND --dry-run"
+            echo "dry_run_flag=true" >> $GITHUB_OUTPUT
+          else
+            echo "dry_run_flag=false" >> $GITHUB_OUTPUT
+          fi
+          
+          if [ "$FORCE" = "true" ]; then
+            COMMAND="$COMMAND --force"
+            echo "force_flag=true" >> $GITHUB_OUTPUT
+          else
+            echo "force_flag=false" >> $GITHUB_OUTPUT
+          fi
+          
+          if [ -n "$REASON" ] && [ "$REASON" != "Manual rollback" ]; then
+            COMMAND="$COMMAND --reason \"$REASON\""
+          fi
+          
+          echo "command=$COMMAND" >> $GITHUB_OUTPUT
+          echo "🔄 Prepared rollback command: $COMMAND"
+
+  # 执行回滚操作
+  perform-rollback:
+    runs-on: ubuntu-latest
+    needs: [validate-rollback, execute-rollback]
+    if: needs.validate-rollback.outputs.can-rollback == 'true'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Execute rollback
+        id: rollback
+        run: |
+          echo "🚨 Starting rollback for version ${{ github.event.inputs.version }}"
+          echo "📝 Reason: ${{ github.event.inputs.reason }}"
+          echo "🔍 Dry Run: ${{ needs.execute-rollback.outputs.dry_run_flag }}"
+          
+          COMMAND="${{ needs.execute-rollback.outputs.command }}"
+          
+          if [ "${{ needs.execute-rollback.outputs.dry_run_flag }}" = "true" ]; then
+            echo "🔍 DRY RUN MODE - No actual unpublish will be performed"
+          fi
+          
+          # 执行回滚
+          if $COMMAND; then
+            echo "success=true" >> $GITHUB_OUTPUT
+            echo "✅ Rollback completed successfully"
+          else
+            echo "success=false" >> $GITHUB_OUTPUT
+            echo "❌ Rollback failed"
+            exit 1
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      
+      - name: Create rollback tag
+        if: needs.execute-rollback.outputs.dry_run_flag == 'false' && steps.rollback.outputs.success == 'true'
+        run: |
+          TIMESTAMP=$(date +%s)
+          ROLLBACK_TAG="rollback-v${{ github.event.inputs.version }}-$TIMESTAMP"
+          
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+          git tag $ROLLBACK_TAG
+          git push origin $ROLLBACK_TAG
+          
+          echo "🏷️ Created rollback tag: $ROLLBACK_TAG"
+          echo "rollback_tag=$ROLLBACK_TAG" >> $GITHUB_OUTPUT
+
+  # 创建回滚记录和通知
+  record-rollback:
+    runs-on: ubuntu-latest
+    needs: [validate-rollback, perform-rollback]
+    if: needs.validate-rollback.outputs.can-rollback == 'true' && needs.perform-rollback.result == 'success'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create rollback issue
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const version = '${{ github.event.inputs.version }}';
+            const reason = '${{ github.event.inputs.reason }}';
+            const isDryRun = '${{ needs.execute-rollback.outputs.dry_run_flag }}' === 'true';
+            const timestamp = new Date().toISOString();
+            
+            let body = `
+            ## Rollback Information
+            
+            **Version:** v${version}
+            **Reason:** ${reason}
+            **Timestamp:** ${timestamp}
+            **Initiated by:** ${{ github.actor }}
+            **Dry Run:** ${isDryRun ? 'Yes' : 'No'}
+            
+            `;
+            
+            if (!isDryRun) {
+              body += `
+              **Status:** ✅ Completed
+              **Rollback Tag:** rollback-v${version}-$(date +%s)
+              
+              ### 🔧 Recovery Actions:
+              
+              1. **Verify unpublish:** Check that the version is no longer available on NPM
+              2. **Communicate:** Notify users about the rollback
+              3. **Investigate:** Analyze why the rollback was necessary
+              4. **Prepare:** Fix issues and prepare a new release
+              
+              ### 📦 Installation Commands:
+              
+              ```bash
+              # Install previous stable version
+              npm install @becrafter/prompt-manager@latest
+              
+              # Or install a specific version
+              npm install @becrafter/prompt-manager@<previous-version>
+              ```
+              
+              `;
+            } else {
+              body += `
+              **Status:** 🔍 Dry Run Completed
+              
+              This was a dry run. No actual changes were made.
+              
+              To execute the real rollback, run this workflow again without the "Dry run" option.
+              `;
+            }
+            
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🔄 Rollback: v${version}${isDryRun ? ' (Dry Run)' : ''}`,
+              body: body,
+              labels: ['rollback', isDryRun ? 'dry-run' : 'production', 'critical']
+            });
+            
+            console.log(`Created rollback issue: #${issue.data.number}`);
+
+      - name: Notify rollback completion
+        run: |
+          echo "🎉 Rollback workflow completed!"
+          echo "📋 Version: v${{ github.event.inputs.version }}"
+          echo "📝 Reason: ${{ github.event.inputs.reason }}"
+          echo "🔍 Dry Run: ${{ needs.execute-rollback.outputs.dry_run_flag }}"
+          
+          if [ "${{ needs.execute-rollback.outputs.dry_run_flag }}" = "false" ]; then
+            echo "✅ Version unpublished from NPM"
+            echo "🏷️ Rollback tag created"
+            echo "📝 Issue created for documentation"
+          else
+            echo "🔍 Dry run completed - no actual changes made"
+          fi
+
+  # 错误处理和通知
+  handle-failure:
+    runs-on: ubuntu-latest
+    needs: [validate-rollback, perform-rollback]
+    if: failure()
+    
+    steps:
+      - name: Create failure issue
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const version = '${{ github.event.inputs.version }}';
+            const timestamp = new Date().toISOString();
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `❌ Rollback Failed: v${version}`,
+              body: `
+              ## Rollback Failure Information
+              
+              **Version:** v${version}
+              **Reason:** ${{ github.event.inputs.reason }}
+              **Timestamp:** ${timestamp}
+              **Initiated by:** ${{ github.actor }}
+              **Status:** ❌ Failed
+              
+              ### 🔍 Debugging Steps:
+              
+              1. **Check logs:** Review the workflow logs for error details
+              2. **Verify permissions:** Ensure NPM_TOKEN has unpublish permissions
+              3. **Check version:** Verify the version exists on NPM
+              4. **Manual rollback:** Consider manual unpublish if necessary
+              
+              ### 🛠️ Manual Commands:
+              
+              \`\`\`bash
+              # Manual unpublish attempt
+              npm unpublish @becrafter/prompt-manager@${version} --force
+              \`\`\`
+              
+              **Next Steps:**
+              - [ ] Review workflow logs
+              - [ ] Investigate failure cause  
+              - [ ] Attempt manual rollback if needed
+              - [ ] Document findings
+              `,
+              labels: ['rollback', 'failed', 'critical']
+            });
+
+  # 回滚历史查看
+  view-history:
+    runs-on: ubuntu-latest
+    if: github.event.action == 'view-history'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Show rollback history
+        run: node scripts/rollback-release.js list

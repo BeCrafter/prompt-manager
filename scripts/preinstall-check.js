@@ -5,7 +5,14 @@
  * 在 npm install 之前检查 Node.js 版本
  */
 
-const packageJson = require('../package.json');
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'));
 const engines = packageJson.engines || { node: '>=18.0.0' };
 
 // 获取当前 Node.js 版本

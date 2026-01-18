@@ -1,6 +1,6 @@
 /**
  * TerminalService - 终端服务管理类
- * 
+ *
  * 提供跨平台终端会话管理，支持PTY（伪终端）和实时交互
  * 支持Windows、macOS和Linux系统的原生终端命令
  */
@@ -39,8 +39,6 @@ async function tryLoadNodePty() {
     // 尝试自动修复
     try {
       const { spawn } = await import('child_process');
-      const { promisify } = await import('util');
-      const exec = promisify(spawn);
 
       logger.info('正在重新编译 node-pty...');
       const rebuildProcess = spawn('npm', ['rebuild', 'node-pty'], {
@@ -49,7 +47,7 @@ async function tryLoadNodePty() {
       });
 
       await new Promise((resolve, reject) => {
-        rebuildProcess.on('close', (code) => {
+        rebuildProcess.on('close', code => {
           if (code === 0) {
             resolve();
           } else {
@@ -98,7 +96,7 @@ class TerminalSession {
     this.environment = options.environment || process.env;
     this.isActive = true;
     this.isFallback = options.isFallback || false; // 标记是否使用回退方案
-    
+
     // 绑定PTY事件
     this.setupPtyEvents();
   }
@@ -125,7 +123,7 @@ class TerminalSession {
   setupPtyEvents() {
     if (!this.pty) return;
 
-    this.pty.on('data', (data) => {
+    this.pty.on('data', data => {
       this.lastActivity = new Date();
       this.emit('data', data);
     });
@@ -228,18 +226,18 @@ export class TerminalService {
       maxSessions: 10, // 最大会话数
       ...options
     };
-    
+
     // 定期清理非活跃会话
     this.cleanupInterval = setInterval(() => {
       this.cleanupInactiveSessions();
     }, 60000); // 每分钟检查一次
-    
+
     logger.info('TerminalService initialized');
-    
+
     // 修复 node-pty 二进制文件权限
     this.fixNodePtyPermissions();
   }
-  
+
   /**
    * 修复 node-pty 二进制文件权限
    * 这是解决 posix_spawnp failed 错误的关键
@@ -248,38 +246,54 @@ export class TerminalService {
     try {
       const { execSync } = await import('child_process');
       const platform = process.platform;
-      
+
       // 只在 Unix-like 系统上修复权限（macOS, Linux）
       if (platform !== 'win32') {
         logger.info('🔧 检查并修复 node-pty 二进制文件权限...');
-        
+
         // 尝试多个可能的 node-pty 路径
         const possiblePaths = [
           // 路径1: 在包的 node_modules 中（开发环境）
-          path.join(path.dirname(path.dirname(new URL(import.meta.url).pathname)), 'node_modules', 'node-pty', 'prebuilds'),
+          path.join(
+            path.dirname(path.dirname(new URL(import.meta.url).pathname)),
+            'node_modules',
+            'node-pty',
+            'prebuilds'
+          ),
           // 路径2: 在根 node_modules 中（npm 安装环境）
           path.join(process.cwd(), 'node_modules', 'node-pty', 'prebuilds'),
           // 路径3: 相对于当前工作目录
-          path.join(process.cwd(), 'node_modules', '@becrafter', 'prompt-manager', 'node_modules', 'node-pty', 'prebuilds')
+          path.join(
+            process.cwd(),
+            'node_modules',
+            '@becrafter',
+            'prompt-manager',
+            'node_modules',
+            'node-pty',
+            'prebuilds'
+          )
         ];
-        
+
         let ptyPath = null;
         const fs = await import('fs');
-        
+
         for (const possiblePath of possiblePaths) {
           if (fs.existsSync(possiblePath)) {
             ptyPath = possiblePath;
             break;
           }
         }
-        
+
         if (ptyPath) {
           try {
             // 添加执行权限 - 使用 find 命令来处理所有平台
-            execSync(`find ${ptyPath} -type f -name "*.node" -o -name "spawn-helper" | xargs chmod +x 2>/dev/null || true`, {
-              stdio: 'pipe',
-              timeout: 5000
-            });
+            execSync(
+              `find ${ptyPath} -type f -name "*.node" -o -name "spawn-helper" | xargs chmod +x 2>/dev/null || true`,
+              {
+                stdio: 'pipe',
+                timeout: 5000
+              }
+            );
             logger.info('✅ node-pty 权限修复完成');
           } catch (error) {
             // 静默失败，不影响服务启动
@@ -306,12 +320,14 @@ export class TerminalService {
 
     // 检查PTY是否可用
     if (!PTY_AVAILABLE) {
-      throw new Error('Terminal functionality is disabled - node-pty module is not available. Run "npm rebuild node-pty" to fix this.');
+      throw new Error(
+        'Terminal functionality is disabled - node-pty module is not available. Run "npm rebuild node-pty" to fix this.'
+      );
     }
 
     const sessionId = options.id || randomUUID();
     const sessionOptions = { ...this.defaultOptions, ...options };
-    
+
     // 检查会话数限制
     if (this.sessions.size >= sessionOptions.maxSessions) {
       throw new Error(`Maximum sessions limit reached: ${sessionOptions.maxSessions}`);
@@ -325,19 +341,19 @@ export class TerminalService {
     try {
       const ptyProcess = await this.createPtyProcess(sessionOptions);
       const session = new TerminalSession(sessionId, ptyProcess, sessionOptions);
-      
+
       // 添加事件监听
-      session.on('data', (data) => {
+      session.on('data', data => {
         this.handleSessionData(sessionId, data);
       });
-      
-      session.on('exit', (info) => {
+
+      session.on('exit', info => {
         this.handleSessionExit(sessionId, info);
       });
-      
+
       // 存储会话
       this.sessions.set(sessionId, session);
-      
+
       logger.info(`Terminal session created: ${sessionId}`);
       return session;
     } catch (error) {
@@ -354,6 +370,74 @@ export class TerminalService {
     const args = this.getShellArgs(shell);
     const cwd = options.workingDirectory || os.homedir();
 
+    // 构建优化的 PATH 环境变量
+    const buildOptimizedPath = () => {
+      const platform = process.platform;
+      const existingPaths = process.env.PATH ? process.env.PATH.split(':') : [];
+      const pathSet = new Set(existingPaths);
+
+      // 添加常见的系统工具路径（按优先级排序）
+      const systemPaths = [];
+
+      if (platform === 'darwin') {
+        // macOS 特定路径
+        systemPaths.push(
+          '/opt/homebrew/bin', // Apple Silicon Homebrew
+          '/opt/homebrew/sbin',
+          '/usr/local/bin', // Intel Homebrew
+          '/usr/local/sbin',
+          '/usr/bin',
+          '/usr/sbin',
+          '/bin',
+          '/sbin',
+          '/Library/Apple/usr/bin', // Apple 系统工具
+          '/usr/local/MacGPG2/bin', // GPG 工具
+          '~/.opencode/bin',
+          '~/.local/bin', // 用户本地工具
+          '~/bin' // 用户 bin 目录
+        );
+      } else if (platform === 'linux') {
+        // Linux 特定路径
+        systemPaths.push(
+          '/usr/local/bin',
+          '/usr/local/sbin',
+          '/usr/bin',
+          '/usr/sbin',
+          '/bin',
+          '/sbin',
+          '/snap/bin', // Snap 应用
+          '~/.local/bin',
+          '~/bin'
+        );
+      } else if (platform === 'win32') {
+        // Windows 特定路径（使用分号分隔）
+        const winPaths = [
+          `${process.env.ProgramFiles}\\Git\\bin`,
+          `${process.env.ProgramFiles}\\Git\\usr\\bin`,
+          `${process.env.ProgramFiles}\\nodejs`,
+          `${process.env['ProgramFiles(x86)']}\\Git\\bin`,
+          `${process.env['ProgramFiles(x86)']}\\Git\\usr\\bin`,
+          `${process.env['ProgramFiles(x86)']}\\nodejs`,
+          `${process.env.LOCALAPPDATA}\\Programs\\Git\\bin`,
+          `${process.env.APPDATA}\\npm`,
+          `${process.env.LOCALAPPDATA}\\Programs\\Microsoft VS Code\\bin`,
+          `${process.env.ProgramFiles}\\Microsoft VS Code\\bin`
+        ].filter(Boolean);
+        return `${winPaths.join(';')};${process.env.PATH || ''}`;
+      }
+
+      // 添加路径到集合（保持优先级顺序）
+      systemPaths.forEach(path => {
+        if (!pathSet.has(path)) {
+          pathSet.add(path);
+        }
+      });
+
+      // 合并所有路径，保持原有 PATH 的顺序，但优先添加系统路径
+      const optimizedPaths = [...pathSet];
+      return optimizedPaths.join(':');
+    };
+
     // 确保环境变量正确，特别是 PATH
     const env = {
       ...process.env,
@@ -365,11 +449,14 @@ export class TerminalService {
       LC_ALL: process.env.LC_ALL || process.env.LANG || 'en_US.UTF-8',
       LC_CTYPE: process.env.LC_CTYPE || process.env.LANG || 'en_US.UTF-8',
       // 确保 TERM 变量设置
-      TERM: process.env.TERM || 'xterm-256color'
+      TERM: process.env.TERM || 'xterm-256color',
+      // 设置优化的 PATH
+      PATH: buildOptimizedPath()
     };
 
     logger.info(`🔧 创建终端会话 - Shell: ${shell}, Args: [${args.join(', ')}], CWD: ${cwd}`);
     logger.info(`🔧 环境变量 - SHELL: ${env.SHELL}, TERM: ${env.TERM}, LANG: ${env.LANG}`);
+    logger.info(`🔧 PATH 已优化，包含 ${env.PATH.split(':').length} 个路径`);
     logger.info(`🔧 Shell 可执行性检查: ${shell} ${args.join(' ')}`);
 
     // 检查 shell 是否可执行
@@ -390,27 +477,27 @@ export class TerminalService {
 
       logger.info(`✅ Shell 验证通过: ${shell}`);
     } catch (error) {
-      logger.error(`❌ Shell 验证失败:`, error.message);
+      logger.error('❌ Shell 验证失败:', error.message);
       throw error;
     }
 
     // 创建 PTY 进程 - 使用多级回退机制
-    logger.info(`🔧 尝试创建 PTY 进程...`);
+    logger.info('🔧 尝试创建 PTY 进程...');
 
     // 定义尝试策略的优先级
     const strategies = [
       // 策略 1: 使用用户指定的 shell 和 xterm-256color
       {
         name: 'User shell with xterm-256color',
-        shell: shell,
-        args: args,
+        shell,
+        args,
         term: 'xterm-256color'
       },
       // 策略 2: 使用用户指定的 shell 和 xterm
       {
         name: 'User shell with xterm',
-        shell: shell,
-        args: args,
+        shell,
+        args,
         term: 'xterm'
       },
       // 策略 3: 使用 /bin/sh 和 xterm-256color
@@ -440,15 +527,15 @@ export class TerminalService {
 
     for (let i = 0; i < strategies.length; i++) {
       const strategy = strategies[i];
-      
+
       try {
         logger.info(`🔄 尝试策略 ${i + 1}/${strategies.length}: ${strategy.name}`);
-        
+
         const ptyProcess = pty.default.spawn(strategy.shell, strategy.args, {
           name: strategy.term,
           cols: options.size.cols,
           rows: options.size.rows,
-          cwd: cwd,
+          cwd,
           env: {
             ...env,
             TERM: strategy.term,
@@ -458,23 +545,22 @@ export class TerminalService {
 
         logger.info(`✅ PTY 进程创建成功，PID: ${ptyProcess.pid}`);
         logger.info(`✅ 使用策略: ${strategy.name}`);
-        
+
         // 更新会话选项以反映实际使用的 shell
         options.shell = strategy.shell;
-        
-        return ptyProcess;
 
+        return ptyProcess;
       } catch (error) {
         lastError = error;
         logger.warn(`❌ 策略 ${i + 1} 失败: ${error.message}`);
-        
+
         // 继续尝试下一个策略
         continue;
       }
     }
 
     // 所有策略都失败了
-    logger.error(`❌ 所有 PTY 创建策略都失败了`);
+    logger.error('❌ 所有 PTY 创建策略都失败了');
     logger.error(`❌ 最后一个错误: ${lastError?.message}`);
     logger.error(`❌ 系统信息 - 平台: ${process.platform}, Node: ${process.version}`);
     logger.error(`❌ 环境信息 - SHELL: ${env.SHELL}, TERM: ${env.TERM}`);
@@ -483,14 +569,14 @@ export class TerminalService {
 
     // 提供用户友好的错误信息
     const error = new Error(
-      `终端创建失败：所有 PTY 创建策略都失败了。\n` +
-      `最后一个错误: ${lastError?.message}\n` +
-      `建议解决方案:\n` +
-      `1. 运行: npm rebuild node-pty\n` +
-      `2. 检查系统权限和 macOS 安全设置\n` +
-      `3. 确认 shell 路径正确: ${shell}\n` +
-      `4. 重启系统后再试\n` +
-      `5. 检查是否有其他进程占用了 PTY 资源`
+      '终端创建失败：所有 PTY 创建策略都失败了。\n' +
+        `最后一个错误: ${lastError?.message}\n` +
+        '建议解决方案:\n' +
+        '1. 运行: npm rebuild node-pty\n' +
+        '2. 检查系统权限和 macOS 安全设置\n' +
+        `3. 确认 shell 路径正确: ${shell}\n` +
+        '4. 重启系统后再试\n' +
+        '5. 检查是否有其他进程占用了 PTY 资源'
     );
     error.code = 'TERMINAL_CREATION_FAILED';
     error.originalError = lastError;
@@ -585,11 +671,11 @@ export class TerminalService {
   cleanupInactiveSessions() {
     const now = new Date();
     const timeoutMs = this.defaultOptions.timeout;
-    
-    for (const [sessionId, session] of this.sessions) {
-      if (!session.isActive || (now - session.lastActivity) > timeoutMs) {
-        logger.info(`Cleaning up inactive session: ${sessionId}`);
-        this.removeSession(sessionId);
+
+    for (const session of this.sessions.values()) {
+      if (!session.isActive || now - session.lastActivity > timeoutMs) {
+        logger.info(`Cleaning up inactive session: ${session.sessionId}`);
+        this.removeSession(session.sessionId);
       }
     }
   }
@@ -602,9 +688,9 @@ export class TerminalService {
       const shell = this.getDefaultShellForPlatform();
       const args = process.platform === 'win32' ? ['/c', command] : ['-c', command];
       const cwd = options.workingDirectory || this.defaultOptions.workingDirectory;
-      
+
       const child = spawn(shell, args, {
-        cwd: cwd,
+        cwd,
         env: { ...process.env, ...options.environment },
         stdio: ['pipe', 'pipe', 'pipe']
       });
@@ -612,23 +698,23 @@ export class TerminalService {
       let stdout = '';
       let stderr = '';
 
-      child.stdout?.on('data', (data) => {
+      child.stdout?.on('data', data => {
         stdout += data.toString();
       });
 
-      child.stderr?.on('data', (data) => {
+      child.stderr?.on('data', data => {
         stderr += data.toString();
       });
 
-      child.on('close', (code) => {
+      child.on('close', code => {
         resolve({
           exitCode: code,
-          stdout: stdout,
-          stderr: stderr
+          stdout,
+          stderr
         });
       });
 
-      child.on('error', (error) => {
+      child.on('error', error => {
         reject(error);
       });
 
@@ -650,7 +736,7 @@ export class TerminalService {
     if (session) {
       return session.workingDirectory;
     }
-    
+
     // 如果没有会话，返回默认工作目录
     return this.defaultOptions.workingDirectory;
   }
@@ -689,16 +775,16 @@ export class TerminalService {
    */
   async shutdown() {
     // 清理所有会话
-    for (const [sessionId, session] of this.sessions) {
+    for (const session of this.sessions.values()) {
       session.terminate();
     }
     this.sessions.clear();
-    
+
     // 清理定时器
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
     }
-    
+
     logger.info('TerminalService shutdown');
   }
 }

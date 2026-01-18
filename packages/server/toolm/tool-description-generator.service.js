@@ -1,6 +1,6 @@
 /**
  * 工具描述生成服务
- * 
+ *
  * 职责：
  * 1. 从工具加载服务获取所有工具的元数据
  * 2. 动态生成 toolm 工具的 description
@@ -17,31 +17,30 @@ import { logger } from '../utils/logger.js';
  */
 function generateUsageScenarios(tools) {
   const scenarios = [];
-  
+
   for (const tool of tools) {
     const { name, metadata } = tool;
     const toolId = `tool://${name}`;
-    
+
     // 从 metadata 中提取使用场景描述
     // 优先使用 scenarios 字段的第一个场景，如果没有则从 description 提取关键词
     let scenarioText = '';
-    
+
     if (metadata.scenarios && metadata.scenarios.length > 0) {
       // 使用第一个场景作为主要描述
       scenarioText = metadata.scenarios[0];
     } else if (metadata.description) {
       // 从描述中提取核心功能关键词（前60个字符）
-      scenarioText = metadata.description.length > 60 
-        ? metadata.description.substring(0, 60) + '...'
-        : metadata.description;
+      scenarioText =
+        metadata.description.length > 60 ? `${metadata.description.substring(0, 60)}...` : metadata.description;
     } else {
       // 使用工具名称
       scenarioText = `需要使用 ${name} 功能`;
     }
-    
+
     scenarios.push(`- IF ${scenarioText} → 使用 ${toolId}`);
   }
-  
+
   return scenarios.join('\n');
 }
 
@@ -52,22 +51,22 @@ function generateUsageScenarios(tools) {
  */
 function generateToolList(tools) {
   const toolItems = [];
-  
+
   for (const tool of tools) {
     const { name, metadata } = tool;
     const toolId = `tool://${name}`;
-    
+
     // 生成工具描述
     let description = metadata.description || `${name} 工具`;
-    
+
     // 如果描述太长，截取前100个字符
     if (description.length > 100) {
-      description = description.substring(0, 100) + '...';
+      description = `${description.substring(0, 100)}...`;
     }
-    
+
     toolItems.push(`- **${toolId}** - ${description}`);
   }
-  
+
   return toolItems.join('\n');
 }
 
@@ -82,24 +81,24 @@ export function generateToolmDescription() {
       logger.warn('工具加载器尚未初始化，使用默认描述');
       return getDefaultDescription();
     }
-    
+
     // 获取所有工具
     const tools = toolLoaderService.getAllTools();
-    
+
     if (tools.length === 0) {
       logger.warn('未发现任何工具，使用默认描述');
       return getDefaultDescription();
     }
-    
+
     // 按名称排序
     tools.sort((a, b) => a.name.localeCompare(b.name));
-    
+
     // 生成使用场景规则
     const usageScenarios = generateUsageScenarios(tools);
-    
+
     // 生成工具列表
     const toolList = generateToolList(tools);
-    
+
     // 组装完整的描述
     const description = `ToolM 是 Prompt Manager 新一代工具系统运行时，提供统一的工具管理和执行能力。
 
@@ -240,7 +239,6 @@ mode: manual\`
 
     logger.debug('工具描述生成成功', { toolCount: tools.length });
     return description;
-    
   } catch (error) {
     logger.error('生成工具描述失败，使用默认描述', { error: error.message });
     return getDefaultDescription();
@@ -309,4 +307,3 @@ yaml 参数必须是完整的 YAML 文档：
 - 不要忘记 "tool://" 前缀（不是 "tool: filesystem"）
 - 不要跳过手册，首次使用必须先看 manual`;
 }
-

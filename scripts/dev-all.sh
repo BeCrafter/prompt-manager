@@ -24,6 +24,9 @@ mkdir -p "$PIDS_DIR"
 BACKEND_PID_FILE="$PIDS_DIR/backend.pid"
 FRONTEND_PID_FILE="$PIDS_DIR/frontend.pid"
 
+FRONT_PORT=9000
+SERVER_PORT=5621
+
 # 环境检查函数
 check_environment() {
     echo -e "${BLUE}========================================${NC}"
@@ -139,7 +142,14 @@ check_port() {
     if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
         echo -e "${RED}错误: 端口 $port 已被占用 ($service)${NC}"
         echo -e "${YELLOW}请先停止占用该端口的服务或修改配置${NC}"
-        exit 1
+
+        lsof -Pi :$port -sTCP:LISTEN -t | xargs kill -9
+        if [ $? -eq 0 ]; then
+            echo -e "${YELLOW}已杀死占用端口的服务${NC}"
+        else
+            echo -e "${RED}杀死占用端口的服务失败${NC}"
+            exit 1
+        fi
     fi
 }
 
@@ -189,28 +199,31 @@ start_frontend() {
     cd "$ADMIN_UI_DIR"
     
     # 检查端口
-    check_port 6521 "前端服务"
+    check_port ${FRONT_PORT} "前端服务"
     
-    # 启动前端
+    # 启动前端（使用watch模式保持运行）
     echo -e "${GREEN}前端服务启动中...${NC}"
-    echo -e "${YELLOW}访问地址: http://localhost:6521${NC}"
+    echo -e "${YELLOW}访问地址: http://localhost:${FRONT_PORT}${NC}"
+    echo -e "${YELLOW}后端地址: http://localhost:${SERVER_PORT} (通过环境变量传递)${NC}"
     echo ""
     
-    npm run dev > "$PIDS_DIR/frontend.log" 2>&1 &
+    # 使用 env 命令确保环境变量被传递到子进程
+    # 注意：使用 --watch 参数保持webpack-dev-server持续运行
+    env HTTP_PORT=${SERVER_PORT} npx webpack serve --mode development --watch > "$PIDS_DIR/frontend.log" 2>&1 &
     FRONTEND_PID=$!
     echo $FRONTEND_PID > "$FRONTEND_PID_FILE"
     
     # 等待前端启动
     echo -e "${YELLOW}等待前端服务启动...${NC}"
-    sleep 5
+    sleep 10
     
     # 检查前端是否启动成功
     if ps -p $FRONTEND_PID > /dev/null 2>&1; then
-        echo -e "${GREEN}✓ 前端服务启动成功 (PID: $FRONTEND_PID)${NC}"
+      echo -e "${GREEN}✓ 前端服务启动成功 (PID: $FRONTEND_PID)${NC}"
     else
-        echo -e "${RED}✗ 前端服务启动失败${NC}"
-        cat "$PIDS_DIR/frontend.log"
-        exit 1
+      echo -e "${RED}✗ 前端服务启动失败${NC}"
+      cat "$PIDS_DIR/frontend.log"
+      exit 1
     fi
     
     echo ""
@@ -222,12 +235,12 @@ show_info() {
     echo -e "${GREEN}所有服务已启动${NC}"
     echo -e "${GREEN}========================================${NC}"
     echo -e "${BLUE}后端服务:${NC}"
-    echo -e "  - 地址: http://localhost:5621"
-    echo -e "  - API: http://localhost:5621/adminapi"
+    echo -e "  - 地址: http://localhost:${SERVER_PORT}"
+    echo -e "  - API: http://localhost:${SERVER_PORT}/adminapi"
     echo -e "  - 日志: $PIDS_DIR/backend.log"
     echo ""
     echo -e "${BLUE}前端服务:${NC}"
-    echo -e "  - 地址: http://localhost:6521"
+    echo -e "  - 地址: http://localhost:${FRONT_PORT}"
     echo -e "  - 日志: $PIDS_DIR/frontend.log"
     echo ""
     echo -e "${YELLOW}提示:${NC}"

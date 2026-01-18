@@ -1,6 +1,6 @@
 /**
  * 工具加载服务
- * 
+ *
  * 职责：
  * 1. 扫描并加载 ~/.prompt-manager/tools 和 packages/resources/tools 目录下的所有工具
  * 2. 验证工具是否符合标准接口规范
@@ -11,26 +11,22 @@
 
 import fs from 'fs-extra';
 import path from 'path';
-import os from 'os';
-import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 import { pathExists } from './tool-utils.js';
 import { generateManual as generateManualFromService } from './tool-manual-generator.service.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { config } from '../utils/config.js';
 
 class ToolLoaderService {
   constructor() {
     // 工具缓存：toolName -> toolModule
     this.toolCache = new Map();
-    
+
     // 工具目录列表（所有工具都在沙箱环境中）
     this.toolDirectories = [
       // 沙箱工具目录（系统工具和用户工具都在这里）
-      path.join(os.homedir(), '.prompt-manager', 'toolbox')
+      config.getToolboxDir()
     ];
-    
+
     // 已初始化标志
     this.initialized = false;
   }
@@ -45,14 +41,14 @@ class ToolLoaderService {
     }
 
     logger.info('初始化工具加载器...');
-    
+
     // 确保工具箱目录存在
-    const toolboxDir = path.join(os.homedir(), '.prompt-manager', 'toolbox');
+    const toolboxDir = config.getToolboxDir();
     await fs.ensureDir(toolboxDir);
-    
+
     // 扫描并加载所有工具
     await this.scanAndLoadTools();
-    
+
     this.initialized = true;
     logger.info(`工具加载器初始化完成，共加载 ${this.toolCache.size} 个工具`);
   }
@@ -62,14 +58,14 @@ class ToolLoaderService {
    */
   async scanAndLoadTools() {
     for (const toolsDir of this.toolDirectories) {
-      if (!await pathExists(toolsDir)) {
+      if (!(await pathExists(toolsDir))) {
         logger.debug(`工具目录不存在，跳过: ${toolsDir}`);
         continue;
       }
 
       try {
         const entries = await fs.readdir(toolsDir, { withFileTypes: true });
-        
+
         for (const entry of entries) {
           if (!entry.isDirectory()) {
             continue;
@@ -78,7 +74,7 @@ class ToolLoaderService {
           const toolName = entry.name;
           const toolDir = path.join(toolsDir, toolName);
           const toolFile = path.join(toolDir, `${toolName}.tool.js`);
-          
+
           if (await pathExists(toolFile)) {
             try {
               await this.loadTool(toolName, toolFile);
@@ -129,7 +125,7 @@ class ToolLoaderService {
   validateToolInterface(toolName, tool) {
     // 必需的方法
     const requiredMethods = ['execute'];
-    
+
     // 推荐的方法
     const recommendedMethods = ['getMetadata', 'getSchema', 'getDependencies', 'getBusinessErrors'];
 
@@ -216,4 +212,3 @@ class ToolLoaderService {
 
 // 导出单例实例
 export const toolLoaderService = new ToolLoaderService();
-

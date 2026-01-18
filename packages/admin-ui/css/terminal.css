@@ -1,0 +1,1218 @@
+/* 终端样式 */
+.terminal-area {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background: var(--bg);
+  position: relative;
+  height: 100%;
+  min-width: 0;
+}
+
+.terminal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  background: #1a1a1a;
+  min-height: 60px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.terminal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.terminal-title {
+  font-size: 18px;
+  font-weight: 500;
+  color: #e0e0e0;
+  margin: 0;
+}
+
+.terminal-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #9e9e9e;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 12px;
+  border-radius: 16px;
+  margin-right: 4px;
+  padding: 8px;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4caf50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+  transition: all 0.3s ease;
+}
+
+.status-indicator.connected {
+  background: #4caf50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+  animation: pulse 2s infinite;
+}
+
+.status-indicator.disconnected {
+  background: #f44336;
+  box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.2);
+}
+
+.status-indicator.reconnecting {
+  background: #ff9800;
+  box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.2);
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(76, 175, 80, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+  }
+}
+
+.terminal-header-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.terminal-header-right .btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e0e0e0;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.terminal-header-right .btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.terminal-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.terminal-output {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  background: #000000;
+  color: #ffffff;
+}
+
+.terminal-welcome {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.welcome-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.welcome-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 8px;
+}
+
+.welcome-hint {
+  font-size: 14px;
+  color: #666;
+}
+
+.terminal-line {
+  margin-bottom: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.terminal-line.terminal-error {
+  color: #ff6b6b;
+}
+
+.terminal-line.terminal-success {
+  color: #51cf66;
+}
+
+.terminal-line.terminal-info {
+  color: #74c0fc;
+}
+
+.terminal-input-area {
+  padding: 12px 20px;
+  background: #000000;
+  border-top: 1px solid #333;
+}
+
+.terminal-prompt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+  font-size: 13px;
+}
+
+.prompt-symbol {
+  color: #51cf66;
+  font-weight: bold;
+  user-select: none;
+  white-space: nowrap;
+}
+
+#terminalInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 0;
+  min-width: 0;
+}
+
+#terminalInput::placeholder {
+  color: #666;
+}
+
+#terminalInput:focus {
+  outline: none;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .terminal-header {
+    padding: 12px 16px;
+  }
+
+  .terminal-title {
+    font-size: 18px;
+  }
+
+  .terminal-output {
+    padding: 16px;
+    font-size: 12px;
+  }
+
+  .terminal-input-area {
+    padding: 8px 16px;
+  }
+
+  .terminal-welcome {
+    padding: 20px 10px;
+  }
+
+  .welcome-icon {
+    font-size: 32px;
+  }
+
+  .terminal-toolbar {
+    padding: 6px 12px;
+  }
+  
+  .terminal-status {
+    font-size: 11px;
+  }
+  
+  .terminal-actions .btn {
+    width: 22px;
+    height: 22px;
+    font-size: 10px;
+  }
+  
+  .xterm {
+    padding: 6px;
+    font-size: 12px !important;
+  }
+
+  .xterm-char-measure-element {
+    font-size: 12px !important;
+  }
+}
+
+/* XTerm.js 终端组件样式 */
+.xterm-container {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: #000000;
+  /* border-radius: 6px; */
+  overflow: hidden;
+}
+
+.terminal-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  /* background: rgba(255, 255, 255, 0.05); */
+  /* border-bottom: 1px solid rgba(255, 255, 255, 0.1); */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  position: relative;
+  overflow: visible; /* 确保展开的按钮可见 */
+}
+
+/* 已删除重复的 terminal-status 和 status-indicator 样式，这些在上面已有定义 */
+
+.terminal-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.terminal-actions .btn {
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #b0b0b0;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin: 0 2px;
+}
+
+.terminal-actions .btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  transform: scale(1.05);
+}
+
+.terminal-actions .btn:active {
+  transform: scale(0.95);
+}
+
+/* 可展开的按钮组样式 - 连接状态触发展开 */
+.terminal-status {
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 16px;
+  padding: 8px;
+  border: 1px solid transparent;
+}
+
+.terminal-status:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: scale(1.02);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 8px rgba(0, 162, 255, 0.2);
+}
+
+.action-buttons-expanded {
+  position: absolute;
+  left: -82px; /* 在terminal-actions左侧定位 (74px按钮宽度 + 8px间距) */
+  top: 50%;
+  transform: translateY(-50%) translateX(-20px); /* 初始位置向左偏移隐藏 */
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  /* visibility: hidden; */
+  transition: all 0.3s ease;
+  pointer-events: none;
+  z-index: 10;
+  white-space: nowrap; /* 防止换行 */
+}
+
+.action-buttons-expanded .btn {
+  transform: scale(0.8);
+  transition: all 0.3s ease;
+}
+
+/* 悬停时展开按钮组 - 扩大hover区域到整个toolbar */
+.terminal-toolbar:hover .action-buttons-expanded {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(-8px); /* 从左侧滑入到正确位置 (-82px + 102px = 20px) */
+  pointer-events: auto;
+}
+
+.terminal-toolbar:hover .action-buttons-expanded .btn {
+  transform: scale(1);
+}
+
+/* 错开动画效果 */
+.terminal-toolbar:hover .action-buttons-expanded .btn:nth-child(1) {
+  transition-delay: 0.05s;
+}
+
+.terminal-toolbar:hover .action-buttons-expanded .btn:nth-child(2) {
+  transition-delay: 0.1s;
+}
+
+.terminal-toolbar:hover .action-buttons-expanded .btn:nth-child(3) {
+  transition-delay: 0.15s;
+}
+
+.terminal-toolbar:hover .action-buttons-expanded .btn:nth-child(4) {
+  transition-delay: 0.2s;
+}
+
+/* 鼠标离开时的收敛动画 */
+.terminal-toolbar:not(:hover) .action-buttons-expanded .btn:nth-child(1) {
+  transition-delay: 0.15s;
+}
+
+.terminal-toolbar:not(:hover) .action-buttons-expanded .btn:nth-child(2) {
+  transition-delay: 0.1s;
+}
+
+.terminal-toolbar:not(:hover) .action-buttons-expanded .btn:nth-child(3) {
+  transition-delay: 0.05s;
+}
+
+.terminal-toolbar:not(:hover) .action-buttons-expanded .btn:nth-child(4) {
+  transition-delay: 0s;
+}
+
+/* XTerm.js 样式覆盖 */
+.xterm {
+  padding: 12px;
+  font-feature-settings: "liga" 0;
+  position: relative;
+  user-select: none;
+  -ms-user-select: none;
+  -webkit-user-select: none;
+  font-family: "SF Mono", Monaco, "Cascadia Code", "Fira Code", "JetBrains Mono", "Consolas", "Courier New", monospace;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.xterm:focus {
+  outline: none;
+}
+
+.xterm .xterm-viewport {
+  background-color: transparent;
+  overflow-y: scroll;
+  cursor: default;
+  position: absolute;
+  right: 0;
+  left: 0;
+  top: 0;
+  bottom: 0;
+}
+
+.xterm .xterm-screen {
+  position: relative;
+}
+
+/* 隐藏 xterm 的 textarea 输入元素 */
+.xterm textarea {
+  position: absolute !important;
+  opacity: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  border: none !important;
+  outline: none !important;
+  resize: none !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+.xterm .xterm-screen canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.xterm .xterm-scroll-area {
+  visibility: hidden;
+}
+
+.xterm-char-measure-element {
+  display: inline-block;
+  visibility: hidden;
+  position: absolute;
+  top: 0;
+  left: -9999em;
+  line-height: normal;
+}
+
+.xterm.enable-mouse-events {
+  cursor: default;
+}
+
+.xterm.xterm-cursor-pointer {
+  cursor: pointer;
+}
+
+.xterm.column-select.focus {
+  cursor: crosshair;
+}
+
+.xterm .xterm-accessibility,
+.xterm .xterm-message {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  z-index: 10;
+  color: transparent;
+}
+
+.xterm .live-region {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.xterm-dim {
+  opacity: 0.5;
+}
+
+.xterm-underline {
+  text-decoration: underline;
+}
+
+.xterm-strikethrough {
+  text-decoration: line-through;
+}
+
+.xterm-screen .xterm-decoration-container .xterm-decoration.top {
+  z-index: 2;
+  position: relative;
+}
+
+.xterm-decoration-overview-ruler {
+  z-index: 6;
+  position: absolute;
+  top: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+.xterm-decoration-top {
+  z-index: 2;
+  position: relative;
+}
+
+/* 搜索框样式 */
+.xterm-search {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(30, 30, 30, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 8px;
+  display: none;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.xterm-search.show {
+  display: block;
+}
+
+.xterm-search input {
+  background: transparent;
+  border: none;
+  color: #d4d4d4;
+  outline: none;
+  font-size: 12px;
+  width: 200px;
+}
+
+.xterm-search .btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  color: #ccc;
+  font-size: 11px;
+  padding: 4px 8px;
+  margin-left: 4px;
+  cursor: pointer;
+}
+
+.xterm-search .btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+/* 主题切换动画 */
+.terminal-focused {
+  box-shadow: 0 0 0 2px rgba(36, 114, 200, 0.3);
+}
+
+/* xterm容器样式 */
+.xterm-container .xterm {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.xterm-container .terminal-toolbar {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 100;
+  border-radius: 8px;
+}
+
+
+/* 图标样式（使用Unicode字符代替图标字体） */
+.icon-back::before { content: "←"; }
+.icon-opencode::before { content: "⚡"; }
+.icon-refresh::before { content: "↻"; }
+.icon-clear::before { content: "✕"; }
+.icon-search::before { content: "🔍"; }
+.icon-theme::before { content: "🌙"; }
+.icon-menu::before { content: "☰"; }
+
+/* 终端加载状态样式 */
+.terminal-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+  color: #e0e0e0;
+  font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Courier New', monospace;
+  z-index: 10;
+}
+
+.terminal-loading .loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top: 3px solid #4a9eff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 20px;
+  box-shadow: 0 0 20px rgba(74, 158, 255, 0.3);
+}
+
+.terminal-loading p {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  opacity: 0.9;
+  letter-spacing: 0.5px;
+}
+
+/* 为全局loading-spinner添加特定样式，避免冲突 */
+.loading-overlay .loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(57, 57, 57, 0.08);
+  border-top: 4px solid rgba(57, 57, 57, 0.4);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+  box-shadow: none;
+}
+
+/* 终端错误状态样式 */
+.terminal-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  padding: 20px;
+  background: #2d1b1b;
+  color: #ff6b6b;
+  border-radius: 4px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  margin: 10px;
+}
+
+.terminal-error h3 {
+  margin: 0 0 10px 0;
+  color: #ff8787;
+}
+
+.terminal-error p {
+  margin: 5px 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.terminal-error ul {
+  margin: 10px 0;
+  padding-left: 20px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.terminal-error li {
+  margin: 3px 0;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.terminal-error button {
+  margin-top: 15px;
+  padding: 8px 16px;
+  background: #ff6b6b;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color 0.2s;
+}
+
+.terminal-error button:hover {
+  background: #ff5252;
+}
+
+/* xterm.js helper 容器 - 必须设置正确的 z-index */
+.xterm .xterm-helpers {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5; /* 必须高于 canvas (z-index: 1) */
+  pointer-events: none;
+}
+
+/* textarea 输入框 - 关键修复：字体匹配 + 去除边框 */
+.xterm .xterm-helper-textarea {
+  position: absolute;
+  opacity: 0;
+  left: -9999em; /* 默认在屏幕外，xterm.js 会动态调整 */
+  top: 0;
+  width: 0;
+  height: 0;
+  z-index: -5; /* 默认在 canvas 下面 */
+  white-space: nowrap; /* 防止换行，IME 必需 */
+  overflow: hidden;
+  resize: none;
+
+  /* 关键修复：字体必须与终端完全匹配（Issue #3034） */
+  font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 
+                 'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace !important;
+  font-size: 14px !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0 !important;
+
+  /* 关键修复：去除边框（Issue #3058） */
+  border: 0px !important;
+  outline: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* composition 预览视图 - IME 窗口 */
+.xterm .composition-view {
+  background: #000;
+  color: #FFF;
+  display: none;
+  position: absolute;
+  white-space: nowrap;
+  z-index: 1; /* 在 canvas 上面 */
+  pointer-events: none;
+}
+
+.xterm.composing .composition-view {
+  display: block;
+}
+
+/* 为xterm设置合适的等宽字体，解决字体重叠问题 */
+.xterm {
+  font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
+  font-size: 14px !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0 !important;
+  font-feature-settings: "liga" 0, "calt" 0 !important;
+  -webkit-font-feature-settings: "liga" 0, "calt" 0 !important;
+  -moz-font-feature-settings: "liga" 0, "calt" 0 !important;
+  font-weight: 400 !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
+}
+
+/* 确保字符渲染正确，防止重叠 */
+.xterm .xterm-screen {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: 1.2 !important;
+}
+
+.xterm .xterm-viewport {
+  font-family: inherit !important;
+}
+
+/* 修复canvas渲染的字体 */
+.xterm .xterm-screen canvas {
+  font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
+  image-rendering: pixelated !important;
+  image-rendering: -moz-crisp-edges !important;
+  image-rendering: crisp-edges !important;
+  /* 强制启用硬件加速 */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  /* 优化 Canvas 渲染质量 */
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}
+
+/* 字符测量元素使用相同字体 */
+.xterm-char-measure-element {
+  font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Monaco, 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
+  font-size: 14px !important;
+  line-height: 1.2 !important;
+}
+
+/* 行高设置 */
+.xterm-rows {
+  line-height: 1.2 !important;
+}
+
+.xterm-row {
+  height: 1.2em !important;
+  line-height: 1.2 !important;
+}
+
+.xterm-char {
+  width: 0.6em !important;
+  height: 1.2em !important;
+}
+
+/* 确保输入框字体一致 */
+.xterm textarea {
+  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
+  font-size: 14px !important;
+}
+
+/* 修复中文字符显示 */
+.xterm-unicode {
+  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', 'PingFang SC', 'Microsoft YaHei', monospace !important;
+}
+
+/* ============================================
+   主题配置
+   ============================================ */
+
+/* 暗色主题优化 */
+.xterm.theme-dark {
+  background: #0a0a0a !important;
+  color: #f0f0f0 !important;
+}
+
+/* 浅色主题优化 */
+.xterm.theme-light {
+  background: #ffffff !important;
+  color: #1a1a1a !important;
+}
+
+/* ============================================
+   光标样式优化
+   ============================================ */
+
+/* 深色主题光标 - 增强对比度和可见性 */
+.xterm.theme-dark .xterm-cursor {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(0, 0, 0, 0.3) !important;
+  width: 10px !important;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.6) !important;
+  display: block !important; /* 确保在IME期间也可见 */
+}
+
+/* 浅色主题光标 - 增强对比度和可见性 */
+.xterm.theme-light .xterm-cursor {
+  background: rgba(0, 0, 0, 0.85) !important;
+  border: 1px solid rgba(0, 0, 0, 0.2) !important;
+  width: 10px !important;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.4) !important;
+  display: block !important;
+}
+
+
+
+.xterm .xterm-rows > div {
+  position: relative;
+}
+
+.xterm .xterm-rows > div.xterm-focus .xterm-selection,
+.xterm .xterm-rows .xterm-selection {
+  background-color: rgba(74, 144, 226, 0.4) !important;
+}
+
+/* 浅色主题下的选中效果 - VS Code风格高对比度 */
+.xterm.theme-light .xterm-rows > div.xterm-focus .xterm-selection,
+.xterm.theme-light .xterm-rows .xterm-selection {
+  background-color: rgba(74, 144, 226, 0.4) !important; /* 更明显的蓝色选中 */
+  border: 1px solid rgba(74, 144, 226, 0.6) !important; /* 添加明显的边框 */
+}
+
+/* 深色主题下的选中效果 - VS Code风格高对比度 */
+.xterm.theme-dark .xterm-rows > div.xterm-focus .xterm-selection,
+.xterm.theme-dark .xterm-rows .xterm-selection {
+  background-color: rgba(74, 144, 226, 0.6) !important; /* 更高的透明度，类似VS Code */
+  border: 1px solid rgba(74, 144, 226, 0.8) !important; /* 添加明显的边框 */
+}
+
+/* xterm-selection span 选中样式 */
+.xterm .xterm-selection span {
+  background-color: inherit !important;
+}
+
+/* 确保浅色主题下的选中文字可见 - 使用深色文字增强对比 */
+.xterm.theme-light .xterm-selection span {
+  color: #000000 !important;
+  font-weight: 600 !important;
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.5) !important;
+}
+
+/* 确保深色主题下的选中文字可见 - 使用浅色文字增强对比 */
+.xterm.theme-dark .xterm-selection span {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.8) !important;
+}
+
+/* 强制覆盖选中样式 - 浅色主题 */
+body .xterm.theme-light .xterm-selection,
+body .xterm.theme-light .xterm-rows .xterm-selection,
+body .xterm.theme-light .xterm-rows > div .xterm-selection,
+body .xterm.theme-light .xterm-screen .xterm-selection,
+body div.xterm.theme-light .xterm-selection {
+  background-color: rgba(24, 144, 255, 0.25) !important;
+  border: 1px solid rgba(24, 144, 255, 0.4) !important;
+}
+
+/* 强制覆盖选中样式 - 深色主题 */
+body .xterm.theme-dark .xterm-selection,
+body .xterm.theme-dark .xterm-rows .xterm-selection,
+body .xterm.theme-dark .xterm-rows > div .xterm-selection,
+body .xterm.theme-dark .xterm-screen .xterm-selection,
+body div.xterm.theme-dark .xterm-selection {
+  background-color: rgba(100, 181, 246, 0.35) !important;
+  border: 1px solid rgba(100, 181, 246, 0.5) !important;
+}
+
+/* 选中文字颜色 - 浅色主题 */
+body .xterm.theme-light .xterm-selection span,
+body .xterm.theme-light .xterm-selection .xterm-char {
+  color: #000000 !important;
+  font-weight: 600 !important;
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.5) !important;
+}
+
+/* 选中文字颜色 - 深色主题 */
+body .xterm.theme-dark .xterm-selection span,
+body .xterm.theme-dark .xterm-selection .xterm-char {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.8) !important;
+}
+
+/* ============================================
+   滚动条样式优化
+   ============================================ */
+
+.xterm .xterm-viewport::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.4) !important;
+  border-radius: 4px !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.6) !important;
+}
+
+/* 浅色主题滚动条 */
+.xterm.theme-light .xterm-viewport::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2) !important;
+}
+
+.xterm.theme-light .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 深色主题滚动条 */
+.xterm.theme-dark .xterm-viewport::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.xterm.theme-dark .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* ============================================
+   响应式字体大小调整
+   ============================================ */
+
+@media (max-width: 480px) {
+  .xterm {
+    font-size: 11px !important;
+  }
+  
+  .xterm-char-measure-element {
+    font-size: 11px !important;
+  }
+}
+
+/* ============================================
+   高DPI屏幕优化
+   ============================================ */
+
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .xterm .xterm-screen canvas {
+    /* 高DPI屏幕使用自动渲染以获得更好的清晰度 */
+    image-rendering: auto !important;
+    /* 确保在高DPI屏幕上使用正确的缩放 */
+    transform: translateZ(0);
+  }
+}
+
+/* Canvas 渲染器优化 - 确保正确的层级和定位 */
+.xterm .xterm-screen {
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* 确保 Canvas 渲染器优先于 DOM 元素 */
+.xterm .xterm-screen canvas {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* 隐藏 DOM 渲染元素（当使用 Canvas 时） */
+.xterm.xterm-canvas-mode .xterm-rows {
+  display: none !important;
+}
+
+/* ============================================
+   终端容器样式
+   ============================================ */
+
+/* 浅色主题容器 */
+.terminal-content.theme-light {
+  background: #ffffff !important;
+}
+
+
+/* ============================================
+   终端工具栏样式（保留上面的完整定义）
+   ============================================ */
+
+.renderer-info {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: help;
+  transition: all 0.2s ease;
+}
+
+.renderer-info:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* 浅色主题工具栏 */
+.theme-light .terminal-toolbar {
+  background: rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.theme-light .terminal-status {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.theme-light .terminal-actions .btn {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.theme-light .terminal-actions .btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: rgba(0, 0, 0, 1);
+}
+
+/* ============================================
+   终端加载和错误状态（已删除重复注释，这些样式在上面已有定义）
+   ============================================ */
+
+/* ============================================
+   终端容器样式（已删除重复定义，保留上面的完整定义）
+   ============================================ */
+
+/* 隐藏xterm默认光标，使用自定义样式 */
+.xterm-cursor-block,
+.xterm-cursor-bar {
+  display: none !important;
+}
+
+/* ============================================
+   ASCII 艺术动画效果
+   ============================================ */
+
+/* 彩虹渐变动画 */
+@keyframes rainbow-shift {
+  0% { filter: hue-rotate(0deg); }
+  25% { filter: hue-rotate(90deg); }
+  50% { filter: hue-rotate(180deg); }
+  75% { filter: hue-rotate(270deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+/* 文字发光效果 */
+@keyframes text-glow {
+  0%, 100% {
+    text-shadow: 0 0 5px currentColor, 0 0 10px currentColor, 0 0 15px currentColor;
+  }
+  50% {
+    text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor, 0 0 40px currentColor;
+  }
+}
+
+/* 打字机效果 */
+@keyframes typewriter {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+/* 闪烁效果 */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* 渐变背景动画 */
+@keyframes gradient-bg {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* 为终端容器添加背景渐变动画 */
+.terminal-area {
+  background: linear-gradient(-45deg, #1a1a1a, #2a2a2a, #1a1a1a, #0a0a0a);
+  background-size: 400% 400%;
+  animation: gradient-bg 15s ease infinite;
+}
+
+/* 终端容器内的特殊样式 */
+.terminal-area .xterm-screen {
+  /* 为ASCII艺术添加特殊效果 */
+  position: relative;
+}
+
+/* 为特定的ASCII艺术行添加动画类 */
+.terminal-area .ascii-art-line {
+  transition: all 0.3s ease;
+}
+
+/* 添加悬停效果 */
+.terminal-area:hover {
+  filter: brightness(1.1);
+}
+
+/* 光标闪烁动画 */
+.terminal-cursor-blink {
+  animation: blink 1s infinite;
+}
+
+/* 彩虹文字效果 */
+.rainbow-text {
+  animation: rainbow-shift 3s linear infinite;
+  background: linear-gradient(45deg, #ff0000, #ff8000, #ffff00, #80ff00, #00ff00, #00ff80, #00ffff, #0080ff, #0000ff, #8000ff, #ff00ff, #ff0080);
+  background-size: 400% 400%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: rainbow-shift 3s linear infinite, text-glow 2s ease-in-out infinite alternate;
+}
+
+/* 发光边框效果 */
+.ascii-art-border {
+  filter: drop-shadow(0 0 10px rgba(0, 162, 255, 0.5));
+  animation: text-glow 3s ease-in-out infinite alternate;
+}
+
+/* 脉冲效果 */
+@keyframes pulse-glow {
+  0% {
+    filter: drop-shadow(0 0 5px rgba(0, 162, 255, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(0, 162, 255, 0.8));
+  }
+  100% {
+    filter: drop-shadow(0 0 5px rgba(0, 162, 255, 0.3));
+  }
+}
+
+.ascii-art-pulse {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* 波浪效果 */
+@keyframes wave {
+  0%, 100% { transform: translateY(0px); }
+  25% { transform: translateY(-2px); }
+  50% { transform: translateY(-4px); }
+  75% { transform: translateY(-2px); }
+}
+
+.ascii-art-wave {
+  animation: wave 4s ease-in-out infinite;
+}

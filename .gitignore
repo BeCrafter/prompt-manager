@@ -12,6 +12,7 @@ openspec
 .env
 *.bak
 *.tgz
+.sisyphus
 **/dist/
 **/node_modules/
 web/

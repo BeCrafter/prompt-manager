@@ -181,7 +181,7 @@ lsof -i :5621
 kill -9 <PID>
 
 # 或者使用其他端口
-PORT=5622 npm run desktop:dev
+PORT=5621 npm run desktop:dev
 ```
 
 ### 问题：Node.js 版本不兼容
