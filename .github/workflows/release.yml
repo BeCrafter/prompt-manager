@@ -8,7 +8,7 @@ on:
       - 'canary-v*'    # Canary版本: canary-v1.0.0
 
 env:
-  NODE_VERSION: '20.x'
+  NODE_VERSION: '22.x'
 
 permissions:
   contents: write
@@ -53,7 +53,7 @@ jobs:
           echo "clean-version=${CLEAN_VERSION}" >> $GITHUB_OUTPUT
           echo "Version: ${TAG}"
           echo "Clean Version: ${CLEAN_VERSION}"
-          echo "Publish Tag: ${{ steps.version.outputs.publish_tag }}"
+          echo "Publish Tag: ${{ steps.version.outputs.publish-tag }}"
 
   # 预发布检查
   pre-checks:
