@@ -112,13 +112,13 @@ jobs:
           git diff --staged --quiet || git commit -m "chore: update version to ${{ needs.extract-version.outputs.version }} [skip ci]"
           git push origin HEAD:main
       
-      # - name: Build admin UI
-      #   run: npm run build:admin-ui
-      #   env:
-      #     DISPLAY: ':99'
+      - name: Build admin UI
+        run: npm run build:admin-ui
+        env:
+          DISPLAY: ':99'
       
-      # - name: Build core package
-      #   run: npm run build:core
+      - name: Build core package
+        run: npm run build:core
       
       - name: Rebuild native modules
         run: npm rebuild node-pty
