@@ -1,7 +1,6 @@
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
-import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 
@@ -25,8 +24,6 @@ function expandPath(inputPath) {
 const configHome = path.join(os.homedir(), '.prompt-manager');
 dotenv.config({ path: path.join(configHome, '.env') });
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 const DEFAULT_HOME_DIR = path.join(os.homedir(), '.prompt-manager');
 const DEFAULT_PROMPTS_DIR = path.join(DEFAULT_HOME_DIR, 'prompts');
 
@@ -109,17 +106,15 @@ export class Config {
     }
 
     // 确定prompts目录
-    this.promptsDir = expandPath(cliArgs.promptsDir) ||
-      expandPath(process.env.PROMPTS_DIR) ||
-      DEFAULT_PROMPTS_DIR;
-    this.configHome = path.dirname(this.promptsDir);
+    this.promptsDir = expandPath(cliArgs.promptsDir) || expandPath(process.env.PROMPTS_DIR) || DEFAULT_PROMPTS_DIR;
+    this.configHome = DEFAULT_HOME_DIR;
 
     // 服务器端口
     this.port = cliArgs.port || process.env.SERVER_PORT || 5621;
 
     // 其他配置
     this.serverName = 'prompt-manager';
-    this.serverVersion = '0.1.20';
+    this.serverVersion = '0.1.22';
     this.logLevel = process.env.LOG_LEVEL || 'info';
     this.maxPrompts = parseInt(process.env.MAX_PROMPTS) || 1000;
     this.recursiveScan = process.env.RECURSIVE_SCAN !== 'false'; // 默认启用递归扫描
@@ -147,7 +142,7 @@ export class Config {
     ];
 
     if (cliArgs.version) {
-      process.stderr.write(this.serverVersion + '\n');
+      process.stderr.write(`${this.serverVersion}\n`);
       process.exit(0);
     }
 
@@ -181,7 +176,6 @@ export class Config {
 
     if (promptsDir) {
       this.promptsDir = expandPath(promptsDir);
-      this.configHome = path.dirname(this.promptsDir);
     }
     if (port) {
       this.port = port;
@@ -221,7 +215,6 @@ export class Config {
     }
   }
 
-
   /**
    * 确保prompts目录存在
    */
@@ -230,7 +223,7 @@ export class Config {
       await fs.ensureDir(this.promptsDir);
       return true;
     } catch (error) {
-      process.stderr.write('Failed to create prompts directory: ' + error.message + '\n');
+      process.stderr.write(`Failed to create prompts directory: ${error.message}\n`);
       return false;
     }
   }
@@ -258,6 +251,67 @@ export class Config {
    */
   setPort(port) {
     this.port = port;
+  }
+
+  /**
+   * 获取临时文件目录
+   * @returns {string} 临时文件目录路径
+   */
+  getTempDir() {
+    return path.join(this.getConfigHome(), 'temp');
+  }
+
+  /**
+   * 获取工具箱目录
+   * @returns {string} 工具箱目录路径
+   */
+  getToolboxDir() {
+    return path.join(this.getConfigHome(), 'toolbox');
+  }
+
+  /**
+   * 获取指定工具的目录
+   * @param {string} toolName - 工具名称
+   * @returns {string} 工具目录路径
+   * @throws {Error} 如果 toolName 未提供
+   */
+  getToolDir(toolName) {
+    if (!toolName) {
+      throw new Error('toolName is required for getToolDir()');
+    }
+    return path.join(this.getToolboxDir(), toolName);
+  }
+
+  /**
+   * 获取模型配置目录
+   * @returns {string} 模型配置目录路径
+   */
+  getModelsDir() {
+    return path.join(this.getConfigHome(), 'configs', 'models');
+  }
+
+  /**
+   * 获取模板配置目录
+   * @returns {string} 模板配置目录路径
+   */
+  getTemplatesDir() {
+    return path.join(this.getConfigHome(), 'configs', 'templates');
+  }
+
+  /**
+   * 获取用户配置目录
+   * @returns {string} 用户配置目录路径
+   */
+  getConfigsDir() {
+    return path.join(this.getConfigHome(), 'configs');
+  }
+
+  /**
+   * 获取环境变量文件路径
+   * @returns {string} .env 文件路径
+   */
+  getEnvFilePath() {
+    return path.join(this.getConfigHome(), '.env');
   }
 
   /**
@@ -309,6 +363,36 @@ export class Config {
   }
 
   /**
+   * 验证配置路径一致性
+   * @throws {Error} 如果路径配置不一致
+   */
+  validatePaths() {
+    const configHome = this.getConfigHome();
+    const expectedHome = DEFAULT_HOME_DIR;
+
+    if (configHome !== expectedHome) {
+      throw new Error(`ConfigHome不一致: 期望 ${expectedHome}, 实际 ${configHome}`);
+    }
+
+    // 仅验证路径格式，不实际创建目录
+    const dirsToCheck = [
+      this.getPromptsDir(),
+      this.getTempDir(),
+      this.getToolboxDir(),
+      this.getModelsDir(),
+      this.getTemplatesDir()
+    ];
+
+    for (const dir of dirsToCheck) {
+      if (!dir || typeof dir !== 'string') {
+        throw new Error(`无效的目录路径: ${dir}`);
+      }
+    }
+
+    return true;
+  }
+
+  /**
    * 获取公开配置（前端可访问的配置信息）
    */
   getPublicConfig() {
@@ -318,7 +402,8 @@ export class Config {
       port: this.port,
       adminEnable: this.adminEnable,
       adminPath: this.adminPath,
-      websocketPort: null, // 这个会在 admin.routes.js 中动态设置
+      // WebSocket端口由WebSocketService动态分配，通过admin.routes.js暴露给前端
+      websocketPort: null,
       features: {
         terminal: true,
         optimization: true,

@@ -16,6 +16,40 @@ NC='\033[0m' # No Color
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
+# 添加简单的构建测试
+test_build_commands() {
+    echo -e "${BLUE}测试构建命令...${NC}"
+
+    # 测试 admin-ui 构建
+    if [ -d "packages/admin-ui" ]; then
+        echo -e "${YELLOW}构建 admin-ui...${NC}"
+        if cd packages/admin-ui && npx webpack --mode production > /dev/null 2>&1; then
+            echo -e "${GREEN}✓ admin-ui 构建成功${NC}"
+            cd "$PROJECT_ROOT"
+        else
+            echo -e "${RED}✗ admin-ui 构建失败${NC}"
+            cd "$PROJECT_ROOT"
+            return 1
+        fi
+    fi
+
+    # 测试 core 构建
+    if [ -d "packages/server" ]; then
+        echo -e "${YELLOW}构建 core...${NC}"
+        if cd packages/server && npx esbuild ./index.js --bundle --outdir=dist --format=esm --platform=node --target=node18 > /dev/null 2>&1; then
+            echo -e "${GREEN}✓ core 构建成功${NC}"
+            cd "$PROJECT_ROOT"
+        else
+            echo -e "${RED}✗ core 构建失败${NC}"
+            cd "$PROJECT_ROOT"
+            return 1
+        fi
+    fi
+
+    echo -e "${GREEN}所有构建测试通过${NC}"
+    return 0
+}
+
 # 立即清理所有 npm 环境变量以避免与 nvm 冲突
 unset npm_config_prefix
 unset npm_config_cache
@@ -93,14 +127,13 @@ npm config set registry https://registry.npmmirror.com
 # 检查环境
 check_environment
 
-# 安装 app/desktop 依赖
-echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}安装依赖${NC}"
-echo -e "${BLUE}========================================${NC}"
-echo "Installing dependencies for app/desktop..."
-# 使用 --ignore-scripts 跳过 postinstall 脚本，避免 Python 3.13 的 distutils 问题
-# 原生模块将在后面使用 electron-rebuild 统一重建
-(cd app/desktop && unset_npm_config && npm install --ignore-scripts)
+ # 安装 app/desktop 依赖
+ echo -e "${BLUE}========================================${NC}"
+ echo -e "${BLUE}安装依赖${NC}"
+ echo -e "${BLUE}========================================${NC}"
+ echo "Installing dependencies for app/desktop..."
+ # 不使用 --ignore-scripts，确保 Electron 的 postinstall 脚本执行以安装二进制文件
+ (cd app/desktop && unset_npm_config && npm install)
 
 # 重建 node-pty 以适配 Electron 的 Node.js 版本
 echo -e "${BLUE}========================================${NC}"
@@ -130,7 +163,8 @@ echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}构建前端资源${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo "Building admin-ui..."
-unset_npm_config && npm run admin:build
+unset_npm_config && cd packages/admin-ui && npm run build
+cd -
 
 # 构建根目录环境
 echo -e "${BLUE}========================================${NC}"
@@ -146,6 +180,11 @@ echo -e "${BLUE}重建根目录 node-pty 模块${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo "Rebuilding node-pty for Electron in root directory..."
 unset_npm_config && npx electron-rebuild -f -w node-pty --version=39.0.0
+
+# 清理可能存在的异常文件（比如electron-builder的特殊字符文件）
+echo "Cleaning up abnormal files..."
+node scripts/cleanup-invalid-files.js --target packages/server
+node scripts/cleanup-invalid-files.js --target app/desktop/node_modules/@becrafter/prompt-manager-core
 
 # 根据参数执行 desktop 构建
 echo -e "${BLUE}========================================${NC}"

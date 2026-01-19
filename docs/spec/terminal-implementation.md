@@ -609,7 +609,7 @@ packages/admin-ui/src/
     └── TerminalComponent.js     # 简化工具栏，添加 connect/disconnect 方法
 
 packages/admin-ui/css/
-└── terminal-fix.css             # 调整样式，适应侧边抽屉
+└── terminal.css             # 调整样式，适应侧边抽屉
 ```
 
 ### 2.3 无需修改的文件

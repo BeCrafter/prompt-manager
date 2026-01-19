@@ -12,8 +12,10 @@ openspec
 .env
 *.bak
 *.tgz
+.sisyphus
 **/dist/
 **/node_modules/
 web/
 packages/server/package-lock.json
+scripts/surge/package-lock.json
 packages/server/html/**

@@ -94,7 +94,7 @@ class UpdateManager {
   }
 
   async showUpdateAvailableDialog(latestVersion, currentVersion) {
-    const installCommand = "curl -fsSL 'http://iskill.site/scripts/becrafter-installer.sh' | bash -s prompt-manager";
+    const installCommand = "curl -fsSL 'http://iskill.site/scripts/installer/prompt-manager' | bash";
     
     const { response } = await dialog.showMessageBox({
       type: 'info',

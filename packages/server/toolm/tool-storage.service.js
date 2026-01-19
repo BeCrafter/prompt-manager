@@ -1,6 +1,6 @@
 /**
  * 工具存储服务
- * 
+ *
  * 职责：
  * 1. 为每个工具提供独立的存储空间
  * 2. 数据持久化到工具目录的 data 目录
@@ -9,9 +9,9 @@
 
 import fs from 'fs-extra';
 import path from 'path';
-import os from 'os';
 import { logger } from '../utils/logger.js';
 import { pathExists } from './tool-utils.js';
+import { config } from '../utils/config.js';
 
 // 存储缓存：toolName -> storage data
 const storageCache = new Map();
@@ -25,18 +25,18 @@ export function getStorage(toolName) {
   if (!storageCache.has(toolName)) {
     storageCache.set(toolName, {});
   }
-  
+
   const storage = storageCache.get(toolName);
   const storageFile = getStorageFilePath(toolName);
-  
+
   // 加载存储数据（如果存在）
   loadStorageData(toolName, storageFile, storage);
-  
+
   return {
-    getItem: (key) => {
+    getItem: key => {
       return storage[key];
     },
-    
+
     setItem: (key, value) => {
       storage[key] = value;
       // 异步保存
@@ -44,15 +44,15 @@ export function getStorage(toolName) {
         logger.error(`保存工具存储失败: ${toolName}`, { error: error.message });
       });
     },
-    
-    removeItem: (key) => {
+
+    removeItem: key => {
       delete storage[key];
       // 异步保存
       saveStorageData(toolName, storageFile, storage).catch(error => {
         logger.error(`保存工具存储失败: ${toolName}`, { error: error.message });
       });
     },
-    
+
     clear: () => {
       storageCache.set(toolName, {});
       // 删除存储文件
@@ -69,7 +69,7 @@ export function getStorage(toolName) {
  * @returns {string} 存储文件路径
  */
 function getStorageFilePath(toolName) {
-  const toolDir = path.join(os.homedir(), '.prompt-manager', 'toolbox', toolName);
+  const toolDir = config.getToolDir(toolName);
   return path.join(toolDir, 'data', 'storage.json');
 }
 
@@ -108,4 +108,3 @@ async function saveStorageData(toolName, storageFile, storage) {
     throw error;
   }
 }
-

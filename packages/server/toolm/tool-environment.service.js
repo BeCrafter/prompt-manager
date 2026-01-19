@@ -1,6 +1,6 @@
 /**
  * 工具环境变量管理服务
- * 
+ *
  * 职责：
  * 1. 管理工具的环境变量配置（.env 文件）
  * 2. 加载环境变量到工具执行环境
@@ -9,9 +9,9 @@
 
 import fs from 'fs-extra';
 import path from 'path';
-import os from 'os';
 import { logger } from '../utils/logger.js';
 import { pathExists } from './tool-utils.js';
+import { config } from '../utils/config.js';
 
 /**
  * 加载工具环境变量
@@ -19,52 +19,50 @@ import { pathExists } from './tool-utils.js';
  * @returns {object} 环境变量对象
  */
 export async function loadToolEnvironment(toolName) {
-  const toolDir = path.join(os.homedir(), '.prompt-manager', 'toolbox', toolName);
+  const toolDir = config.getToolDir(toolName);
   const envFilePath = path.join(toolDir, '.env');
-  
+
   // 检查 .env 文件是否存在
-  if (!await pathExists(envFilePath)) {
+  if (!(await pathExists(envFilePath))) {
     logger.debug(`工具 ${toolName} 的 .env 文件不存在`);
     return {};
   }
-  
+
   try {
     // 读取 .env 文件内容
     const envContent = await fs.readFile(envFilePath, 'utf-8');
-    
+
     // 解析 .env 文件内容
     const envVars = {};
     const lines = envContent.split('\n');
-    
+
     for (const line of lines) {
       // 跳过注释和空行
       const trimmedLine = line.trim();
       if (!trimmedLine || trimmedLine.startsWith('#')) {
         continue;
       }
-      
+
       // 解析键值对
       const equalIndex = trimmedLine.indexOf('=');
       if (equalIndex === -1) {
         continue;
       }
-      
+
       const key = trimmedLine.substring(0, equalIndex).trim();
       let value = trimmedLine.substring(equalIndex + 1).trim();
-      
+
       // 处理带引号的值
-      if ((value.startsWith('"') && value.endsWith('"')) || 
-          (value.startsWith("'") && value.endsWith("'"))) {
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
         value = value.substring(1, value.length - 1);
       }
-      
+
       // 处理转义字符
       value = value.replace(/\\n/g, '\n').replace(/\\t/g, '\t');
-      
+
       // 尝试解析JSON（如果是JSON数组或对象）
       try {
-        if ((value.startsWith('[') && value.endsWith(']')) || 
-            (value.startsWith('{') && value.endsWith('}'))) {
+        if ((value.startsWith('[') && value.endsWith(']')) || (value.startsWith('{') && value.endsWith('}'))) {
           const parsed = JSON.parse(value);
           envVars[key] = parsed;
         } else {
@@ -75,13 +73,12 @@ export async function loadToolEnvironment(toolName) {
         envVars[key] = value;
       }
     }
-    
-    logger.debug(`工具 ${toolName} 环境变量加载成功`, { 
-      count: Object.keys(envVars).length 
+
+    logger.debug(`工具 ${toolName} 环境变量加载成功`, {
+      count: Object.keys(envVars).length
     });
-    
+
     return envVars;
-    
   } catch (error) {
     logger.error(`加载工具 ${toolName} 的环境变量失败`, { error: error.message });
     return {};
@@ -94,20 +91,20 @@ export async function loadToolEnvironment(toolName) {
  * @param {object} envVars - 环境变量对象
  */
 export async function saveToolEnvironment(toolName, envVars) {
-  const toolDir = path.join(os.homedir(), '.prompt-manager', 'toolbox', toolName);
+  const toolDir = config.getToolDir(toolName);
   await fs.ensureDir(toolDir);
-  
+
   const envFilePath = path.join(toolDir, '.env');
-  
+
   // 读取现有配置（如果存在）
   const existingVars = await loadToolEnvironment(toolName);
-  
+
   // 合并配置
   const mergedVars = {
     ...existingVars,
     ...envVars
   };
-  
+
   // 生成 .env 文件内容
   let envContent = `# Tool Environment Variables
 # Tool: ${toolName}
@@ -115,11 +112,11 @@ export async function saveToolEnvironment(toolName, envVars) {
 # Last modified: ${new Date().toISOString()}
 
 `;
-  
+
   // 写入环境变量
   for (const [key, value] of Object.entries(mergedVars)) {
     let escapedValue;
-    
+
     // 如果值是对象或数组，转换为JSON字符串
     if (typeof value === 'object' && value !== null) {
       escapedValue = JSON.stringify(value);
@@ -131,20 +128,25 @@ export async function saveToolEnvironment(toolName, envVars) {
         .replace(/\n/g, '\\n')
         .replace(/\t/g, '\\t');
     }
-    
+
     // 如果值包含空格、等号或特殊字符，用引号包裹
-    if (escapedValue.includes(' ') || escapedValue.includes('=') || escapedValue.includes('[') || escapedValue.includes('{')) {
+    if (
+      escapedValue.includes(' ') ||
+      escapedValue.includes('=') ||
+      escapedValue.includes('[') ||
+      escapedValue.includes('{')
+    ) {
       escapedValue = `"${escapedValue}"`;
     }
-    
+
     envContent += `${key}=${escapedValue}\n`;
   }
-  
+
   // 写入文件
   await fs.writeFile(envFilePath, envContent, 'utf-8');
-  
-  logger.info(`工具 ${toolName} 环境变量配置已保存`, { 
-    count: Object.keys(mergedVars).length 
+
+  logger.info(`工具 ${toolName} 环境变量配置已保存`, {
+    count: Object.keys(mergedVars).length
   });
 }
 
@@ -155,23 +157,23 @@ export async function saveToolEnvironment(toolName, envVars) {
  * @returns {object} 配置信息对象
  */
 export async function getToolEnvironmentInfo(toolName, schema) {
-  const toolDir = path.join(os.homedir(), '.prompt-manager', 'toolbox', toolName);
+  const toolDir = config.getToolDir(toolName);
   const envFilePath = path.join(toolDir, '.env');
-  
+
   // 加载当前配置
   const currentVars = await loadToolEnvironment(toolName);
-  
+
   // 获取环境变量定义
   const envProps = schema?.environment?.properties || {};
-  
+
   // 构建配置信息
   const configured = [];
   const unconfigured = [];
-  
+
   for (const [key, def] of Object.entries(envProps)) {
     const value = currentVars[key];
     const defaultValue = def.default;
-    
+
     if (value !== undefined) {
       configured.push({
         key,
@@ -188,7 +190,7 @@ export async function getToolEnvironmentInfo(toolName, schema) {
       });
     }
   }
-  
+
   return {
     toolName,
     envFilePath,
@@ -197,4 +199,3 @@ export async function getToolEnvironmentInfo(toolName, schema) {
     hasConfig: await pathExists(envFilePath)
   };
 }
-

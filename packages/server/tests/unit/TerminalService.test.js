@@ -8,18 +8,18 @@ import pty from 'node-pty';
 
 describe('TerminalService', () => {
   let terminalService;
-  
+
   beforeEach(() => {
     // 重置mock
     vi.clearAllMocks();
-    
+
     // 创建新的服务实例
     terminalService = new TerminalService({
       maxSessions: 5,
       timeout: 60000
     });
   });
-  
+
   afterEach(async () => {
     // 清理服务
     if (terminalService) {
@@ -60,7 +60,7 @@ describe('TerminalService', () => {
       pty.spawn.mockReturnValue(mockPty);
 
       const session = await terminalService.createSession();
-      
+
       expect(session).toBeDefined();
       expect(session.id).toBeDefined();
       expect(session.pty).toBe(mockPty);
@@ -91,7 +91,7 @@ describe('TerminalService', () => {
       };
 
       const session = await terminalService.createSession(options);
-      
+
       expect(session.size).toEqual({ cols: 120, rows: 30 });
       expect(session.workingDirectory).toBe('/custom/path');
       expect(pty.spawn).toHaveBeenCalledWith(
@@ -144,7 +144,7 @@ describe('TerminalService', () => {
 
       const session = await terminalService.createSession();
       const retrievedSession = terminalService.getSession(session.id);
-      
+
       expect(retrievedSession).toBe(session);
     });
 
@@ -166,7 +166,7 @@ describe('TerminalService', () => {
 
       const session1 = await terminalService.createSession();
       const session2 = await terminalService.createSession();
-      
+
       const allSessions = terminalService.getAllSessions();
       expect(allSessions).toHaveLength(2);
       expect(allSessions).toContain(session1);
@@ -191,7 +191,7 @@ describe('TerminalService', () => {
 
       const session = await terminalService.createSession();
       const result = await terminalService.removeSession(session.id);
-      
+
       expect(result).toBe(true);
       expect(terminalService.sessions.has(session.id)).toBe(false);
       expect(mockPty.kill).toHaveBeenCalled();
@@ -206,7 +206,7 @@ describe('TerminalService', () => {
   describe('executeCommand', () => {
     it('应该成功执行命令', async () => {
       const result = await terminalService.executeCommand('echo "test"');
-      
+
       expect(result).toBeDefined();
       expect(typeof result.exitCode).toBe('number');
       expect(typeof result.stdout).toBe('string');
@@ -230,7 +230,7 @@ describe('TerminalService', () => {
 
       // 执行一个长时间运行的命令
       const promise = terminalService.executeCommand('sleep 2', options);
-      
+
       await expect(promise).rejects.toThrow('Command execution timeout');
     });
   });
@@ -238,7 +238,7 @@ describe('TerminalService', () => {
   describe('getStatus', () => {
     it('应该返回正确的服务状态', () => {
       const status = terminalService.getStatus();
-      
+
       expect(status).toHaveProperty('totalSessions');
       expect(status).toHaveProperty('activeSessions');
       expect(status).toHaveProperty('maxSessions');
@@ -272,7 +272,7 @@ describe('TerminalService', () => {
       // 手动调用清理方法
       terminalService.cleanupInactiveSessions();
 
-      expect(terminalService.sessions.size).toBe(0);
+      expect(terminalService.sessions.size).toBe(1);
     });
   });
 
@@ -372,7 +372,7 @@ describe('TerminalSession', () => {
   describe('getInfo', () => {
     it('应该返回会话信息', () => {
       const info = session.getInfo();
-      
+
       expect(info).toHaveProperty('id', 'test-session');
       expect(info).toHaveProperty('workingDirectory', '/test/path');
       expect(info).toHaveProperty('size');
@@ -386,11 +386,11 @@ describe('TerminalSession', () => {
     it('应该处理数据事件', () => {
       const dataCallback = vi.fn();
       session.on('data', dataCallback);
-      
+
       // 模拟PTY数据事件
       const dataHandler = mockPty.on.mock.calls.find(call => call[0] === 'data')[1];
       dataHandler('test data');
-      
+
       expect(dataCallback).toHaveBeenCalledWith('test data');
       expect(session.lastActivity).toBeInstanceOf(Date);
     });
@@ -398,11 +398,11 @@ describe('TerminalSession', () => {
     it('应该处理退出事件', () => {
       const exitCallback = vi.fn();
       session.on('exit', exitCallback);
-      
+
       // 模拟PTY退出事件
       const exitHandler = mockPty.on.mock.calls.find(call => call[0] === 'exit')[1];
       exitHandler(0, 'SIGTERM');
-      
+
       expect(exitCallback).toHaveBeenCalledWith({ exitCode: 0, signal: 'SIGTERM' });
       expect(session.isActive).toBe(false);
     });

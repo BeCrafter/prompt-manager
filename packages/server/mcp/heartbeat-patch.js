@@ -44,7 +44,7 @@ export function patchStreamableHTTPHeartbeat() {
 
   const proto = StreamableHTTPServerTransport.prototype;
 
-  const wrap = (original) => {
+  const wrap = original => {
     return async function wrapped(...args) {
       const res = args[1];
       try {
@@ -69,5 +69,3 @@ export function patchStreamableHTTPHeartbeat() {
   proto.handlePostRequest = wrap(proto.handlePostRequest);
   proto.replayEvents = wrap(proto.replayEvents);
 }
-
-

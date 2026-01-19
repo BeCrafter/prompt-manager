@@ -1,6 +1,6 @@
 /**
  * 工具手册生成服务
- * 
+ *
  * 职责：
  * 1. 生成格式化的工具手册（manual模式）
  * 2. 生成错误帮助信息（execute模式出错时）
@@ -14,19 +14,39 @@
  * @returns {string} Markdown格式的手册
  */
 export function generateManual(toolName, tool) {
+  // 如果工具实现了自定义的 generateManual 方法，优先使用它
+  if (tool.module && tool.module.generateManual && typeof tool.module.generateManual === 'function') {
+    try {
+      const result = tool.module.generateManual();
+      // 如果返回的是字符串，直接返回
+      if (typeof result === 'string') {
+        return result;
+      }
+      // 如果返回的是对象（MCP格式），提取text内容
+      if (result && result.content && result.content[0] && result.content[0].text) {
+        return result.content[0].text;
+      }
+      // 其他情况转换为字符串
+      return String(result);
+    } catch (error) {
+      // 如果自定义方法出错，回退到通用生成器
+      console.warn(`工具 ${toolName} 的自定义 generateManual 方法出错，使用通用生成器:`, error.message);
+    }
+  }
+
   const { metadata, schema, businessErrors } = tool;
 
   let manual = '';
-  
+
   // 标题和基本信息
   manual += `# 📚 ${metadata.name || toolName}\n\n`;
-  
+
   if (metadata.description) {
     manual += `## 📋 工具描述\n\n${metadata.description}\n\n`;
   }
 
   // 基本信息卡片
-  manual += `## ℹ️ 基本信息\n\n`;
+  manual += '## ℹ️ 基本信息\n\n';
   if (metadata.version) {
     manual += `- **版本**: ${metadata.version}\n`;
   }
@@ -36,11 +56,11 @@ export function generateManual(toolName, tool) {
   if (metadata.tags && metadata.tags.length > 0) {
     manual += `- **标签**: ${metadata.tags.map(t => `\`${t}\``).join(', ')}\n`;
   }
-  manual += `\n`;
+  manual += '\n';
 
   // 使用场景
   if (metadata.scenarios && metadata.scenarios.length > 0) {
-    manual += `## 🎯 使用场景\n\n`;
+    manual += '## 🎯 使用场景\n\n';
     metadata.scenarios.forEach(scenario => {
       manual += `- ✅ ${scenario}\n`;
     });
@@ -49,14 +69,14 @@ export function generateManual(toolName, tool) {
 
   // 参数说明
   if (schema.parameters) {
-    manual += `## 📝 参数说明\n\n`;
-    
+    manual += '## 📝 参数说明\n\n';
+
     const props = schema.parameters.properties || {};
     const required = schema.parameters.required || [];
-    
+
     // 必需参数
     if (required.length > 0) {
-      manual += `### ✅ 必需参数\n\n`;
+      manual += '### ✅ 必需参数\n\n';
       for (const key of required) {
         const prop = props[key];
         if (prop) {
@@ -64,22 +84,22 @@ export function generateManual(toolName, tool) {
           if (prop.enum) {
             manual += ` - 可选值: ${prop.enum.map(v => `\`${v}\``).join(', ')}`;
           }
-          manual += `\n`;
+          manual += '\n';
           if (prop.description) {
             manual += `  > ${prop.description}\n`;
           }
           if (prop.default !== undefined) {
             manual += `  > 💡 默认值: \`${prop.default}\`\n`;
           }
-          manual += `\n`;
+          manual += '\n';
         }
       }
     }
-    
+
     // 可选参数
     const optional = Object.keys(props).filter(k => !required.includes(k));
     if (optional.length > 0) {
-      manual += `### 📌 可选参数\n\n`;
+      manual += '### 📌 可选参数\n\n';
       for (const key of optional) {
         const prop = props[key];
         if (prop) {
@@ -90,11 +110,11 @@ export function generateManual(toolName, tool) {
           if (prop.enum) {
             manual += ` - 可选值: ${prop.enum.map(v => `\`${v}\``).join(', ')}`;
           }
-          manual += `\n`;
+          manual += '\n';
           if (prop.description) {
             manual += `  > ${prop.description}\n`;
           }
-          manual += `\n`;
+          manual += '\n';
         }
       }
     }
@@ -102,7 +122,7 @@ export function generateManual(toolName, tool) {
 
   // 环境变量
   if (schema.environment && schema.environment.properties) {
-    manual += `## ⚙️ 环境变量配置\n\n`;
+    manual += '## ⚙️ 环境变量配置\n\n';
     const envProps = schema.environment.properties;
     for (const [key, value] of Object.entries(envProps)) {
       manual += `### \`${key}\`\n\n`;
@@ -113,13 +133,13 @@ export function generateManual(toolName, tool) {
         manual += `**默认值**: \`${value.default}\`\n\n`;
       }
     }
-    
-    manual += `> 💡 使用 \`mode: configure\` 可以配置这些环境变量\n\n`;
+
+    manual += '> 💡 使用 `mode: configure` 可以配置这些环境变量\n\n';
   }
 
   // 错误处理
   if (businessErrors && businessErrors.length > 0) {
-    manual += `## ⚠️ 常见错误处理\n\n`;
+    manual += '## ⚠️ 常见错误处理\n\n';
     businessErrors.forEach(error => {
       manual += `### ${error.code}\n\n`;
       manual += `- **描述**: ${error.description}\n`;
@@ -130,7 +150,7 @@ export function generateManual(toolName, tool) {
 
   // 限制说明
   if (metadata.limitations && metadata.limitations.length > 0) {
-    manual += `## ⚠️ 限制说明\n\n`;
+    manual += '## ⚠️ 限制说明\n\n';
     metadata.limitations.forEach(limitation => {
       manual += `- ⚠️ ${limitation}\n`;
     });
@@ -138,27 +158,28 @@ export function generateManual(toolName, tool) {
   }
 
   // 使用示例
-  manual += `## 💡 使用示例\n\n`;
-  manual += `### 基础使用\n\n`;
-  manual += `\`\`\`yaml\n`;
+  manual += '## 💡 使用示例\n\n';
+  manual += '### 基础使用\n\n';
+  manual += '```yaml\n';
   manual += `tool: tool://${toolName}\n`;
-  manual += `mode: execute\n`;
-  manual += `parameters:\n`;
-  
+  manual += 'mode: execute\n';
+  manual += 'parameters:\n';
+
   // 生成示例参数
   if (schema.parameters && schema.parameters.properties) {
     const props = schema.parameters.properties;
     const required = schema.parameters.required || [];
-    
+
     // 添加必需参数示例
-    for (const key of required.slice(0, 3)) { // 最多显示3个必需参数
+    for (const key of required.slice(0, 3)) {
+      // 最多显示3个必需参数
       const prop = props[key];
       if (prop) {
         const exampleValue = generateExampleValue(key, prop);
         manual += `  ${key}: ${exampleValue}  # ${prop.description || ''}\n`;
       }
     }
-    
+
     // 添加可选参数示例（最多2个）
     const optional = Object.keys(props).filter(k => !required.includes(k));
     for (const key of optional.slice(0, 2)) {
@@ -169,8 +190,8 @@ export function generateManual(toolName, tool) {
       }
     }
   }
-  
-  manual += `\`\`\`\n\n`;
+
+  manual += '```\n\n';
 
   return manual;
 }
@@ -186,43 +207,43 @@ export function generateManual(toolName, tool) {
  */
 export function generateHelpInfo(toolName, error, tool, parameters = {}, businessError = null) {
   const { metadata, schema } = tool;
-  
+
   let helpText = '';
-  
+
   // 错误提示
-  helpText += `# ⚠️ 工具执行错误\n\n`;
+  helpText += '# ⚠️ 工具执行错误\n\n';
   helpText += `**工具**: ${metadata.name || toolName}\n\n`;
   helpText += `**错误信息**: \`${error.message}\`\n\n`;
-  
+
   if (businessError) {
     helpText += `**错误类型**: ${businessError.description}\n\n`;
     helpText += `**解决方案**: ${businessError.solution}\n\n`;
   }
-  
-  helpText += `---\n\n`;
-  
+
+  helpText += '---\n\n';
+
   // 工具基本信息
-  helpText += `## 📋 工具信息\n\n`;
+  helpText += '## 📋 工具信息\n\n';
   if (metadata.description) {
     helpText += `**描述**: ${metadata.description}\n\n`;
   }
-  
+
   // 当前参数
   if (parameters && Object.keys(parameters).length > 0) {
-    helpText += `## 📥 当前参数\n\n`;
+    helpText += '## 📥 当前参数\n\n';
     helpText += `\`\`\`json\n${JSON.stringify(parameters, null, 2)}\n\`\`\`\n\n`;
   }
-  
+
   // 参数说明
   if (schema.parameters) {
-    helpText += `## 📝 参数说明\n\n`;
-    
+    helpText += '## 📝 参数说明\n\n';
+
     const props = schema.parameters.properties || {};
     const required = schema.parameters.required || [];
-    
+
     // 必需参数
     if (required.length > 0) {
-      helpText += `### ✅ 必需参数\n\n`;
+      helpText += '### ✅ 必需参数\n\n';
       for (const key of required) {
         const prop = props[key];
         if (prop) {
@@ -230,19 +251,19 @@ export function generateHelpInfo(toolName, error, tool, parameters = {}, busines
           if (prop.enum) {
             helpText += ` - 可选值: ${prop.enum.map(v => `\`${v}\``).join(', ')}`;
           }
-          helpText += `\n`;
+          helpText += '\n';
           if (prop.description) {
             helpText += `  > ${prop.description}\n`;
           }
         }
       }
-      helpText += `\n`;
+      helpText += '\n';
     }
-    
+
     // 可选参数
     const optional = Object.keys(props).filter(k => !required.includes(k));
     if (optional.length > 0) {
-      helpText += `### 📌 可选参数\n\n`;
+      helpText += '### 📌 可选参数\n\n';
       for (const key of optional) {
         const prop = props[key];
         if (prop) {
@@ -253,58 +274,58 @@ export function generateHelpInfo(toolName, error, tool, parameters = {}, busines
           if (prop.enum) {
             helpText += ` - 可选值: ${prop.enum.map(v => `\`${v}\``).join(', ')}`;
           }
-          helpText += `\n`;
+          helpText += '\n';
           if (prop.description) {
             helpText += `  > ${prop.description}\n`;
           }
         }
       }
-      helpText += `\n`;
+      helpText += '\n';
     }
   }
-  
+
   // 使用示例
-  helpText += `## 💡 使用示例\n\n`;
-  
+  helpText += '## 💡 使用示例\n\n';
+
   // 根据错误类型生成不同的示例
   if (error.message.includes('不支持的方法')) {
     // 方法错误，显示所有支持的方法
     if (schema.parameters && schema.parameters.properties && schema.parameters.properties.method) {
       const methodEnum = schema.parameters.properties.method.enum || [];
       if (methodEnum.length > 0) {
-        helpText += `### ❌ 错误：不支持的方法\n\n`;
-        helpText += `**支持的方法列表**：\n\n`;
+        helpText += '### ❌ 错误：不支持的方法\n\n';
+        helpText += '**支持的方法列表**：\n\n';
         methodEnum.forEach(method => {
           helpText += `- \`${method}\`\n`;
         });
-        helpText += `\n`;
+        helpText += '\n';
       }
     }
   }
-  
+
   if (error.message.includes('缺少必需参数') || error.message.includes('缺少参数')) {
     // 提取缺失的参数名
     const missingMatch = error.message.match(/缺少.*参数[：:]\s*([^\n]+)/i);
     if (missingMatch) {
       const missingParams = missingMatch[1].split(',').map(p => p.trim());
-      helpText += `### ❌ 错误：缺少必需参数\n\n`;
+      helpText += '### ❌ 错误：缺少必需参数\n\n';
       helpText += `**缺失的参数**：${missingParams.map(p => `\`${p}\``).join(', ')}\n\n`;
-      helpText += `**这些参数是必需的，必须提供**\n\n`;
+      helpText += '**这些参数是必需的，必须提供**\n\n';
     }
   }
-  
+
   // 生成正确的使用示例
-  helpText += `### ✅ 正确使用方式\n\n`;
-  helpText += `\`\`\`yaml\n`;
+  helpText += '### ✅ 正确使用方式\n\n';
+  helpText += '```yaml\n';
   helpText += `tool: tool://${toolName}\n`;
-  helpText += `mode: execute\n`;
-  helpText += `parameters:\n`;
-  
+  helpText += 'mode: execute\n';
+  helpText += 'parameters:\n';
+
   // 根据schema生成示例参数
   if (schema.parameters && schema.parameters.properties) {
     const props = schema.parameters.properties;
     const required = schema.parameters.required || [];
-    
+
     // 先添加必需参数
     for (const key of required) {
       const prop = props[key];
@@ -313,7 +334,7 @@ export function generateHelpInfo(toolName, error, tool, parameters = {}, busines
         helpText += `  ${key}: ${exampleValue}  # ${prop.description || ''}\n`;
       }
     }
-    
+
     // 添加一些常用的可选参数（最多3个）
     const optional = Object.keys(props).filter(k => !required.includes(k));
     let shownOptional = 0;
@@ -332,18 +353,18 @@ export function generateHelpInfo(toolName, error, tool, parameters = {}, busines
       }
     }
   }
-  
-  helpText += `\`\`\`\n\n`;
-  
+
+  helpText += '```\n\n';
+
   // 查看完整手册的提示
-  helpText += `---\n\n`;
-  helpText += `## 🔍 需要更多帮助？\n\n`;
-  helpText += `使用以下命令查看完整的工具手册：\n\n`;
-  helpText += `\`\`\`yaml\n`;
+  helpText += '---\n\n';
+  helpText += '## 🔍 需要更多帮助？\n\n';
+  helpText += '使用以下命令查看完整的工具手册：\n\n';
+  helpText += '```yaml\n';
   helpText += `tool: tool://${toolName}\n`;
-  helpText += `mode: manual\n`;
-  helpText += `\`\`\`\n\n`;
-  
+  helpText += 'mode: manual\n';
+  helpText += '```\n\n';
+
   return helpText;
 }
 
@@ -357,7 +378,7 @@ function generateExampleValue(key, prop) {
   if (prop.enum && prop.enum.length > 0) {
     return prop.enum[0];
   }
-  
+
   if (prop.type === 'string') {
     // 根据参数名提供更合适的示例值
     if (key.includes('path') || key.includes('url') || key.includes('file')) {
@@ -367,23 +388,22 @@ function generateExampleValue(key, prop) {
     }
     return '"示例值"';
   }
-  
+
   if (prop.type === 'number') {
     return '0';
   }
-  
+
   if (prop.type === 'boolean') {
     return 'true';
   }
-  
+
   if (prop.type === 'array') {
     return '[]';
   }
-  
+
   if (prop.type === 'object') {
     return '{}';
   }
-  
+
   return '# 请填写';
 }
-

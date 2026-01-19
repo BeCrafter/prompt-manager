@@ -6,16 +6,16 @@ import net from 'net';
  * @returns {Promise<boolean>} - 端口是否可用
  */
 export async function checkPortAvailable(port) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const server = net.createServer();
-    
+
     server.listen(port, () => {
       server.once('close', () => {
         resolve(true);
       });
       server.close();
     });
-    
+
     server.on('error', () => {
       resolve(false);
     });
@@ -44,15 +44,15 @@ export async function findAvailablePort(startPort, maxAttempts = 10) {
  * @returns {Promise<Object>} - 端口占用信息
  */
 export async function getPortInfo(port) {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const server = net.createServer();
-    
+
     server.listen(port, () => {
       server.close();
       resolve({ available: true, process: null });
     });
-    
-    server.on('error', (error) => {
+
+    server.on('error', error => {
       if (error.code === 'EADDRINUSE') {
         resolve({ available: false, error: '端口已被占用' });
       } else {

@@ -1,0 +1,24 @@
+# Ignore dependencies
+node_modules/
+
+# Ignore build output
+dist/
+build/
+
+# Ignore test coverage
+coverage/
+
+# Ignore test reports
+test-results/
+playwright-report/
+
+# Ignore generated HTML files
+html/
+
+# Ignore config files
+*.config.js
+webpack.config.js
+babel.config.js
+
+# Ignore static assets
+public/

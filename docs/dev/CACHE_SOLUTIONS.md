@@ -183,7 +183,7 @@ lsof -i :9000
 kill -9 <PID>
 
 # 或修改端口配置
-# 后端: 通过环境变量 PORT=5622
+# 后端: 通过环境变量 PORT=5621
 # 前端: 修改 webpack.config.js
 ```
 
