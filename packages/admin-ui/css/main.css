@@ -3406,9 +3406,10 @@ body.modal-open {
   align-items: center;
   justify-content: center;
   font-size: 18px;
-  background: linear-gradient(135deg, var(--primary), #6366f1);
+  background: linear-gradient(135deg, #d6d6d6, #ffffff);
   color: white;
   flex-shrink: 0;
+  border: 1px solid #e0e0e0;
 }
 
 .sidebar-item.active .sidebar-item-icon {

@@ -181,6 +181,11 @@ echo -e "${BLUE}========================================${NC}"
 echo "Rebuilding node-pty for Electron in root directory..."
 unset_npm_config && npx electron-rebuild -f -w node-pty --version=39.0.0
 
+# 清理可能存在的异常文件（比如electron-builder的特殊字符文件）
+echo "Cleaning up abnormal files..."
+node scripts/cleanup-invalid-files.js --target packages/server
+node scripts/cleanup-invalid-files.js --target app/desktop/node_modules/@becrafter/prompt-manager-core
+
 # 根据参数执行 desktop 构建
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}构建桌面应用${NC}"

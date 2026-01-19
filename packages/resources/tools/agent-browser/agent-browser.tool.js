@@ -795,7 +795,7 @@ export default {
         return { dragged: { from: params.source, to: params.target } };
 
       case 'screenshot':
-        const page = browser.getPage();
+        const screenshotPage = browser.getPage();
         const screenshotOptions = {};
         if (params.fullPage) screenshotOptions.fullPage = true;
         if (params.screenshotFormat) screenshotOptions.type = params.screenshotFormat;
@@ -806,7 +806,7 @@ export default {
           const buffer = await locator.screenshot(screenshotOptions);
           return { buffer: buffer.toString('base64'), selector: params.selector };
         } else {
-          const buffer = await page.screenshot(screenshotOptions);
+          const buffer = await screenshotPage.screenshot(screenshotOptions);
           if (params.screenshotPath) {
             const fs = await import('fs');
             fs.writeFileSync(params.screenshotPath, buffer);
@@ -908,60 +908,60 @@ export default {
 
       case 'getbyrole':
         if (params.role && params.subaction) {
-          const page = browser.getPage();
-          const locator = page.getByRole(params.role, { name: params.name });
+          const rolePage = browser.getPage();
+          const locator = rolePage.getByRole(params.role, { name: params.name });
           await this.executeSubaction(locator, params.subaction, params.value);
         }
         return { role: params.role, name: params.name };
 
       case 'getbytext':
         if (params.text && params.subaction) {
-          const page = browser.getPage();
+          const textPage = browser.getPage();
           const options = {};
           if (params.exact !== undefined) options.exact = params.exact;
-          const locator = page.getByText(params.text, options);
+          const locator = textPage.getByText(params.text, options);
           await this.executeSubaction(locator, params.subaction);
         }
         return { text: params.text };
 
       case 'getbylabel':
         if (params.label && params.subaction) {
-          const page = browser.getPage();
-          const locator = page.getByLabel(params.label);
+          const labelPage = browser.getPage();
+          const locator = labelPage.getByLabel(params.label);
           await this.executeSubaction(locator, params.subaction, params.value);
         }
         return { label: params.label };
 
       case 'getbyplaceholder':
         if (params.placeholder && params.subaction) {
-          const page = browser.getPage();
-          const locator = page.getByPlaceholder(params.placeholder);
+          const placeholderPage = browser.getPage();
+          const locator = placeholderPage.getByPlaceholder(params.placeholder);
           await this.executeSubaction(locator, params.subaction, params.value);
         }
         return { placeholder: params.placeholder };
 
       case 'getbyalttext':
         if (params.altText && params.subaction) {
-          const page = browser.getPage();
-          const locator = page.getByAltText(params.altText);
+          const altTextPage = browser.getPage();
+          const locator = altTextPage.getByAltText(params.altText);
           await this.executeSubaction(locator, params.subaction);
         }
         return { altText: params.altText };
 
       case 'getbytitle':
         if (params.name && params.subaction) {
-          const page = browser.getPage();
+          const titlePage = browser.getPage();
           const options = {};
           if (params.exact !== undefined) options.exact = params.exact;
-          const locator = page.getByTitle(params.name, options);
+          const locator = titlePage.getByTitle(params.name, options);
           await this.executeSubaction(locator, params.subaction);
         }
         return { title: params.name };
 
       case 'getbytestid':
         if (params.testId && params.subaction) {
-          const page = browser.getPage();
-          const locator = page.getByTestId(params.testId);
+          const testIdPage = browser.getPage();
+          const locator = testIdPage.getByTestId(params.testId);
           await this.executeSubaction(locator, params.subaction, params.value);
         }
         return { testId: params.testId };
@@ -1199,7 +1199,8 @@ export default {
       case 'download':
         if (params.selector && params.downloadPath) {
           const locator = browser.getLocator(params.selector);
-          const downloadPromise = page.waitForEvent('download');
+          const downloadPage = browser.getPage();
+          const downloadPromise = downloadPage.waitForEvent('download');
           await locator.click();
           const download = await downloadPromise;
           await download.saveAs(params.downloadPath);

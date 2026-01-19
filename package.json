@@ -47,6 +47,7 @@
     "format:check": "cd packages/server && npm run format:check",
     "verify": "npm run verify:publish",
     "verify:publish": "node scripts/verify-publish.js",
+    "verify:build": "node scripts/verify-build.js",
     "release:pre-check": "node scripts/pre-release-check.js",
     "release:update-version": "node scripts/update-version.js",
     "release:rollback": "node scripts/rollback-release.js rollback",
@@ -59,7 +60,6 @@
     "clean:build": "bash scripts/clean-environment.sh build-only",
     "clean:reinstall": "npm run clean && npm install",
     "test:build": "bash scripts/build.sh test-build",
-    "verify:build": "node scripts/verify-build.js",
     "postinstall": "npm rebuild node-pty && chmod +x node_modules/node-pty/prebuilds/*/pty.node node_modules/node-pty/prebuilds/*/spawn-helper 2>/dev/null || true"
   },
   "keywords": [

@@ -135,7 +135,6 @@ class PublishVerifier {
       'packages/server/server.js',
       'packages/server/app.js',
       'packages/web/index.html',
-      'packages/web/main.87af988a496a7d0216de.js',
       'env.example',
       'README.md'
     ];
@@ -146,6 +145,17 @@ class PublishVerifier {
       const fullPath = path.join(projectRoot, filePath);
       if (!fs.existsSync(fullPath)) {
         error(`Essential file missing: ${filePath}`);
+        allExist = false;
+      }
+    }
+
+    // 动态检查webpack生成的主JS文件
+    const webDir = path.join(projectRoot, 'packages/web');
+    if (fs.existsSync(webDir)) {
+      const files = fs.readdirSync(webDir);
+      const mainJsFile = files.find(file => file.startsWith('main.') && file.endsWith('.js'));
+      if (!mainJsFile) {
+        error('Essential file missing: packages/web/main.*.js (webpack main bundle)');
         allExist = false;
       }
     }

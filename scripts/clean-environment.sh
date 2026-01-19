@@ -129,6 +129,10 @@ cleanup_temp_files() {
     find . -name "*.temp" -type f -delete 2>/dev/null || true
     find . -name "*~" -type f -delete 2>/dev/null || true
 
+    # 删除可能由构建过程产生的异常文件（比如electron-builder的特殊字符文件）
+    node scripts/cleanup-invalid-files.js --target packages/server 2>/dev/null || true
+    node scripts/cleanup-invalid-files.js --target app/desktop/node_modules/@becrafter/prompt-manager-core 2>/dev/null || true
+
     log_success "临时文件清理完成"
 }
 
