@@ -69,7 +69,6 @@ async function main() {
     // 加载提示词
     await promptManager.loadPrompts();
     console.log('加载的提示词数量：', promptManager.getPrompts().length);
-
   } catch (error) {
     console.error('错误：', error);
   }
@@ -100,12 +99,12 @@ startServer({
     promptsDir: './prompts'
   }
 })
-.then(() => {
-  console.log('服务器已启动');
-})
-.catch(err => {
-  console.error('启动失败：', err);
-});
+  .then(() => {
+    console.log('服务器已启动');
+  })
+  .catch(err => {
+    console.error('启动失败：', err);
+  });
 
 // 监听退出信号
 process.on('SIGINT', async () => {
@@ -117,6 +116,7 @@ process.on('SIGINT', async () => {
 ## 主要导出
 
 ### 服务器管理
+
 - `startServer(options)` - 启动服务器
 - `stopServer()` - 停止服务器
 - `getServerState()` - 获取服务器状态
@@ -124,6 +124,7 @@ process.on('SIGINT', async () => {
 - `isServerRunning()` - 检查服务器是否运行
 
 ### 核心对象
+
 - `app` - Express 应用实例
 - `config` - 配置管理器
 - `logger` - 日志记录器
@@ -131,14 +132,17 @@ process.on('SIGINT', async () => {
 - `promptManager` - 提示词管理器
 
 ### MCP 支持
+
 - `getMcpServer()` - 获取 MCP 服务器实例
 - `handleGetPrompt`, `handleSearchPrompts`, `handleReloadPrompts` - MCP 处理函数
 
 ### API 路由
+
 - `adminRouter` - 管理 API 路由
 - `openRouter` - 开放 API 路由
 
 ### 中间件
+
 - `adminAuthMiddleware` - 管理员认证中间件
 
 ## 构建

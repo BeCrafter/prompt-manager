@@ -1,0 +1,40 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-01-11",
+
+  "authors": {
+    "becrafter": {
+      "name": "BeCrafter",
+      "github": "https://github.com/BeCrafter",
+      "homepage": "https://github.com/BeCrafter",
+      "bio": "让AI提示词管理变得简单而强大",
+      "featured": true,
+      "sort_order": 1,
+      "aliases": ["默认", "空", "Prompt Manager", "prompt-manager", "system", "promptmanager"]
+    },
+
+    "luban": {
+      "name": "鲁班",
+      "github": "https://github.com/Deepractice",
+      "homepage": "https://github.com/Deepractice",
+      "bio": "Prompt Manager 工具开发大师 | AI Agent 工具集创造者",
+      "featured": true,
+      "sort_order": 2
+    },
+
+    "nuwa": {
+      "name": "女娲",
+      "github": "https://github.com/Deepractice",
+      "homepage": "https://github.com/Deepractice",
+      "bio": "AI角色创造专家 | Prompt Manager 角色系统设计者",
+      "featured": true,
+      "sort_order": 3
+    }
+  },
+
+  "settings": {
+    "default_author": "becrafter",
+    "cache_avatar_hours": 24,
+    "default_avatar_emoji": "👤"
+  }
+}

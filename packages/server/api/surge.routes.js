@@ -19,18 +19,17 @@ const surgeProxy = createProxyMiddleware({
   // 当路由已经去除了 /surge 前缀后，路径变为 /test_prompts.json
   // 我们需要将其重写为 /assets/test_prompts.json
   pathRewrite: {
-    '^/': '/assets/',  // 将 / 开头的路径重写为 /assets/ 开头
+    '^/': '/assets/' // 将 / 开头的路径重写为 /assets/ 开头
   },
   // 设置代理请求头
-  onProxyReq: (proxyReq, req, res) => {
+  onProxyReq: (_proxyReq, _req, _res) => {
     // 可以在这里添加自定义逻辑，如设置请求头等
-    console.log(`代理请求: ${req.method} ${req.url} -> ${surgeTarget}${req.url.replace(/^\/(.*)/, '/assets/$1')}`);
   },
-  onProxyRes: (proxyRes, req, res) => {
+  onProxyRes: (proxyRes, _req, _res) => {
     // 可以在这里添加自定义逻辑，如修改响应头等
     proxyRes.headers['surge-proxy'] = 'enabled';
   },
-  onError: (err, req, res) => {
+  onError: (err, _req, res) => {
     console.error('Surge 代理错误:', err);
     res.status(500).send('代理错误');
   }

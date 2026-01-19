@@ -80,14 +80,14 @@ describe('核心库导入测试', () => {
   it('服务器状态函数应该正常工作', async () => {
     expect(typeof coreModules.getServerAddress).toBe('function');
     expect(typeof coreModules.isServerRunning).toBe('function');
-    
+
     // 测试函数调用
     const state = coreModules.getServerState();
     expect(typeof state).toBe('object');
-    
+
     const address = coreModules.getServerAddress();
     expect(typeof address).toBe('string');
-    
+
     const isRunning = await coreModules.isServerRunning();
     expect(typeof isRunning).toBe('boolean');
   });

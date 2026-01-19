@@ -73,9 +73,8 @@ console.log('Prompt:', prompt);
 
 // Search prompts
 const searchTerm = 'search term';
-const searchResults = prompts.filter(prompt => 
-  prompt.name.includes(searchTerm) || 
-  (prompt.description && prompt.description.includes(searchTerm))
+const searchResults = prompts.filter(
+  prompt => prompt.name.includes(searchTerm) || (prompt.description && prompt.description.includes(searchTerm))
 );
 ```
 

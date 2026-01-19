@@ -62,7 +62,10 @@ jobs:
           sed -i "s/| \`MCP_SERVER_VERSION\` | 服务器版本 | \`.*\` |/| \`MCP_SERVER_VERSION\` | 服务器版本 | \`${{ steps.get_version.outputs.VERSION }}\` |/" README.md
 
           # 更新 config.js 中的默认版本（使用双引号避免单引号嵌套问题）
-          sed -i "s/this\.serverVersion = process\.env\.MCP_SERVER_VERSION || '[^']*';/this.serverVersion = process.env.MCP_SERVER_VERSION || '${{ steps.get_version.outputs.VERSION }}';/g" packages/server/utils/config.js
+          # sed -i "s/this\.serverVersion = process\.env\.MCP_SERVER_VERSION || '[^']*';/this.serverVersion = process.env.MCP_SERVER_VERSION || '${{ steps.get_version.outputs.VERSION }}';/g" packages/server/utils/config.js
+
+          # 更新 config.js 中的硬编码版本号（作为兜底默认值）
+          sed -i "s/this\.serverVersion = '[^']*';/this.serverVersion = '${{ steps.get_version.outputs.VERSION }}';/g" packages/server/utils/config.js
 
       - name: Update version with jq
         run: |

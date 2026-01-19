@@ -2,7 +2,7 @@
 
 /**
  * 文档生成脚本
- * 
+ *
  * 自动生成JSDoc和TypeDoc文档，并创建索引页面
  */
 
@@ -51,7 +51,7 @@ function info(msg) {
  */
 async function cleanDocsDir() {
   const docsDir = path.join(projectRoot, 'docs');
-  
+
   try {
     await fs.remove(docsDir);
     await fs.ensureDir(docsDir);
@@ -68,15 +68,15 @@ async function cleanDocsDir() {
 async function generateJSDoc() {
   try {
     info('生成JSDoc文档...');
-    
+
     const jsdocConfig = path.join(projectRoot, 'jsdoc.conf.json');
     const command = `npx jsdoc -c ${jsdocConfig}`;
-    
-    execSync(command, { 
+
+    execSync(command, {
       cwd: projectRoot,
       stdio: 'inherit'
     });
-    
+
     success('JSDoc文档生成完成');
   } catch (err) {
     error(`JSDoc文档生成失败: ${err.message}`);
@@ -90,7 +90,7 @@ async function generateJSDoc() {
 async function generateAPIIndex() {
   try {
     info('生成API文档索引...');
-    
+
     const indexPath = path.join(projectRoot, 'docs', 'index.md');
     const content = `# Prompt Manager API 文档
 
@@ -155,13 +155,13 @@ async function generateAPIIndex() {
 async function generateChangelog() {
   try {
     info('生成变更日志...');
-    
+
     const changelogPath = path.join(projectRoot, 'docs', 'CHANGELOG.md');
-    
+
     // 尝试从git获取最近的提交
     let recentCommits = '';
     try {
-      const gitLog = execSync('git log --oneline -10', { 
+      const gitLog = execSync('git log --oneline -10', {
         cwd: projectRoot,
         encoding: 'utf8'
       });
@@ -174,7 +174,7 @@ async function generateChangelog() {
 
 ## 最近更新
 
-${recentCommits ? '### 最近提交\n\n```\n' + recentCommits + '\n```\n\n' : ''}
+${recentCommits ? `### 最近提交\n\n\`\`\`\n${recentCommits}\n\`\`\`\n\n` : ''}
 
 ## 版本历史
 
@@ -211,9 +211,9 @@ ${recentCommits ? '### 最近提交\n\n```\n' + recentCommits + '\n```\n\n' : ''
 async function generateStats() {
   try {
     info('生成项目统计信息...');
-    
+
     const statsPath = path.join(projectRoot, 'docs', 'stats.json');
-    
+
     // 收集统计信息
     const stats = {
       generatedAt: new Date().toISOString(),
@@ -238,7 +238,7 @@ async function generateStats() {
       try {
         const files = await fs.readdir(dir, { withFileTypes: true });
         let count = 0;
-        
+
         for (const file of files) {
           const fullPath = path.join(dir, file.name);
           if (file.isDirectory()) {
@@ -272,23 +272,22 @@ async function main() {
   log('\n╔════════════════════════════════════════════════════════╗', 'cyan');
   log('║           Prompt Manager 文档生成工具                   ║', 'cyan');
   log('╚════════════════════════════════════════════════════════╝', 'cyan');
-  
+
   try {
     await cleanDocsDir();
     await generateJSDoc();
     await generateAPIIndex();
     await generateChangelog();
     await generateStats();
-    
+
     log('\n╔════════════════════════════════════════════════════════╗', 'green');
     log('║                    🎉 生成完成！                        ║', 'green');
     log('╚════════════════════════════════════════════════════════╝', 'green');
-    
+
     log('\n📚 文档位置:', 'blue');
     log(`  JSDoc: ${path.join(projectRoot, 'docs', 'jsdoc', 'index.html')}`, 'blue');
     log(`  TypeDoc: ${path.join(projectRoot, 'docs', 'typedoc', 'index.html')}`, 'blue');
     log(`  索引: ${path.join(projectRoot, 'docs', 'index.md')}`, 'blue');
-    
   } catch (error) {
     log('\n❌ 文档生成失败:', 'red');
     log(error.message, 'red');

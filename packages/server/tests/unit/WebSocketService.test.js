@@ -43,7 +43,8 @@ describe('WebSocketService', () => {
     // Mock WebSocket Server
     mockWss = {
       on: vi.fn(),
-      close: vi.fn()
+      close: vi.fn(),
+      address: vi.fn().mockReturnValue({ port: 8081 })
     };
     WebSocketServer.mockImplementation(() => mockWss);
 
@@ -79,7 +80,7 @@ describe('WebSocketService', () => {
   describe('constructor', () => {
     it('应该使用默认选项初始化', () => {
       const service = new WebSocketService();
-      expect(service.options.port).toBe(8081);
+      expect(service.options.port).toBe(0); // 0 表示动态端口
       expect(service.options.maxConnections).toBe(100);
       expect(service.connections.size).toBe(0);
       expect(service.isRunning).toBe(false);
@@ -109,15 +110,15 @@ describe('WebSocketService', () => {
       });
 
       const startPromise = webSocketService.start();
-      
+
       // 触发listening事件
       listeningCallback();
-      
+
       await startPromise;
-      
+
       expect(webSocketService.isRunning).toBe(true);
       expect(WebSocketServer).toHaveBeenCalledWith({
-        port: 8081,
+        port: 8081, // 测试中使用的固定端口
         host: '0.0.0.0',
         maxConnections: 5
       });
@@ -128,7 +129,7 @@ describe('WebSocketService', () => {
 
     it('应该在已经运行时抛出错误', async () => {
       webSocketService.isRunning = true;
-      
+
       await expect(webSocketService.start()).rejects.toThrow('WebSocket service is already running');
     });
 
@@ -166,9 +167,9 @@ describe('WebSocketService', () => {
 
     it('应该在未运行时不执行任何操作', async () => {
       webSocketService.isRunning = false;
-      
+
       await webSocketService.stop();
-      
+
       expect(mockWss.close).not.toHaveBeenCalled();
     });
   });
@@ -193,9 +194,7 @@ describe('WebSocketService', () => {
       webSocketService.handleConnection(mockWs, mockRequest);
 
       expect(webSocketService.connections.size).toBe(1);
-      expect(mockWs.send).toHaveBeenCalledWith(
-        expect.stringContaining('"type":"welcome"')
-      );
+      expect(mockWs.send).toHaveBeenCalledWith(expect.stringContaining('"type":"welcome"'));
     });
 
     it('应该在超过最大连接数时拒绝连接', () => {
@@ -205,7 +204,7 @@ describe('WebSocketService', () => {
       }
 
       webSocketService.handleConnection(mockWs, {});
-      
+
       expect(mockWs.close).toHaveBeenCalledWith(1013, 'Server overload');
       expect(webSocketService.connections.size).toBe(5);
     });
@@ -214,24 +213,22 @@ describe('WebSocketService', () => {
   describe('broadcast', () => {
     beforeEach(() => {
       // 添加模拟连接
-      const connection1 = { 
+      const connection1 = {
         send: vi.fn(),
         ws: { readyState: 1, OPEN: 1 }
       };
-      const connection2 = { 
+      const connection2 = {
         send: vi.fn(),
         ws: { readyState: 1, OPEN: 1 }
       };
-      
+
       webSocketService.connections.set('client1', connection1);
       webSocketService.connections.set('client2', connection2);
     });
 
     it('应该向所有连接广播消息', () => {
-      const message = { type: 'test', data: 'broadcast data' };
-      
       webSocketService.broadcast('test', { data: 'broadcast data' });
-      
+
       const connections = Array.from(webSocketService.connections.values());
       expect(connections[0].send).toHaveBeenCalledWith('test', { data: 'broadcast data' });
       expect(connections[1].send).toHaveBeenCalledWith('test', { data: 'broadcast data' });
@@ -241,12 +238,12 @@ describe('WebSocketService', () => {
   describe('getStatus', () => {
     it('应该返回正确的服务状态', () => {
       webSocketService.isRunning = true;
-      webSocketService.options.port = 8081;
+      webSocketService.actualPort = 8081; // 使用实际分配的端口
       webSocketService.options.host = '0.0.0.0';
       webSocketService.options.maxConnections = 5;
 
       // 添加一个活跃连接
-      const activeConnection = { 
+      const activeConnection = {
         ws: { readyState: 1, OPEN: 1 } // WebSocket.OPEN
       };
       webSocketService.connections.set('active', activeConnection);
@@ -322,9 +319,7 @@ describe('WebSocketConnection', () => {
       const messageHandler = mockWs.on.mock.calls.find(call => call[0] === 'message')[1];
       messageHandler(JSON.stringify(message));
 
-      expect(mockWs.send).toHaveBeenCalledWith(
-        expect.stringContaining('"type":"pong"')
-      );
+      expect(mockWs.send).toHaveBeenCalledWith(expect.stringContaining('"type":"pong"'));
     });
 
     it('应该处理未知消息类型', () => {
@@ -333,22 +328,20 @@ describe('WebSocketConnection', () => {
       const messageHandler = mockWs.on.mock.calls.find(call => call[0] === 'message')[1];
       messageHandler(JSON.stringify(message));
 
-      expect(mockWs.send).toHaveBeenCalledWith(
-        expect.stringContaining('"type":"error"')
-      );
+      expect(mockWs.send).toHaveBeenCalledWith(expect.stringContaining('"type":"error"'));
     });
   });
 
   describe('send', () => {
     it('应该发送消息', () => {
       const data = { test: 'data' };
-      
+
       connection.send('test', data);
 
       // 检查 mockWs.send 被调用，并验证调用参数包含正确的 JSON 结构
       expect(mockWs.send).toHaveBeenCalledTimes(1);
       const sentMessage = JSON.parse(mockWs.send.mock.calls[0][0]);
-      
+
       expect(sentMessage.type).toBe('test');
       expect(sentMessage.clientId).toBe('test-client');
       expect(sentMessage.test).toBe('data');
@@ -357,9 +350,9 @@ describe('WebSocketConnection', () => {
 
     it('应该在连接未打开时不发送消息', () => {
       mockWs.readyState = 0; // WebSocket.CONNECTING
-      
+
       connection.send('test', { data: 'test' });
-      
+
       expect(mockWs.send).not.toHaveBeenCalled();
     });
   });
@@ -371,7 +364,7 @@ describe('WebSocketConnection', () => {
       // 检查 mockWs.send 被调用，并验证调用参数包含正确的 JSON 结构
       expect(mockWs.send).toHaveBeenCalledTimes(1);
       const sentMessage = JSON.parse(mockWs.send.mock.calls[0][0]);
-      
+
       expect(sentMessage.type).toBe('error');
       expect(sentMessage.clientId).toBe('test-client');
       expect(sentMessage.message).toBe('Test error');

@@ -1,0 +1,17 @@
+# Ignore packaged and generated files
+html/
+dist/
+coverage/
+test-results/
+playwright-report/
+
+# Ignore dependencies
+node_modules/
+
+# Ignore config files
+*.config.js
+webpack.config.js
+babel.config.js
+
+# Ignore static assets
+public/

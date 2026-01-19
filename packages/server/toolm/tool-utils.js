@@ -17,4 +17,3 @@ export async function pathExists(filePath) {
     return false;
   }
 }
-

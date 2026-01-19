@@ -82,14 +82,14 @@ module.exports = (env, argv) => {
         filename: 'index.html'
       }),
       
-      new CopyWebpackPlugin({
-        patterns: [
-          // 复制所有 CSS 文件
-          { from: 'css/codemirror.css', to: 'css/' },
-          { from: 'css/codemirror-theme_xq-light.css', to: 'css/' },
-          { from: 'css/terminal-fix.css', to: 'css/' },
-        ],
-      }),
+       new CopyWebpackPlugin({
+         patterns: [
+           { from: 'css/codemirror.css', to: 'css/' },
+           { from: 'css/codemirror-theme_xq-light.css', to: 'css/' },
+           { from: 'css/terminal.css', to: 'css/' },
+           { from: 'css/main.css', to: 'css/' },
+         ],
+       }),
       
       new MiniCssExtractPlugin({
         filename: 'css/[name].[contenthash].css',

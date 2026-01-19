@@ -2,7 +2,7 @@
 
 // 导入样式
 import '../css/main.css';
-import '../css/terminal-fix.css';
+import '../css/terminal.css';
 import '../css/recommended-prompts.css';
 import '../css/markdown.css';
 import '../css/optimization.css';
@@ -107,11 +107,36 @@ let currentNav = 'prompts';
 // 终端组件实例
 let terminalComponent = null;
 
+// 初始化后端URL
 const API_HOST = getBackendUrl();
+console.log('🚀 前端应用启动调试信息:');
+console.log('  API_HOST:', API_HOST);
+console.log('  window.location.origin:', window.location.origin);
+console.log('  process.env.HTTP_PORT:', process.env.HTTP_PORT);
 
 // API 基础配置
 const API_BASE = `${API_HOST}/adminapi`;
 const API_SURGE = `${API_HOST}/surge/`;
+console.log('  API_BASE:', API_BASE);
+
+// 测试后端连接
+async function testBackendConnection() {
+  try {
+    console.log('🔍 测试后端连接...');
+    const response = await fetch(`${API_BASE}/config/public`);
+    const data = await response.json();
+    console.log('✅ 后端连接成功:', data);
+    return true;
+  } catch (error) {
+    console.error('❌ 后端连接失败:', error);
+    return false;
+  }
+}
+
+// 页面加载完成后测试连接
+window.addEventListener('load', () => {
+  setTimeout(testBackendConnection, 1000);
+});
 
 /**
  * 初始化 DOM 组件
@@ -5779,6 +5804,7 @@ async function loadToolsData() {
       version: tool.version || '1.0.0',
       category: tool.category || 'utility',
       author: tool.author || 'Unknown',
+      author_info: tool.author_info || {},
       tags: Array.isArray(tool.tags) ? tool.tags : [],
       scenarios: Array.isArray(tool.scenarios) ? tool.scenarios : [],
       limitations: Array.isArray(tool.limitations) ? tool.limitations : []
@@ -5949,7 +5975,6 @@ function createToolCard(tool) {
     <div class="tool-card" data-tool-id="${tool.id}">
       <div class="tool-card-header">
         <h3 class="tool-card-title">
-          <div class="tool-card-icon">${tool.name.charAt(0).toUpperCase()}</div>
           ${tool.name}
         </h3>
         <span class="tool-card-version">v${tool.version}</span>
@@ -5964,7 +5989,18 @@ function createToolCard(tool) {
       ${metaHtml}
       
       <div class="tool-card-footer">
-        <div class="tool-card-author">${tool.author}</div>
+        <div class="tool-card-author">
+          ${tool.author_info && tool.author_info.avatar_url ? `
+            <div class="tool-card-author-avatar">
+              <img src="${tool.author_info.avatar_url}" 
+                   alt="${tool.author}"
+                   onerror="this.onerror=null;this.parentElement.innerHTML='${tool.author.charAt(0)}'">
+            </div>
+          ` : `
+            <div class="tool-card-author-avatar tool-card-author-avatar-default">${tool.author.charAt(0)}</div>
+          `}
+          <span>${tool.author}</span>
+        </div>
         <div class="tool-card-actions">
           <button class="tool-card-action">详情</button>
         </div>
@@ -6139,31 +6175,51 @@ function showAuthorView() {
   
   authorView.style.display = 'flex';
   
-  // 按作者分组
   const authors = {};
   toolsData.forEach(tool => {
     if (!authors[tool.author]) {
+      const authorInfo = tool.author_info || {};
       authors[tool.author] = {
         name: tool.author,
         tools: [],
-        avatar: getAuthorAvatar(tool.author),
-        bio: getAuthorBio(tool.author),
-        role: getAuthorRole(tool.author)
+        author_info: authorInfo
       };
     }
     authors[tool.author].tools.push(tool);
   });
   
-  // 渲染侧边栏作者列表
-  authorSidebar.innerHTML = Object.values(authors).map(author => `
-    <div class="sidebar-item ${selectedAuthor === author.name ? 'active' : ''}" data-author="${author.name}">
-      <div class="sidebar-item-icon">${author.avatar}</div>
-      <div class="sidebar-item-content">
-        <div class="sidebar-item-name">${author.name}</div>
-        <div class="sidebar-item-count">${author.tools.length} 个工具</div>
+  const sortedAuthors = Object.values(authors).sort((a, b) => {
+    const aInfo = a.author_info || {};
+    const bInfo = b.author_info || {};
+    return (aInfo.sort_order || 999) - (bInfo.sort_order || 999);
+  });
+  
+  authorSidebar.innerHTML = sortedAuthors.map(author => {
+    const authorInfo = author.author_info || {};
+    const hasGitHubAvatar = authorInfo.avatar_url && authorInfo.avatar_url.length > 0;
+    
+    const avatarHtml = hasGitHubAvatar
+      ? `<img src="${authorInfo.avatar_url}" 
+           alt="${authorInfo.name}"
+           class="sidebar-item-avatar-img"
+           onload="this.classList.add('loaded')"
+           onerror="this.classList.add('hidden')">
+        <span class="sidebar-item-avatar-fallback">${authorInfo.name ? authorInfo.name.charAt(0) : author.name.charAt(0)}</span>`
+      : `<span class="sidebar-item-avatar-fallback">${authorInfo.name ? authorInfo.name.charAt(0) : author.name.charAt(0)}</span>`;
+
+    return `
+      <div class="sidebar-item ${selectedAuthor === author.name ? 'active' : ''}" data-author="${author.name}">
+        <div class="sidebar-item-avatar">${avatarHtml}</div>
+        <div class="sidebar-item-content">
+          <div class="sidebar-item-name">
+            ${author.name}
+            ${authorInfo.featured ? '<span class="featured-badge">⭐</span>' : ''}
+          </div>
+          <div class="sidebar-item-count">${author.tools.length} 个工具</div>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
   
   // 绑定侧边栏项目点击事件
   authorSidebar.querySelectorAll('.sidebar-item').forEach(item => {
@@ -6176,9 +6232,56 @@ function showAuthorView() {
   // 如果有选中的作者，显示对应的工具
   if (selectedAuthor && authors[selectedAuthor]) {
     const author = authors[selectedAuthor];
+    const authorInfo = author.author_info || {};
+
+    const avatarHtml = authorInfo.avatar_url && authorInfo.avatar_url.length > 0
+      ? `<img src="${authorInfo.avatar_url}" 
+           alt="${authorInfo.name}"
+           class="author-header-avatar-img"
+           onload="this.classList.add('loaded')"
+           onerror="this.classList.add('hidden')">
+        <span class="author-header-avatar-fallback">${authorInfo.name ? authorInfo.name.charAt(0) : author.name.charAt(0)}</span>`
+      : `<span class="author-header-avatar-fallback">${authorInfo.name ? authorInfo.name.charAt(0) : author.name.charAt(0)}</span>`;
+
+    const githubLink = authorInfo.github 
+      ? `<a href="${authorInfo.github}" target="_blank" class="author-header-github-link" title="GitHub">
+           <svg width="20" height="20" viewBox="0 0 24 24" fill="#6c757d">
+             <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+           </svg>
+         </a>`
+      : '';
+
+    const homepageLink = authorInfo.homepage && authorInfo.homepage !== authorInfo.github
+      ? `<a href="${authorInfo.homepage}" target="_blank" class="author-header-homepage-link" title="主页">
+           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="" stroke-width="2">
+             <circle cx="12" cy="12" r="10"/>
+             <line x1="2" y1="12" x2="22" y2="12"/>
+             <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+           </svg>
+         </a>`
+      : '';
+
     authorContentHeader.innerHTML = `
-      <h3>${author.name}</h3>
-      <div style="font-size: 14px; color: var(--gray); margin-top: 8px;">${author.role} · ${author.bio}</div>
+      <div class="author-header">
+        <div class="author-header-avatar-wrapper">
+          <div class="author-header-avatar">
+            ${avatarHtml}
+          </div>
+        </div>
+        <div class="author-header-info">
+          <div class="author-header-title-row">
+            <h3>
+              ${author.name}
+              ${githubLink ? `<span class="author-header-github-inline">${githubLink}</span>` : ''}
+            </h3>
+          </div>
+          <div class="author-header-bio">${authorInfo.bio || author.role || '开发者'}</div>
+          <!--<div class="author-header-stats">
+            <span class="author-header-tool-count">${author.tools.length} 个工具</span>
+            ${homepageLink ? `<span class="author-header-homepage-inline">${homepageLink}</span>` : ''}
+          </div>-->
+        </div>
+      </div>
     `;
     authorContentGrid.innerHTML = author.tools.map(tool => createToolCard(tool)).join('');
     
@@ -6221,7 +6324,6 @@ function selectAuthor(author) {
   showAuthorView();
 }
 
-// 获取类别图标
 function getCategoryIcon(category) {
   const icons = {
     'utility': '🔧',
@@ -6232,36 +6334,6 @@ function getCategoryIcon(category) {
     'automation': '⚡'
   };
   return icons[category] || '📦';
-}
-
-// 获取作者头像
-function getAuthorAvatar(author) {
-  const avatars = {
-    'Prompt Manager': 'PM',
-    'Document Team': 'DT',
-    'Development Team': 'DT'
-  };
-  return avatars[author] || author.charAt(0).toUpperCase();
-}
-
-// 获取作者简介
-function getAuthorBio(author) {
-  const bios = {
-    'Prompt Manager': '专注于提供高质量的提示词管理工具和解决方案',
-    'Document Team': '专注于文档处理和内容管理工具的开发',
-    'Development Team': '专注于开发工具和自动化解决方案'
-  };
-  return bios[author] || '开发者';
-}
-
-// 获取作者角色
-function getAuthorRole(author) {
-  const roles = {
-    'Prompt Manager': '核心开发团队',
-    'Document Team': '文档专家',
-    'Development Team': '开发工程师'
-  };
-  return roles[author] || '开发者';
 }
 
 // 获取总下载量（模拟数据）

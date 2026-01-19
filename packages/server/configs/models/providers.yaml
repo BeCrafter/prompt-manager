@@ -44,7 +44,7 @@ providers:
   custom:
     name: 自定义
     description: 自定义 API 端点
-    defaultModel: ""
-    defaultEndpoint: ""
-    website: ""
+    defaultModel: ''
+    defaultEndpoint: ''
+    website: ''
     models: []
