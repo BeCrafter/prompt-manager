@@ -107,6 +107,12 @@ npm run check:deps
 
 # Check development environment
 npm run check:env
+
+# Clean environment cache and dependencies (recommended when encountering build issues)
+npm run clean           # Full environment cleanup
+npm run clean:cache     # Clean only caches
+npm run clean:deps      # Clean and reinstall dependencies
+npm run clean:build     # Clean build artifacts only
 ```
 
 ## Code Style Guidelines
@@ -626,7 +632,7 @@ timeoutService.cleanupInactiveSessions();
         └── package-lock.json
 ```
 
-**Complete Cleanup Command**:
+**Complete Cleanup Command** (Legacy):
 ```bash
 # Remove all node_modules and lockfiles
 rm -rf node_modules package-lock.json
@@ -640,6 +646,17 @@ npm cache clean --force
 # Reinstall all dependencies
 npm install
 cd packages/admin-ui && npm install
+```
+
+**Recommended Cleanup Command** (New):
+```bash
+# One-command full environment cleanup (recommended)
+npm run clean
+
+# Or selective cleanup
+npm run clean:deps    # Clean and reinstall dependencies only
+npm run clean:cache   # Clean caches only
+npm run clean:build   # Clean build artifacts only
 ```
 
 **How to Avoid Cache Issues**:

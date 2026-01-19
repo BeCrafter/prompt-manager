@@ -53,6 +53,11 @@
     "check:deps": "bash scripts/check-dependencies.sh",
     "check:env": "bash scripts/check-env.sh",
     "setup:env": "node scripts/preinstall-check.js",
+    "clean": "bash scripts/clean-environment.sh",
+    "clean:cache": "bash scripts/clean-environment.sh cache-only",
+    "clean:deps": "bash scripts/clean-environment.sh deps-only",
+    "clean:build": "bash scripts/clean-environment.sh build-only",
+    "clean:reinstall": "npm run clean && npm install",
     "test:build": "bash scripts/build.sh test-build",
     "verify:build": "node scripts/verify-build.js",
     "postinstall": "npm rebuild node-pty && chmod +x node_modules/node-pty/prebuilds/*/pty.node node_modules/node-pty/prebuilds/*/spawn-helper 2>/dev/null || true"
