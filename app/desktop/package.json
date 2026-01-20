@@ -38,8 +38,12 @@
     "appId": "com.becrafter.promptserver",
     "productName": "Prompt Manager",
     "icon": "assets/icons/icon.png",
-    "npmRebuild": false,
+    "npmRebuild": true,
     "buildDependenciesFromSource": false,
+    "asarUnpack": [
+      "**/node-pty/**"
+    ],
+    "afterPack": "build/after-pack.cjs",
     "files": [
       "**/*",
       "assets/**/*",
@@ -49,14 +53,7 @@
       "!node_modules/**/test/**",
       "!node_modules/**/example/**",
       "!node_modules/**/*.md",
-      "!node_modules/**/LICENSE",
-      {
-        "from": "../../packages/web/",
-        "to": "web/",
-        "filter": [
-          "**/*"
-        ]
-      }
+      "!node_modules/**/LICENSE"
     ],
     "directories": {
       "output": "../../dist",
@@ -77,6 +74,13 @@
       {
         "from": "../../packages/server/configs/",
         "to": "runtime/configs/"
+      },
+      {
+        "from": "../../packages/web/",
+        "to": "web/",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "mac": {

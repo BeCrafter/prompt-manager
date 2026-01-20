@@ -397,11 +397,17 @@ export class Util {
 
     // 检查是否是打包应用
     if (isElectron && process.resourcesPath) {
+      const resourcesWebPath = path.join(process.resourcesPath, 'web');
+      if (this._pathExistsSync(resourcesWebPath)) {
+        console.log('📦 Using Electron resources path:', resourcesWebPath);
+        return resourcesWebPath;
+      }
+
       const ourAppAsar = path.join(process.resourcesPath, 'app.asar');
-      if (fs.existsSync(ourAppAsar)) {
-        const asarPath = path.join(process.resourcesPath, 'app.asar', 'web');
-        console.log('📦 Using Electron ASAR path:', asarPath);
-        return asarPath;
+      const asarWebPath = path.join(process.resourcesPath, 'app.asar', 'web');
+      if (fs.existsSync(ourAppAsar) && this._pathExistsSync(asarWebPath)) {
+        console.log('📦 Using Electron ASAR path:', asarWebPath);
+        return asarWebPath;
       }
     }
 

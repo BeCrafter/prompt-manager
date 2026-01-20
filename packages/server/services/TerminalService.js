@@ -8,8 +8,10 @@
 import { spawn } from 'child_process';
 import { randomUUID } from 'crypto';
 import { logger } from '../utils/logger.js';
+import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { fileURLToPath } from 'url';
 
 // 延迟加载 node-pty，避免编译错误
 let pty = null;
@@ -244,22 +246,19 @@ export class TerminalService {
    */
   async fixNodePtyPermissions() {
     try {
-      const { execSync } = await import('child_process');
       const platform = process.platform;
 
       // 只在 Unix-like 系统上修复权限（macOS, Linux）
       if (platform !== 'win32') {
         logger.info('🔧 检查并修复 node-pty 二进制文件权限...');
 
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = path.dirname(__filename);
+
         // 尝试多个可能的 node-pty 路径
         const possiblePaths = [
           // 路径1: 在包的 node_modules 中（开发环境）
-          path.join(
-            path.dirname(path.dirname(new URL(import.meta.url).pathname)),
-            'node_modules',
-            'node-pty',
-            'prebuilds'
-          ),
+          path.join(path.dirname(__dirname), 'node_modules', 'node-pty', 'prebuilds'),
           // 路径2: 在根 node_modules 中（npm 安装环境）
           path.join(process.cwd(), 'node_modules', 'node-pty', 'prebuilds'),
           // 路径3: 相对于当前工作目录
@@ -274,8 +273,16 @@ export class TerminalService {
           )
         ];
 
+        // 路径4: Electron 打包环境（app.asar.unpacked / resources）
+        if (process.resourcesPath) {
+          possiblePaths.push(
+            path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', 'node-pty', 'prebuilds'),
+            path.join(process.resourcesPath, 'app.asar.unpacked', 'app', 'node_modules', 'node-pty', 'prebuilds'),
+            path.join(process.resourcesPath, 'node_modules', 'node-pty', 'prebuilds')
+          );
+        }
+
         let ptyPath = null;
-        const fs = await import('fs');
 
         for (const possiblePath of possiblePaths) {
           if (fs.existsSync(possiblePath)) {
@@ -286,14 +293,27 @@ export class TerminalService {
 
         if (ptyPath) {
           try {
-            // 添加执行权限 - 使用 find 命令来处理所有平台
-            execSync(
-              `find ${ptyPath} -type f -name "*.node" -o -name "spawn-helper" | xargs chmod +x 2>/dev/null || true`,
-              {
-                stdio: 'pipe',
-                timeout: 5000
+            // 递归修复 .node 与 spawn-helper 权限，避免空格路径问题
+            const fixPermissionsRecursive = async targetPath => {
+              const entries = await fs.promises.readdir(targetPath, { withFileTypes: true });
+              for (const entry of entries) {
+                const entryPath = path.join(targetPath, entry.name);
+                if (entry.isDirectory()) {
+                  await fixPermissionsRecursive(entryPath);
+                  continue;
+                }
+
+                if (entry.isFile() && (entry.name.endsWith('.node') || entry.name === 'spawn-helper')) {
+                  try {
+                    await fs.promises.chmod(entryPath, 0o755);
+                  } catch (error) {
+                    logger.debug(`node-pty 权限修复失败: ${entryPath} - ${error.message}`);
+                  }
+                }
               }
-            );
+            };
+
+            await fixPermissionsRecursive(ptyPath);
             logger.info('✅ node-pty 权限修复完成');
           } catch (error) {
             // 静默失败，不影响服务启动
@@ -674,8 +694,8 @@ export class TerminalService {
 
     for (const session of this.sessions.values()) {
       if (!session.isActive || now - session.lastActivity > timeoutMs) {
-        logger.info(`Cleaning up inactive session: ${session.sessionId}`);
-        this.removeSession(session.sessionId);
+        logger.info(`Cleaning up inactive session: ${session.id}`);
+        this.removeSession(session.id);
       }
     }
   }
