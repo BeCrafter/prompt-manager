@@ -6,6 +6,7 @@ import '../css/terminal.css';
 import '../css/recommended-prompts.css';
 import '../css/markdown.css';
 import '../css/optimization.css';
+import '../css/skills.css';
 import 'highlight.js/styles/github.css';
 
 // 导入组件
@@ -29,6 +30,11 @@ import { TemplateListModal } from './components/TemplateListModal';
 import { TemplateEditorModal } from './components/TemplateEditorModal';
 import { ModelConfigModal } from './components/ModelConfigModal';
 import { OptimizationConfigModal } from './components/OptimizationConfigModal';
+import { SkillsArea } from './components/SkillsArea';
+import { DeleteSkillModal } from './components/DeleteSkillModal';
+
+// 暴露到全局，让内联 onclick 可以访问
+window.SkillsArea = SkillsArea;
 
 // 导入 CodeMirror 相关功能
 import { initCodeMirror } from './codemirror';
@@ -158,6 +164,7 @@ function initDOMComponents() {
   mountComponent('tools-area-wrapper', ToolsArea.getHTML());
   mountComponent('terminal-area-wrapper', TerminalView.getHTML());
   mountComponent('prompts-area-wrapper', PromptsArea.getHTML());
+  mountComponent('skills-area-wrapper', SkillsArea.getHTML());
 
   // 注入弹窗和覆盖层到 body 末尾
   const modalContainer = document.createElement('div');
@@ -170,6 +177,7 @@ function initDOMComponents() {
     ${ToolDetailModal.getHTML()}
     ${RecommendedPromptModal.getHTML()}
     ${SyncPromptModal.getHTML()}
+    ${DeleteSkillModal.getHTML()}
     ${LoadingOverlay.getHTML()}
     ${OptimizationDrawer.getHTML()}
     ${TemplateListModal.getHTML()}
@@ -456,8 +464,17 @@ function showLogin() {
 
 // 显示主界面
 function showMain() {
+  console.log('[showMain] Called');
   document.getElementById('login').style.display = 'none';
   document.getElementById('main').style.display = 'block';
+  // 初始化技能管理区域
+  console.log('[showMain] typeof SkillsArea:', typeof SkillsArea);
+  if (typeof SkillsArea !== 'undefined' && SkillsArea.init) {
+    console.log('[showMain] Calling SkillsArea.init()');
+    SkillsArea.init().catch(error => {
+      console.error('初始化技能管理区域失败:', error);
+    });
+  }
 }
 
 // 显示加载中效果
@@ -5165,9 +5182,14 @@ function setupLoginEvents() {
 
 // 切换导航
 function switchNav(navType) {
-  if (currentNav === navType) return;
-  
+  console.log('[switchNav] Called with navType:', navType, ', currentNav:', currentNav);
+  if (currentNav === navType) {
+    console.log('[switchNav] Same nav, returning early');
+    return;
+  }
+
   currentNav = navType;
+  console.log('[switchNav] Updated currentNav to:', navType);
   
   // 更新导航按钮状态
   document.querySelectorAll('.primary-nav-item').forEach(item => {
@@ -5183,19 +5205,32 @@ function switchNav(navType) {
   const promptsArea = document.getElementById('promptsArea');
   const toolsArea = document.getElementById('toolsArea');
   const terminalArea = document.getElementById('terminalArea');
+  const skillsArea = document.getElementById('skillsArea');
   if (navType === 'prompts') {
     // 显示提示词区域
     if (promptsSidebar) promptsSidebar.style.display = 'flex';
     if (promptsArea) promptsArea.style.display = 'flex';
     if (toolsArea) toolsArea.style.display = 'none';
     if (terminalArea) terminalArea.style.display = 'none';
+    if (skillsArea) skillsArea.style.display = 'none';
+  } else if (navType === 'skills') {
+    // 显示技能区域
+    if (promptsSidebar) promptsSidebar.style.display = 'none';
+    if (promptsArea) promptsArea.style.display = 'none';
+    if (toolsArea) toolsArea.style.display = 'none';
+    if (terminalArea) terminalArea.style.display = 'none';
+    if (skillsArea) skillsArea.style.display = 'flex';
+
+    // 初始化技能页面
+    initSkillsPage();
   } else if (navType === 'tools') {
     // 显示工具区域
     if (promptsSidebar) promptsSidebar.style.display = 'none';
     if (promptsArea) promptsArea.style.display = 'none';
     if (toolsArea) toolsArea.style.display = 'flex';
     if (terminalArea) terminalArea.style.display = 'none';
-    
+    if (skillsArea) skillsArea.style.display = 'none';
+
     // 初始化工具页面
     initToolsPage();
   } else if (navType === 'terminal') {
@@ -5204,7 +5239,8 @@ function switchNav(navType) {
     if (promptsArea) promptsArea.style.display = 'none';
     if (toolsArea) toolsArea.style.display = 'none';
     if (terminalArea) terminalArea.style.display = 'flex';
-    
+    if (skillsArea) skillsArea.style.display = 'none';
+
     // 初始化终端页面
     initTerminalPage();
   }
@@ -5637,7 +5673,7 @@ function bindToolsEvents() {
   if (searchInput) {
     searchInput.addEventListener('input', (e) => {
       currentSearch = e.target.value.trim();
-      searchClear.style.display = currentSearch ? 'block' : 'none';
+      searchClear.style.display = currentSearch ? 'flex' : 'none';
       
       // 如果有搜索内容且当前不在"全部"视图，自动切换到"全部"视图
       if (currentSearch && currentFilter !== 'all') {
@@ -6831,13 +6867,42 @@ async function renderMarkdownContent(container, markdown) {
 
 // 设置导航事件
 function setupNavigation() {
+  console.log('[setupNavigation] Called');
   const navItems = document.querySelectorAll('.primary-nav-item');
+  console.log('[setupNavigation] Found nav items:', navItems.length);
   navItems.forEach(item => {
     item.addEventListener('click', () => {
       const navType = item.dataset.nav;
+      console.log('[setupNavigation] Clicked nav item:', navType);
       if (navType) {
         switchNav(navType);
       }
     });
   });
 }
+
+// ==================== 技能管理相关代码 ====================
+
+// 初始化技能页面
+function initSkillsPage() {
+  console.log('[initSkillsPage] called');
+  // 获取技能区域元素
+  const skillsArea = document.getElementById('skillsArea');
+  if (!skillsArea) {
+    console.error('Skills area element not found');
+    return;
+  }
+
+  // 使用 SkillsArea 类的初始化方法
+  if (window.SkillsArea && window.SkillsArea.init) {
+    if (!skillsArea.dataset.initialized) {
+      window.SkillsArea.init().catch(error => {
+        console.error('初始化技能管理区域失败:', error);
+      });
+      skillsArea.dataset.initialized = "true";
+    }
+  }
+}
+
+// 暴露函数
+window.openSkillEditor = (id) => { if (window.SkillsArea) window.SkillsArea.openSkill(id); };

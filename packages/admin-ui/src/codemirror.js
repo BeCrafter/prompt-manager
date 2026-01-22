@@ -24,7 +24,6 @@ function initCodeMirror() {
     indentUnit: 2,
     tabSize: 2,
     fontSize: '14px',
-    height: '100%',
     viewportMargin: Infinity
   })
   

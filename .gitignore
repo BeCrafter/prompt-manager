@@ -18,4 +18,5 @@ openspec
 web/
 packages/server/package-lock.json
 scripts/surge/package-lock.json
+app/desktop/package-lock.json
 packages/server/html/**

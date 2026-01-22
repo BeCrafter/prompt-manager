@@ -122,6 +122,15 @@ export async function startServer(options = {}) {
         logger.warn('加载优化模型失败，继续启动服务', { error: error.message });
       }
 
+      // 加载技能
+      try {
+        const { skillsManager } = await import('./services/skills.service.js');
+        await skillsManager.loadSkills();
+        logger.info('技能加载完成');
+      } catch (error) {
+        logger.warn('加载技能失败，继续启动服务', { error: error.message });
+      }
+
       // 同步系统工具到沙箱环境
       try {
         await syncSystemTools();

@@ -7,13 +7,15 @@ export class ToolsArea {
           <div class="tools-header-left">
             <h2 class="tools-title">工具管理</h2>
             <div class="tools-search">
-              <input type="text" id="toolsSearchInput" placeholder="搜索工具名称或描述..." />
-              <button type="button" class="search-clear-btn" id="toolsSearchClear" style="display: none;">
+              <div class="search-box">
+                <input type="text" id="toolsSearchInput" placeholder="搜索工具名称或描述..." />
+                <button type="button" class="search-clear-btn" id="toolsSearchClear" aria-label="清除搜索">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
               </button>
+              </div>
             </div>
           </div>
           <div class="tools-header-right">

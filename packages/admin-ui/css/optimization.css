@@ -840,7 +840,7 @@ select.form-control option:disabled {
 }
 
 .btn-primary {
-  background-color: #1890ff;
+  background-color: var(--primary);
   color: white;
   height: 36px;
   padding: 8px 20px;
@@ -849,11 +849,11 @@ select.form-control option:disabled {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: #0d7ae5;
+  background-color: var(--primary);
 }
 
 .btn-primary:active:not(:disabled) {
-  background-color: #0968d3;
+  background-color: var(--primary);
   transform: translateY(1px);
 }
 

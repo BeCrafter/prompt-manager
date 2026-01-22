@@ -14,6 +14,7 @@ import { config } from '../utils/config.js';
 import { adminAuthMiddleware } from '../middlewares/auth.middleware.js';
 import { templateManager } from '../services/template.service.js';
 import { modelManager } from '../services/model.service.js';
+import { skillsManager } from '../services/skills.service.js';
 import { optimizationService } from '../services/optimization.service.js';
 import { webSocketService } from '../services/WebSocketService.js';
 
@@ -906,6 +907,154 @@ router.put('/optimization/config', adminAuthMiddleware, (req, res) => {
   } catch (error) {
     logger.error('更新优化配置失败:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== 技能管理路由 ====================
+
+// 获取所有技能
+router.get('/skills', adminAuthMiddleware, (req, res) => {
+  try {
+    const { search, type } = req.query;
+    let skills = skillsManager.getSkillsSummary();
+
+    // 应用搜索过滤
+    if (search) {
+      const searchLower = search.toLowerCase();
+      skills = skills.filter(
+        skill => skill.name.toLowerCase().includes(searchLower) || skill.description.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // 应用类型过滤
+    if (type) {
+      skills = skills.filter(skill => skill.type === type);
+    }
+
+    // 按名称排序
+    skills.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+
+    res.json(skills);
+  } catch (error) {
+    logger.error('获取技能列表失败:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 重新加载技能
+router.post('/skills/reload', adminAuthMiddleware, async (req, res) => {
+  try {
+    const result = await skillsManager.reloadSkills();
+    res.json({ message: '技能加载成功', ...result });
+  } catch (error) {
+    logger.error('重新加载技能失败:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 获取单个技能
+router.get('/skills/:id', adminAuthMiddleware, (req, res) => {
+  try {
+    const skill = skillsManager.getSkill(req.params.id);
+
+    if (!skill) {
+      return res.status(404).json({ error: `技能 "${req.params.id}" 未找到` });
+    }
+
+    // 读取原始文件内容
+    const rawContent = fs.readFileSync(skill.filePath, 'utf8');
+
+    res.json({
+      ...skill,
+      rawContent
+    });
+  } catch (error) {
+    logger.error('获取技能失败:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 创建技能
+router.post('/skills', adminAuthMiddleware, async (req, res) => {
+  try {
+    const { name, frontmatter, markdown, files } = req.body;
+
+    if (!name || !frontmatter) {
+      return res.status(400).json({ error: '名称和前置元数据是必需的' });
+    }
+
+    const skill = await skillsManager.createSkill({ name, frontmatter, markdown, files });
+    res.json(skill);
+  } catch (error) {
+    logger.error('创建技能失败:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// 更新技能
+router.put('/skills/:id', adminAuthMiddleware, async (req, res) => {
+  try {
+    const { frontmatter, markdown, files } = req.body;
+    const skill = await skillsManager.updateSkill(req.params.id, { frontmatter, markdown, files });
+    res.json(skill);
+  } catch (error) {
+    if (error.message.includes('不存在') || error.message.includes('不能修改')) {
+      return res.status(404).json({ error: error.message });
+    }
+    logger.error('更新技能失败:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// 删除技能
+router.delete('/skills/:id', adminAuthMiddleware, async (req, res) => {
+  try {
+    await skillsManager.deleteSkill(req.params.id);
+    res.json({ message: '技能删除成功' });
+  } catch (error) {
+    if (error.message.includes('不存在')) {
+      return res.status(404).json({ error: error.message });
+    }
+    logger.error('删除技能失败:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// 复制技能
+router.post('/skills/:id/duplicate', adminAuthMiddleware, async (req, res) => {
+  try {
+    const { newName } = req.body;
+    if (!newName) {
+      return res.status(400).json({ error: '新名称是必需的' });
+    }
+    const skill = await skillsManager.duplicateSkill(req.params.id, newName);
+    res.json(skill);
+  } catch (error) {
+    if (error.message.includes('不存在')) {
+      return res.status(404).json({ error: error.message });
+    }
+    logger.error('复制技能失败:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// 验证技能格式
+router.post('/skills/validate', adminAuthMiddleware, (req, res) => {
+  try {
+    const { content } = req.body;
+
+    if (!content) {
+      return res.status(400).json({ error: '技能内容是必需的' });
+    }
+
+    const skill = skillsManager.parseSkillContent(content);
+    res.json({ valid: true, skill });
+  } catch (error) {
+    res.status(400).json({
+      valid: false,
+      error: error.message,
+      suggestion: '确保 SKILL.md 包含正确的 YAML 前置部分（以 --- 包裹）和 Markdown 内容'
+    });
   }
 });
 

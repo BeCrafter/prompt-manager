@@ -299,6 +299,14 @@ export class Config {
   }
 
   /**
+   * 获取技能配置目录
+   * @returns {string} 技能配置目录路径
+   */
+  getSkillsDir() {
+    return path.join(this.getConfigHome(), 'skills');
+  }
+
+  /**
    * 获取用户配置目录
    * @returns {string} 用户配置目录路径
    */
