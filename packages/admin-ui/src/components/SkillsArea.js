@@ -103,17 +103,6 @@ export class SkillsArea {
 
           <!-- 编辑器主视图 -->
           <div class="skill-editor-body" id="editorView" style="display: none;">
-            <!-- 文件树 -->
-            <div class="skill-file-tree">
-              <div class="skill-file-tree-header">
-                <span>文件列表</span>
-                <span id="addFileBtn" style="color: #6b7280; cursor: pointer; display: flex; align-items: center;">${ICONS.Plus}</span>
-              </div>
-              <div class="skill-file-list" id="fileListContainer">
-                <!-- 动态渲染文件列表 -->
-              </div>
-            </div>
-
             <!-- 主编辑区 -->
             <div class="main-pane">
               <div class="skill-meta-panel">
@@ -171,6 +160,17 @@ export class SkillsArea {
                 </div>
               </div>
             </div>
+
+            <!-- 文件树 -->
+            <div class="skill-file-tree">
+              <div class="skill-file-tree-header">
+                <button id="addFileBtn" class="add-file-btn" title="新增文件">${ICONS.Plus}</button>
+                <span>文件列表</span>
+              </div>
+              <div class="skill-file-list" id="fileListContainer">
+                <!-- 动态渲染文件列表 -->
+              </div>
+            </div>
           </div>
 
           <!-- 模拟器视图 -->
@@ -224,9 +224,34 @@ export class SkillsArea {
       tabSize: 2
     });
 
+    // 在 CodeMirror 初始化后插入 placeholder
+    setTimeout(() => {
+      const cmWrapper = skillCodeEditor.getWrapperElement();
+      const placeholder = document.createElement('div');
+      placeholder.className = 'code-editor-placeholder';
+      placeholder.textContent = '在此输入技能指令...';
+      cmWrapper.appendChild(placeholder);
+    }, 100);
+
     skillCodeEditor.on('change', () => {
       this.validate();
+      this.updatePlaceholder();
     });
+  }
+
+  static updatePlaceholder() {
+    if (!skillCodeEditor) return;
+    
+    const cmWrapper = skillCodeEditor.getWrapperElement();
+    const placeholder = cmWrapper.querySelector('.code-editor-placeholder');
+    if (!placeholder) return;
+    
+    const content = skillCodeEditor.getValue().trim();
+    if (content) {
+      placeholder.style.opacity = '0';
+    } else {
+      placeholder.style.opacity = '1';
+    }
   }
 
   static async loadSkills() {
@@ -472,7 +497,7 @@ export class SkillsArea {
     // 添加新文件
     currentFiles.push({
       name: filename,
-      content: `在此处编写您的指令 ...`,
+      content: '', // 移除默认内容
       status: 'new'
     });
 
@@ -528,6 +553,8 @@ export class SkillsArea {
       };
       skillCodeEditor.setOption('mode', modeMap[ext] || 'markdown');
       setTimeout(() => skillCodeEditor.refresh(), 1);
+      // 延迟更新 placeholder，确保 setValue 已完成
+      setTimeout(() => this.updatePlaceholder(), 10);
     } else {
       document.getElementById('skillCode').value = file.content;
     }
@@ -628,16 +655,16 @@ export class SkillsArea {
     document.getElementById('skillVersion').value = '0.0.1';
     document.getElementById('statusVersion').textContent = 'v0.0.1';
     document.getElementById('skillDesc').value = '';
-    
+
     if (skillCodeEditor) {
-      skillCodeEditor.setValue('# 指令\n\n在此输入指令...');
+      skillCodeEditor.setValue('');
     } else {
-      document.getElementById('skillCode').value = '# 指令\n\n在此输入指令...';
+      document.getElementById('skillCode').value = '';
     }
 
     // 初始化文件列表
     currentFiles = [
-      { name: 'SKILL.md', content: '# 指令\n\n在此输入指令...', status: 'new' }
+      { name: 'SKILL.md', content: '', status: 'new' }
     ];
     activeFileIndex = 0;
     this.renderFiles();
