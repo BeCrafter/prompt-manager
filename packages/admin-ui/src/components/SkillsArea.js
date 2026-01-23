@@ -60,15 +60,21 @@ export class SkillsArea {
         <!-- 侧边栏 -->
         <div class="skills-sidebar">
           <div class="skill-sidebar-header">
-            <div class="skill-sidebar-actions">
-              <button class="new-skill-btn" id="newSkillBtn">${ICONS.Plus} 新建技能</button>
-              <button class="upload-btn" title="导入">${ICONS.Folder}</button>
-            </div>
-            <div class="skill-search-container">
-              <span class="skill-search-icon">${ICONS.Search}</span>
-              <input type="text" class="skill-search-input" id="skillSearch" placeholder="搜索技能..." />
-              <button class="skill-search-clear" id="skillSearchClear" style="display: none;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <!-- 全宽主按钮 -->
+            <button class="new-skill-btn-full" id="newSkillBtn">新建技能</button>
+
+            <!-- 搜索区域 -->
+            <div class="skill-search-area">
+              <div class="skill-search-wrapper">
+                <span class="skill-search-icon">${ICONS.Search}</span>
+                <input type="text" class="skill-search-input" id="skillSearch" placeholder="搜索技能..." />
+              </div>
+              <button class="skill-upload-btn" id="uploadSkillBtn" title="导入技能">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
               </button>
             </div>
           </div>
@@ -203,9 +209,11 @@ export class SkillsArea {
   }
 
   static async init() {
+    if (this._initialized) return;
     this.bindEvents();
     this.initEditor();
     await this.loadSkills();
+    this._initialized = true;
   }
 
   static initEditor() {
@@ -424,9 +432,15 @@ export class SkillsArea {
   }
 
   static bindEvents() {
-    document.getElementById('newSkillBtn').onclick = () => this.createNew();
-    document.getElementById('blankNewBtn').onclick = () => this.createNew();
-    document.getElementById('saveSkillBtn').onclick = () => this.save();
+    const newSkillBtn = document.getElementById('newSkillBtn');
+    const addFolderBtn = document.getElementById('addFolderBtn');
+    const blankNewBtn = document.getElementById('blankNewBtn');
+    const saveSkillBtn = document.getElementById('saveSkillBtn');
+    
+    if (newSkillBtn) newSkillBtn.onclick = () => this.createNew();
+    if (addFolderBtn) addFolderBtn.onclick = () => this.createNewFolder();
+    if (blankNewBtn) blankNewBtn.onclick = () => this.createNew();
+    if (saveSkillBtn) saveSkillBtn.onclick = () => this.save();
     
     document.querySelectorAll('.nav-toggle-btn').forEach(b => {
       b.onclick = () => this.switchMode(b.dataset.mode);
@@ -440,40 +454,75 @@ export class SkillsArea {
     });
 
     ['skillName', 'skillVersion', 'skillDesc'].forEach(id => {
-      document.getElementById(id).oninput = () => {
-        this.validate();
-        if (id === 'skillName') document.getElementById('headerSkillName').textContent = document.getElementById(id).value;
-        if (id === 'skillVersion') document.getElementById('statusVersion').textContent = 'v' + document.getElementById(id).value;
-      };
+      const el = document.getElementById(id);
+      if (el) {
+        el.oninput = () => {
+          this.validate();
+          if (id === 'skillName') {
+            const headerSkillName = document.getElementById('headerSkillName');
+            if (headerSkillName) headerSkillName.textContent = el.value;
+          }
+          if (id === 'skillVersion') {
+            const statusVersion = document.getElementById('statusVersion');
+            if (statusVersion) statusVersion.textContent = 'v' + el.value;
+          }
+        };
+      }
     });
 
-    document.getElementById('simSendBtn').onclick = () => this.runSim();
-    document.getElementById('simInput').onkeypress = (e) => { if(e.key === 'Enter') this.runSim(); };
+    const simSendBtn = document.getElementById('simSendBtn');
+    const simInput = document.getElementById('simInput');
+    
+    if (simSendBtn) simSendBtn.onclick = () => this.runSim();
+    if (simInput) simInput.onkeypress = (e) => { if(e.key === 'Enter') this.runSim(); };
 
     // 搜索功能
     const searchInput = document.getElementById('skillSearch');
     const searchClear = document.getElementById('skillSearchClear');
     
-    searchInput.oninput = (e) => {
-      const val = e.target.value;
-      searchClear.style.display = val ? 'flex' : 'none';
-      this.handleSearch(val);
-    };
+    if (searchInput) {
+      searchInput.oninput = (e) => {
+        const val = e.target.value;
+        if (searchClear) searchClear.style.display = val ? 'flex' : 'none';
+        this.handleSearch(val);
+      };
+    }
 
-    searchClear.onclick = () => {
-      searchInput.value = '';
-      searchClear.style.display = 'none';
-      this.handleSearch('');
-      searchInput.focus();
-    };
+    if (searchClear) {
+      searchClear.onclick = () => {
+        if (searchInput) searchInput.value = '';
+        if (searchClear) searchClear.style.display = 'none';
+        this.handleSearch('');
+        if (searchInput) searchInput.focus();
+      };
+    }
 
     // 新增文件按钮
-    document.getElementById('addFileBtn').onclick = () => this.addFile();
+    const addFileBtn = document.getElementById('addFileBtn');
+    if (addFileBtn) {
+      addFileBtn.onclick = () => this.addFile();
+    }
+
+    // 上传技能按钮
+    const uploadBtn = document.getElementById('uploadSkillBtn') || document.querySelector('.skill-upload-btn') || document.querySelector('.upload-btn') || document.querySelector('.upload-btn-full');
+    if (uploadBtn) {
+      uploadBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (window.showSkillsUploadModal) {
+          window.showSkillsUploadModal();
+        }
+      };
+    }
 
     // 绑定删除技能弹窗事件
-    document.getElementById('deleteSkillCloseBtn').onclick = () => this.closeDeleteModal();
-    document.getElementById('deleteSkillCancelBtn').onclick = () => this.closeDeleteModal();
-    document.getElementById('deleteSkillConfirmBtn').onclick = () => this.confirmDeleteSkill();
+    const deleteSkillCloseBtn = document.getElementById('deleteSkillCloseBtn');
+    const deleteSkillCancelBtn = document.getElementById('deleteSkillCancelBtn');
+    const deleteSkillConfirmBtn = document.getElementById('deleteSkillConfirmBtn');
+    
+    if (deleteSkillCloseBtn) deleteSkillCloseBtn.onclick = () => this.closeDeleteModal();
+    if (deleteSkillCancelBtn) deleteSkillCancelBtn.onclick = () => this.closeDeleteModal();
+    if (deleteSkillConfirmBtn) deleteSkillConfirmBtn.onclick = () => this.confirmDeleteSkill();
   }
 
   static addFile() {
@@ -649,7 +698,7 @@ export class SkillsArea {
     document.getElementById('emptyState').style.display = 'none';
     document.getElementById('editorNavbar').style.display = 'flex';
     this.switchMode('editor'); // 确保切换到编辑器模式
-    
+
     document.getElementById('skillName').value = '';
     document.getElementById('headerSkillName').textContent = '未命名技能';
     document.getElementById('skillVersion').value = '0.0.1';
@@ -672,6 +721,13 @@ export class SkillsArea {
 
     this.renderTools(['Read']);
     this.validate();
+  }
+
+  static createNewFolder() {
+    // TODO: 实现新建文件夹功能
+    console.log('新建文件夹功能待实现');
+    // 这里可以添加文件夹创建逻辑
+    // 例如：显示模态框让用户输入文件夹名称
   }
 
   static validate() {

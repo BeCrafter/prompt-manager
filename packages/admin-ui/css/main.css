@@ -454,7 +454,7 @@ main {
 }
 
 aside {
-  width: 320px;
+  width: 280px;
   background: var(--sidebar-bg);
   border-right: 1px solid var(--border);
   padding: 0;
@@ -849,12 +849,12 @@ aside {
 }
 
 .prompt-list {
-  padding: 10px 15px;
+  padding: 10px 8px;
 }
 
 .prompt-item {
   padding: 12px;
-  padding-right: 24px; /* 为操作按钮预留空间 */
+  padding-right: 18px; /* 为操作按钮预留空间 */
   margin-bottom: 8px;
   border-radius: 8px;
   cursor: pointer;

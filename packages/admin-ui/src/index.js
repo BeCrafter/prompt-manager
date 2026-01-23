@@ -28,10 +28,11 @@ import { LoadingOverlay } from './components/LoadingOverlay';
 import { OptimizationDrawer } from './components/OptimizationDrawer';
 import { TemplateListModal } from './components/TemplateListModal';
 import { TemplateEditorModal } from './components/TemplateEditorModal';
+import { SkillsArea } from './components/SkillsArea';
+import { SkillsUploadModal } from './components/SkillsUploadModal';
+import { DeleteSkillModal } from './components/DeleteSkillModal';
 import { ModelConfigModal } from './components/ModelConfigModal';
 import { OptimizationConfigModal } from './components/OptimizationConfigModal';
-import { SkillsArea } from './components/SkillsArea';
-import { DeleteSkillModal } from './components/DeleteSkillModal';
 
 // 暴露到全局，让内联 onclick 可以访问
 window.SkillsArea = SkillsArea;
@@ -177,6 +178,7 @@ function initDOMComponents() {
     ${ToolDetailModal.getHTML()}
     ${RecommendedPromptModal.getHTML()}
     ${SyncPromptModal.getHTML()}
+    ${SkillsUploadModal.getHTML()}
     ${DeleteSkillModal.getHTML()}
     ${LoadingOverlay.getHTML()}
     ${OptimizationDrawer.getHTML()}
@@ -2771,6 +2773,11 @@ function setupOptimizationDrawerEvents() {
   if (originalEditor) {
     originalEditor.addEventListener('input', updateOptimizeButtonState);
   }
+
+  // 绑定模态框事件
+  bindUploadModalEvents();
+  bindSkillsUploadModalEvents();
+  bindToolDetailModalEvents();
 }
 
 // ==================== 自定义下拉菜单 ====================
@@ -5717,12 +5724,6 @@ function bindToolsEvents() {
   if (uploadBtn) {
     uploadBtn.addEventListener('click', showUploadModal);
   }
-  
-  // 上传弹窗事件
-  bindUploadModalEvents();
-  
-  // 工具详情弹窗事件
-  bindToolDetailModalEvents();
 }
 
 // 绑定上传弹窗事件
@@ -5776,6 +5777,86 @@ function bindUploadModalEvents() {
       const files = e.dataTransfer.files;
       if (files.length > 0) {
         validateAndPreviewFile(files[0]);
+      }
+    });
+  }
+}
+
+// 绑定技能上传弹窗事件
+function bindSkillsUploadModalEvents() {
+  const modal = document.getElementById('skillsUploadModal');
+  const closeBtn = document.getElementById('skillsUploadCloseBtn');
+  const cancelBtn = document.getElementById('skillsUploadCancelBtn');
+  const confirmBtn = document.getElementById('skillsUploadConfirmBtn');
+  const selectFileBtn = document.getElementById('skillsSelectFileBtn');
+  const fileInput = document.getElementById('skillsFileInput');
+  const uploadArea = document.getElementById('skillsUploadArea');
+  
+  if (closeBtn) {
+    closeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      hideSkillsUploadModal();
+    });
+  }
+  
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      hideSkillsUploadModal();
+    });
+  }
+  
+  // 点击弹窗外部关闭
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        hideSkillsUploadModal();
+      }
+    });
+  }
+
+  // 绑定 ESC 键关闭
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+      hideSkillsUploadModal();
+    }
+  });
+  
+  if (selectFileBtn) {
+    selectFileBtn.addEventListener('click', () => {
+      fileInput.click();
+    });
+  }
+  
+  if (fileInput) {
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        validateAndPreviewSkillFile(file);
+      }
+    });
+  }
+  
+  // 拖拽上传
+  if (uploadArea) {
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+    
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        validateAndPreviewSkillFile(files[0]);
       }
     });
   }
@@ -6417,6 +6498,238 @@ function hideUploadModal() {
   }
 }
 
+// 显示技能上传弹窗
+function showSkillsUploadModal() {
+  const modal = document.getElementById('skillsUploadModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    resetSkillsUploadModal();
+  }
+}
+
+// 隐藏技能上传弹窗
+function hideSkillsUploadModal() {
+  const modal = document.getElementById('skillsUploadModal');
+  if (modal) {
+    modal.classList.add('hidden');
+    // 使用 setTimeout 确保在动画结束后重置状态，或者直接重置
+    resetSkillsUploadModal();
+  }
+}
+
+// 重置技能上传弹窗
+function resetSkillsUploadModal() {
+  const fileInput = document.getElementById('skillsFileInput');
+  const confirmBtn = document.getElementById('skillsUploadConfirmBtn');
+  const uploadProgress = document.getElementById('skillsUploadProgress');
+  const progressFill = document.getElementById('skillsProgressFill');
+  const progressText = document.getElementById('skillsProgressText');
+  const uploadContent = document.querySelector('#skillsUploadModal .upload-content');
+  const uploadTitle = document.querySelector('#skillsUploadModal .upload-title');
+  const uploadSubtitle = document.querySelector('#skillsUploadModal .upload-subtitle');
+  
+  if (fileInput) fileInput.value = '';
+  if (confirmBtn) confirmBtn.disabled = true;
+  if (uploadProgress) uploadProgress.style.display = 'none';
+  if (progressFill) progressFill.style.width = '0%';
+  if (progressText) progressText.textContent = '上传中...';
+  if (uploadContent) uploadContent.style.display = 'flex';
+  if (uploadTitle) uploadTitle.textContent = '拖拽ZIP文件到此处或点击选择';
+  if (uploadSubtitle) uploadSubtitle.textContent = '支持包含 SKILL.md 和相关文件的ZIP格式技能包';
+}
+
+// 验证并预览技能文件
+function validateAndPreviewSkillFile(file) {
+  const confirmBtn = document.getElementById('skillsUploadConfirmBtn');
+  const uploadTitle = document.querySelector('#skillsUploadModal .upload-title');
+  const uploadSubtitle = document.querySelector('#skillsUploadModal .upload-subtitle');
+  
+  // 验证文件类型
+  if (!file.name.endsWith('.zip')) {
+    showMessage('请选择ZIP格式的文件', 'error');
+    return;
+  }
+  
+  // 验证文件大小（限制为10MB）
+  if (file.size > 10 * 1024 * 1024) {
+    showMessage('文件大小不能超过10MB', 'error');
+    return;
+  }
+  
+  // 更新UI
+  if (uploadTitle) uploadTitle.textContent = `已选择: ${file.name}`;
+  if (uploadSubtitle) uploadSubtitle.textContent = `大小: ${(file.size / 1024).toFixed(2)} KB`;
+  if (confirmBtn) confirmBtn.disabled = false;
+  
+  // 绑定确认上传事件
+  if (confirmBtn) {
+    confirmBtn.onclick = () => uploadSkillFile(file);
+  }
+}
+
+// 上传技能文件
+async function uploadSkillFile(file) {
+  const confirmBtn = document.getElementById('skillsUploadConfirmBtn');
+  const uploadProgress = document.getElementById('skillsUploadProgress');
+  const progressFill = document.getElementById('skillsProgressFill');
+  const progressText = document.getElementById('skillsProgressText');
+  const uploadContent = document.querySelector('#skillsUploadModal .upload-content');
+  
+  try {
+    // 禁用按钮
+    if (confirmBtn) confirmBtn.disabled = true;
+    
+    // 显示进度条
+    if (uploadContent) uploadContent.style.display = 'none';
+    if (uploadProgress) uploadProgress.style.display = 'block';
+    
+    // 创建FormData对象
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // 获取后端URL
+    const backendUrl = window.getBackendUrl ? window.getBackendUrl() : 'http://localhost:5621';
+    
+    // 创建XMLHttpRequest对象进行上传
+    const xhr = new XMLHttpRequest();
+    
+    // 监听上传进度
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        const percentComplete = (e.loaded / e.total) * 100;
+        if (progressFill) progressFill.style.width = `${percentComplete}%`;
+        if (progressText) progressText.textContent = `上传中... ${Math.round(percentComplete)}%`;
+      }
+    });
+    
+    // 处理响应
+    xhr.addEventListener('load', async () => {
+      if (xhr.status === 200) {
+        // 上传成功
+        if (progressFill) progressFill.style.width = '100%';
+        if (progressText) progressText.textContent = '上传完成！';
+        
+        try {
+          const response = JSON.parse(xhr.responseText);
+          
+          if (response.success) {
+            showMessage(`技能 ${response.skillName} 上传成功！`, 'success');
+            hideSkillsUploadModal();
+            // 重新加载技能数据
+            if (window.SkillsArea && window.SkillsArea.loadSkills) {
+              await window.SkillsArea.loadSkills();
+            }
+          } else {
+            showMessage(`上传失败: ${response.error}`, 'error');
+            setTimeout(() => {
+              hideSkillsUploadModal();
+            }, 2000);
+          }
+        } catch (parseError) {
+          showMessage('服务器返回格式错误', 'error');
+          setTimeout(() => {
+            hideSkillsUploadModal();
+          }, 2000);
+        }
+      } else if (xhr.status === 409) {
+        // 技能已存在，需要确认是否覆盖
+        try {
+          const response = JSON.parse(xhr.responseText);
+          
+          if (response.error && response.canOverwrite) {
+            const shouldOverwrite = confirm(`技能 "${response.skillName}" 已存在，是否要覆盖？\n\n覆盖将删除原有文件并替换为新的技能包。`);
+            
+            if (shouldOverwrite) {
+              // 用户确认覆盖，重新上传并添加覆盖参数
+              const formDataWithOverwrite = new FormData();
+              formDataWithOverwrite.append('file', file);
+              formDataWithOverwrite.append('overwrite', 'true');
+              
+              const xhrOverwrite = new XMLHttpRequest();
+              xhrOverwrite.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                  const percentComplete = (e.loaded / e.total) * 100;
+                  if (progressFill) progressFill.style.width = `${percentComplete}%`;
+                  if (progressText) progressText.textContent = `覆盖中... ${Math.round(percentComplete)}%`;
+                }
+              });
+              
+              xhrOverwrite.addEventListener('load', () => {
+                if (xhrOverwrite.status === 200) {
+                  const response = JSON.parse(xhrOverwrite.responseText);
+                  if (response.success) {
+                    showMessage(`技能 ${response.skillName} 覆盖成功！`, 'success');
+                    hideSkillsUploadModal();
+                    if (window.SkillsArea && window.SkillsArea.loadSkills) {
+                      window.SkillsArea.loadSkills();
+                    }
+                  } else {
+                    showMessage(`覆盖失败: ${response.error}`, 'error');
+                    setTimeout(() => {
+                      hideSkillsUploadModal();
+                    }, 2000);
+                  }
+                } else {
+                  showMessage('上传失败，请重试', 'error');
+                  setTimeout(() => {
+                    hideSkillsUploadModal();
+                  }, 2000);
+                }
+              });
+              
+              xhrOverwrite.addEventListener('error', () => {
+                showMessage('网络错误，请检查连接', 'error');
+                setTimeout(() => {
+                  hideSkillsUploadModal();
+                }, 2000);
+              });
+              
+              xhrOverwrite.open('POST', `${backendUrl}/adminapi/skills/upload`);
+              xhrOverwrite.send(formDataWithOverwrite);
+            } else {
+              // 用户取消覆盖
+              hideSkillsUploadModal();
+            }
+          } else {
+            showMessage(`上传失败: ${response.error}`, 'error');
+            setTimeout(() => {
+              hideSkillsUploadModal();
+            }, 2000);
+          }
+        } catch (parseError) {
+          showMessage('服务器返回格式错误', 'error');
+          setTimeout(() => {
+            hideSkillsUploadModal();
+          }, 2000);
+        }
+      } else {
+        showMessage('上传失败，请重试', 'error');
+        setTimeout(() => {
+          hideSkillsUploadModal();
+        }, 2000);
+      }
+    });
+    
+    xhr.addEventListener('error', () => {
+      showMessage('网络错误，请检查连接', 'error');
+      setTimeout(() => {
+        hideSkillsUploadModal();
+      }, 2000);
+    });
+    
+    // 发送请求
+    xhr.open('POST', `${backendUrl}/adminapi/skills/upload`);
+    xhr.send(formData);
+    
+  } catch (error) {
+    console.error('上传技能文件时出错:', error);
+    showMessage('上传失败，请重试', 'error');
+    setTimeout(() => {
+      hideSkillsUploadModal();
+    }, 2000);
+  }
+}
+
 // 重置上传弹窗
 function resetUploadModal() {
   const fileInput = document.getElementById('fileInput');
@@ -6750,6 +7063,12 @@ function hideToolDetailModal() {
 
 // 将 hideToolDetailModal 暴露到全局作用域
 window.hideToolDetailModal = hideToolDetailModal;
+
+// 将 showSkillsUploadModal 暴露到全局作用域
+window.showSkillsUploadModal = showSkillsUploadModal;
+
+// 将 hideSkillsUploadModal 暴露到全局作用域
+window.hideSkillsUploadModal = hideSkillsUploadModal;
 
 // 检查工具README文件
 async function checkToolReadme(toolId) {

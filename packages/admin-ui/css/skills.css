@@ -64,6 +64,119 @@
   flex-shrink: 0;
 }
 
+/* 侧边栏头部 */
+.skill-sidebar-header {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-bottom: 1px solid var(--skill-border);
+}
+
+/* 全宽新建按钮 */
+.new-skill-btn-full {
+  width: 100%;
+  height: 48px;
+  background-color: #333333;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.new-skill-btn-full:hover {
+  background-color: #444444;
+}
+
+.new-skill-btn-full:active {
+  background-color: #222222;
+}
+
+.new-skill-btn-full:focus-visible {
+  outline: 2px solid var(--skill-primary);
+  outline-offset: 2px;
+}
+
+/* 搜索区域 */
+.skill-search-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.skill-search-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background-color: #F8F9FA;
+  border: 1px solid #E5E5E5;
+  border-radius: 8px;
+  padding: 10px 12px;
+  transition: border-color 0.2s ease;
+}
+
+.skill-search-wrapper:focus-within {
+  border-color: #666666;
+}
+
+.skill-search-icon {
+  color: #999999;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
+.skill-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  color: var(--skill-text-main);
+  outline: none;
+}
+
+.skill-search-input::placeholder {
+  color: #999999;
+  font-weight: 400;
+}
+
+/* 右侧上传按钮 */
+.skill-upload-btn {
+  width: 32px;
+  height: 32px;
+  background-color: #F0F0F0;
+  border: none;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #777777;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.skill-upload-btn:hover {
+  background-color: #E5E5E5;
+  color: #555555;
+}
+
+.skill-upload-btn:focus-visible {
+  outline: 2px solid var(--skill-primary);
+  outline-offset: 2px;
+}
+
+.skill-upload-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+
 /* 统一的焦点状态 */
 .new-skill-btn:focus-visible,
 .upload-btn:focus-visible,
@@ -80,52 +193,7 @@
   outline-offset: 2px;
 }
 
-.skill-sidebar-header {
-  padding: 1.25rem 1rem;
-}
 
-.skill-sidebar-actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.new-skill-btn {
-  flex: 1;
-  height: 2.75rem;
-  background-color: var(--skill-primary);
-  color: white;
-  border: none;
-  border-radius: 0.75rem;
-  font-weight: 600;
-  font-size: 0.875rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.new-skill-btn:hover {
-  background-color: var(--skill-primary-dark);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  will-change: transform;
-}
-
-.new-skill-btn:active {
-  transform: translateY(0);
-}
-
-/* 按钮加载状态 */
-.new-skill-btn.loading,
-.publish-btn.loading {
-  opacity: 0.6;
-  pointer-events: none;
-  cursor: not-allowed;
-}
 
 .new-skill-btn.loading::after,
 .publish-btn.loading::after {
@@ -144,86 +212,18 @@
   to { transform: rotate(360deg); }
 }
 
-.upload-btn {
-  width: 2.75rem;
-  height: 2.75rem;
-  border: 1px solid var(--skill-border);
-  border-radius: 0.75rem;
-  background: white;
-  color: var(--skill-text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
 
-.upload-btn:hover {
-  background-color: var(--skill-bg-page);
-}
 
-.skill-search-container {
-  position: relative;
-}
 
-.skill-search-input {
-  width: 100%;
-  height: 2.5rem;
-  background-color: #f3f4f6;
-  border: 1px solid transparent;
-  border-radius: 0.625rem;
-  padding: 0 2.25rem;
-  font-size: 0.875rem;
-  outline: none;
-  transition: all 0.2s;
-}
-
-.skill-search-input:focus {
-  background-color: white;
-  border-color: var(--skill-primary);
-  box-shadow: 0 0 0 3px rgba(57, 57, 57, 0.1);
-}
-
-.skill-search-icon {
-  position: absolute;
-  left: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #9ca3af;
-  pointer-events: none;
-}
-
-.skill-search-clear {
-  position: absolute;
-  right: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #9ca3af;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  transition: all 0.2s;
-}
-
-.skill-search-clear:hover {
-  background-color: #f3f4f6;
-  color: #4b5563;
-}
 
 .skill-sidebar-list {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: 1rem;
+  padding: 0 16px 16px 16px;
 }
 
 .skill-sidebar-list-title {
-  padding: 0.5rem 1rem;
+  padding: 12px 0;
   font-size: 10px;
   font-weight: 700;
   color: var(--skill-text-label);
@@ -232,9 +232,9 @@
 }
 
 .skill-item {
-  margin: 0.125rem 0.5rem;
-  padding: 0.75rem;
-  border-radius: 0.75rem;
+  margin: 0;
+  padding: 12px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -357,8 +357,8 @@
 
 .skill-sidebar-footer {
   margin-top: auto;
-  padding: 1rem;
-  border-top: 1px solid #f3f4f6;
+  padding: 16px;
+  border-top: 1px solid var(--skill-border);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -1146,3 +1146,116 @@
 }
 
 .hidden { display: none !important; }
+
+/* 技能上传弹窗样式 */
+#skillsUploadModal .modal-dialog {
+  max-width: 560px;
+}
+
+#skillsUploadModal .upload-area {
+  border: 2px dashed var(--skill-border);
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  transition: all 0.3s ease;
+  margin-bottom: 24px;
+  background: rgba(248, 249, 250, 0.5);
+}
+
+#skillsUploadModal .upload-area.dragover {
+  border-color: var(--skill-primary);
+  background: rgba(57, 57, 57, 0.05);
+  transform: scale(1.01);
+}
+
+#skillsUploadModal .upload-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+#skillsUploadModal .upload-icon {
+  color: var(--skill-text-muted);
+  opacity: 0.7;
+}
+
+#skillsUploadModal .upload-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--skill-text-main);
+  margin: 0;
+}
+
+#skillsUploadModal .upload-subtitle {
+  font-size: 14px;
+  color: var(--skill-text-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+#skillsUploadModal .upload-progress {
+  margin-top: 24px;
+}
+
+#skillsUploadModal .progress-bar {
+  width: 100%;
+  height: 10px;
+  background: var(--skill-bg-page);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 12px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+#skillsUploadModal .progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--skill-primary), #6366f1);
+  width: 0%;
+  transition: width 0.3s ease;
+  border-radius: 6px;
+}
+
+#skillsUploadModal .progress-text {
+  font-size: 14px;
+  color: var(--skill-text-muted);
+  text-align: center;
+  font-weight: 500;
+}
+
+#skillsUploadModal .upload-requirements {
+  background: var(--skill-bg-page);
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--skill-border);
+}
+
+#skillsUploadModal .upload-requirements h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--skill-text-main);
+  margin-bottom: 12px;
+}
+
+#skillsUploadModal .upload-requirements ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#skillsUploadModal .upload-requirements li {
+  font-size: 13px;
+  color: var(--skill-text-muted);
+  padding: 6px 0;
+  padding-left: 20px;
+  position: relative;
+  line-height: 1.4;
+}
+
+#skillsUploadModal .upload-requirements li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--skill-primary);
+  font-weight: bold;
+}
