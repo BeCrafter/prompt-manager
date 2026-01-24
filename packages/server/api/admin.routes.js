@@ -4,9 +4,12 @@
 
 import express from 'express';
 import path from 'path';
+import os from 'os';
 import fs from 'fs';
 import fse from 'fs-extra';
 import yaml from 'js-yaml';
+import multer from 'multer';
+import AdmZip from 'adm-zip';
 import { spawn } from 'child_process';
 import { logger } from '../utils/logger.js';
 import { util, GROUP_META_FILENAME } from '../utils/util.js';
@@ -23,6 +26,89 @@ const router = express.Router();
 // 获取prompts目录路径（在启动时可能被覆盖）
 const promptsDir = config.getPromptsDir();
 const PROMPT_NAME_REGEX = /^(?![.]{1,2}$)[^\\/:*?"<>|\r\n]{1,64}$/;
+const SKILL_NAME_REGEX = /^(?![.]{1,2}$)[^\\/:*?"<>|\r\n]{1,64}$/;
+const SKILL_MAX_FILE_SIZE = 10 * 1024 * 1024;
+const SKILL_MAX_FILES_COUNT = 50;
+const SKILL_MAX_TOTAL_SIZE = 100 * 1024 * 1024;
+
+const skillsUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, os.tmpdir());
+    },
+    filename: (req, file, cb) => {
+      const timestamp = Date.now();
+      const safeName = file.originalname.replace(/[\\/:*?"<>|\s]+/g, '-');
+      cb(null, `skill-upload-${timestamp}-${safeName}`);
+    }
+  }),
+  limits: { fileSize: SKILL_MAX_FILE_SIZE },
+  fileFilter: (req, file, cb) => {
+    if (path.extname(file.originalname).toLowerCase() !== '.zip') {
+      return cb(new Error('仅支持上传 .zip 格式的技能包'));
+    }
+    cb(null, true);
+  }
+});
+
+function parseSkillFrontmatter(content) {
+  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  if (!frontmatterMatch) {
+    throw new Error('SKILL.md 必须包含 YAML 前置部分（以 --- 包裹）');
+  }
+  const frontmatterYaml = frontmatterMatch[1];
+  let frontmatter;
+  try {
+    frontmatter = yaml.load(frontmatterYaml);
+  } catch (error) {
+    throw new Error(`YAML 前置解析失败: ${error.message}`);
+  }
+  return frontmatter;
+}
+
+function shouldIgnoreUploadEntry(entryPath) {
+  const baseName = path.basename(entryPath);
+  if (baseName === '__MACOSX' || baseName === '.DS_Store') {
+    return true;
+  }
+  return entryPath.includes(`${path.sep}__MACOSX${path.sep}`);
+}
+
+async function collectSkillFiles(rootDir) {
+  const files = [];
+  let totalSize = 0;
+
+  const walk = async currentDir => {
+    const entries = await fse.readdir(currentDir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(currentDir, entry.name);
+      if (shouldIgnoreUploadEntry(fullPath)) continue;
+
+      if (entry.isDirectory()) {
+        await walk(fullPath);
+        continue;
+      }
+
+      const stats = await fse.stat(fullPath);
+      if (stats.size > SKILL_MAX_FILE_SIZE) {
+        throw new Error(`文件 "${entry.name}" 大小超过限制 (最大 10MB)`);
+      }
+
+      totalSize += stats.size;
+      if (totalSize > SKILL_MAX_TOTAL_SIZE) {
+        throw new Error('技能总大小超过限制 (最大 100MB)');
+      }
+
+      files.push(fullPath);
+      if (files.length > SKILL_MAX_FILES_COUNT) {
+        throw new Error(`文件数量超过限制 (最多 ${SKILL_MAX_FILES_COUNT} 个)`);
+      }
+    }
+  };
+
+  await walk(rootDir);
+  return files;
+}
 
 // 获取服务器配置端点
 router.get('/config', (req, res) => {
@@ -949,6 +1035,102 @@ router.post('/skills/reload', adminAuthMiddleware, async (req, res) => {
   } catch (error) {
     logger.error('重新加载技能失败:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// 上传技能包
+router.post('/skills/upload', adminAuthMiddleware, skillsUpload.single('file'), async (req, res) => {
+  const cleanupPaths = [];
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: '未接收到上传文件' });
+    }
+
+    // 创建解压目录
+    const extractDir = await fse.mkdtemp(path.join(os.tmpdir(), 'skill-upload-'));
+    cleanupPaths.push(extractDir);
+    cleanupPaths.push(req.file.path);
+
+    // 解压 ZIP
+    const zip = new AdmZip(req.file.path);
+    zip.extractAllTo(extractDir, true);
+
+    // 检测根目录结构
+    const entries = await fse.readdir(extractDir, { withFileTypes: true });
+    const validEntries = entries.filter(entry => !shouldIgnoreUploadEntry(entry.name));
+
+    let skillRootDir = extractDir;
+    let skillName = null;
+    let frontmatter = null;
+
+    if (validEntries.length === 1 && validEntries[0].isDirectory()) {
+      // 格式2：包含根目录
+      skillRootDir = path.join(extractDir, validEntries[0].name);
+      skillName = validEntries[0].name;
+    }
+
+    const skillMdPath = path.join(skillRootDir, 'SKILL.md');
+    if (!fs.existsSync(skillMdPath)) {
+      return res.status(400).json({ error: '技能包缺少 SKILL.md 文件' });
+    }
+
+    const skillMdContent = await fse.readFile(skillMdPath, 'utf8');
+    frontmatter = parseSkillFrontmatter(skillMdContent);
+    skillsManager.validateSkillFrontmatter(frontmatter);
+
+    if (!skillName) {
+      // 格式1：从 SKILL.md 提取名称
+      skillName = frontmatter?.name;
+    }
+
+    if (!skillName) {
+      return res.status(400).json({ error: '无法解析技能名称' });
+    }
+
+    if (!SKILL_NAME_REGEX.test(skillName)) {
+      return res.status(400).json({ error: '技能名称格式无效' });
+    }
+
+    // 校验文件数量和大小
+    await collectSkillFiles(skillRootDir);
+
+    const targetDir = path.join(config.getSkillsDir(), skillName);
+    const overwrite = req.body?.overwrite === 'true';
+
+    if (fs.existsSync(targetDir)) {
+      if (!overwrite) {
+        return res.status(409).json({
+          error: '技能已存在',
+          canOverwrite: true,
+          skillName
+        });
+      }
+      await fse.remove(targetDir);
+    }
+
+    await fse.copy(skillRootDir, targetDir, {
+      filter: src => !shouldIgnoreUploadEntry(src)
+    });
+
+    await skillsManager.reloadSkills();
+
+    res.json({
+      success: true,
+      skillName
+    });
+  } catch (error) {
+    logger.error('上传技能包失败:', error);
+    res.status(400).json({ error: error.message || '上传失败' });
+  } finally {
+    await Promise.all(
+      cleanupPaths.map(async filePath => {
+        try {
+          await fse.remove(filePath);
+        } catch (cleanupError) {
+          logger.warn('清理临时文件失败:', cleanupError.message);
+        }
+      })
+    );
   }
 });
 
