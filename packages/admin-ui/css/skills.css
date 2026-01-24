@@ -4,7 +4,7 @@
 
 :root {
   --skill-sidebar-width: 280px;
-  --skill-file-tree-width: 240px;
+  --skill-file-tree-width: 280px; /* 宽度从 240px 增加到 280px */
 
   /* 统一使用项目主色调 */
   --skill-primary: #393939;
@@ -485,7 +485,7 @@
   font-weight: 500;
   color: #4b5563;
   cursor: pointer;
-  gap: 0.75rem;
+  gap: 0.25rem; /* 间隙从 0.375rem 减小到 0.25rem */
   min-height: 2.5rem;
   position: relative;
   transition: all 0.2s ease;
@@ -572,7 +572,7 @@
   align-items: center;
 }
 
-.skill-file-item-actions {
+.skill-file-item-actions, .skill-folder-actions {
   margin-left: auto;
   display: flex;
   align-items: center;
@@ -582,7 +582,8 @@
   flex-shrink: 0;
 }
 
-.skill-file-item:hover .skill-file-item-actions {
+.skill-file-item:hover .skill-file-item-actions,
+.skill-folder-header:hover .skill-folder-actions {
   opacity: 1;
 }
 
@@ -1189,4 +1190,315 @@
   left: 0;
   color: var(--skill-primary);
   font-weight: bold;
+}
+
+/* ============================================
+   优化的文件树样式
+   ============================================ */
+
+/* 文件树节点容器 */
+.skill-file-node {
+  user-select: none;
+}
+
+/* 文件夹节点 */
+.skill-folder-node {
+  margin: 0.25rem 0;
+}
+
+.skill-folder-header {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  gap: 0.125rem; /* 间隙从 0.25rem 减小到 0.125rem */
+  min-height: 2.25rem;
+  position: relative;
+  transition: all 0.2s ease;
+  border-radius: 0.5rem;
+  margin: 0 0.5rem;
+}
+
+.skill-folder-header:hover {
+  background-color: rgba(243, 244, 246, 0.8);
+  color: #111827;
+}
+
+.skill-folder-header.active {
+  background-color: white;
+  color: var(--skill-primary);
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.1);
+}
+
+/* 文件夹展开/折叠图标 */
+.folder-chevron {
+  width: 1rem;
+  height: 1rem;
+  color: #9ca3af;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.folder-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.skill-folder-header:hover .folder-chevron {
+  color: #6b7280;
+}
+
+.skill-folder-header.active .folder-chevron {
+  color: var(--skill-primary);
+}
+
+/* 文件夹图标 */
+.skill-folder-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #f59e0b;
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+
+.skill-folder-header:hover .skill-folder-icon {
+  color: #d97706;
+}
+
+.skill-folder-header.active .skill-folder-icon {
+  color: var(--skill-primary);
+}
+
+/* 文件夹名称 */
+.skill-folder-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 文件树内容容器 */
+.skill-folder-children {
+  padding-left: 0; /* 移除固定内边距，改用递归渲染时的 padding-left */
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.skill-folder-children.collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+
+.skill-folder-children.expanded {
+  max-height: 2000px; /* 增加最大高度以支持更深层级 */
+  opacity: 1;
+}
+
+/* 优化的文件和文件夹项样式 */
+.skill-file-item, .skill-folder-header {
+  margin: 0.125rem 0.5rem;
+  border-radius: 6px;
+  width: calc(100% - 1rem);
+  box-sizing: border-box;
+}
+
+.skill-file-item.active {
+  background-color: white;
+  color: var(--skill-primary);
+  z-index: 1;
+  box-shadow: 0 2px 8px -1px rgba(0, 0, 0, 0.08);
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
+  padding-left: inherit; /* 保持 padding-left 由 JS 动态计算 */
+  padding-right: 1rem;
+  border-left: none;
+}
+
+.skill-file-item.active::before {
+  left: 0;
+  right: auto;
+  width: 3px;
+  background-color: var(--skill-primary);
+  border-radius: 0 4px 4px 0;
+}
+
+.skill-file-item:not(:last-child)::after {
+  display: none; /* 移除分割线，使用间距区分 */
+}
+
+/* 确保文字不会溢出 */
+.skill-file-item-name-label, .skill-folder-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 文件夹图标微调 */
+.skill-folder-icon {
+  margin-right: 2px;
+}
+
+/* 悬停效果优化 */
+.skill-file-item:hover, .skill-folder-header:hover {
+  transform: none; /* 移除位移，保持稳定 */
+  background-color: rgba(57, 57, 57, 0.05);
+}
+
+/* 文件类型图标颜色 */
+.skill-file-icon-js { color: #f59e0b; }
+.skill-file-icon-json { color: #f59e0b; }
+.skill-file-icon-md { color: #3b82f6; }
+.skill-file-icon-html { color: #ef4444; }
+.skill-file-icon-css { color: #3b82f6; }
+.skill-file-icon-py { color: #3776ab; }
+.skill-file-icon-sh { color: #89e051; }
+.skill-file-icon-yaml { color: #cb171e; }
+.skill-file-icon-yml { color: #cb171e; }
+.skill-file-icon-xml { color: #f59e0b; }
+.skill-file-icon-php { color: #4f5d95; }
+.skill-file-icon-txt { color: #6b7280; }
+
+/* 拖拽相关样式 */
+.skill-file-item.dragging {
+  opacity: 0.5;
+  background-color: rgba(59, 130, 246, 0.1);
+  border: 2px dashed var(--skill-primary);
+}
+
+.skill-file-item.drag-over {
+  background-color: rgba(59, 130, 246, 0.2);
+  border: 2px dashed var(--skill-primary);
+}
+
+.skill-folder-header.drag-over {
+  background-color: rgba(59, 130, 246, 0.2);
+  border: 2px dashed var(--skill-primary);
+}
+
+/* 右键上下文菜单 */
+.skill-context-menu {
+  position: fixed;
+  background: white;
+  border: 1px solid var(--skill-border);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: var(--z-dropdown);
+  min-width: 180px;
+  padding: 0.25rem 0;
+  animation: contextMenuFadeIn 0.15s ease;
+}
+
+@keyframes contextMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.context-menu-item:hover {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
+.context-menu-item.danger {
+  color: #ef4444;
+}
+
+.context-menu-item.danger:hover {
+  background-color: #fee2e2;
+}
+
+.context-menu-divider {
+  height: 1px;
+  background-color: var(--skill-border);
+  margin: 0.25rem 0;
+}
+
+.context-menu-item-icon {
+  width: 1rem;
+  height: 1rem;
+  color: #6b7280;
+}
+
+.context-menu-item:hover .context-menu-item-icon {
+  color: #374151;
+}
+
+.context-menu-item.danger:hover .context-menu-item-icon {
+  color: #ef4444;
+}
+
+/* 焦点状态增强 */
+.skill-folder-header:focus-visible,
+.skill-file-item:focus-visible {
+  outline: 2px solid var(--skill-primary);
+  outline-offset: -2px;
+}
+
+/* 文件树滚动条美化 */
+.skill-file-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.skill-file-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.skill-file-list::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 3px;
+}
+
+.skill-file-list::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
+}
+
+/* 键盘导航支持 */
+.skill-file-item[tabindex="0"],
+.skill-folder-header[tabindex="0"] {
+  cursor: pointer;
+}
+
+/* 禁用状态 */
+.context-menu-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* 减少动画（prefers-reduced-motion） */
+@media (prefers-reduced-motion: reduce) {
+  .skill-file-item,
+  .skill-folder-header,
+  .folder-chevron,
+  .skill-context-menu,
+  .add-file-btn {
+    transition: none;
+  }
+  
+  .skill-file-item:hover,
+  .skill-folder-header:hover {
+    transform: none;
+  }
 }

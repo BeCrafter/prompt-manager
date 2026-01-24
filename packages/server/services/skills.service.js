@@ -21,7 +21,7 @@ const SkillFrontmatterSchema = z.object({
     .string()
     .min(1, '技能名称不能为空')
     .max(64, '技能名称不能超过64个字符')
-    .regex(/^[a-z0-9-]+$/, '技能名称只能包含小写字母、数字和连字符'),
+    .regex(/^[a-z0-9-\u4e00-\u9fa5]+$/i, '技能名称只能包含字母、数字、连字符和中文'),
 
   description: z.string().min(1, '技能描述不能为空').max(1024, '技能描述不能超过1024个字符'),
 
@@ -246,40 +246,48 @@ class SkillsManager {
     const relativePath = path.join(dirName, 'SKILL.md');
     const uniqueId = this.generateUniqueId(relativePath);
 
-    // 获取所有文件
+    // 递归获取所有文件
     const files = [];
     let totalSize = 0;
-    try {
-      const entries = await fs.readdir(skillDir, { withFileTypes: true });
 
-      if (entries.length > MAX_FILES_COUNT) {
-        logger.warn(`技能目录文件数量超过限制 (${entries.length} > ${MAX_FILES_COUNT}): ${skillDir}`);
-      }
-
+    const readDirRecursive = async (currentDir, relativeToSkillDir = '') => {
+      const entries = await fs.readdir(currentDir, { withFileTypes: true });
       for (const entry of entries) {
-        if (entry.isFile() && !entry.name.startsWith('.')) {
-          const filePath = path.join(skillDir, entry.name);
-          const stats = await fs.stat(filePath);
+        if (entry.name.startsWith('.')) continue;
 
+        const fullPath = path.join(currentDir, entry.name);
+        const relativePath = path.join(relativeToSkillDir, entry.name);
+
+        if (entry.isDirectory()) {
+          await readDirRecursive(fullPath, relativePath);
+        } else if (entry.isFile()) {
+          const stats = await fs.stat(fullPath);
           if (stats.size > MAX_FILE_SIZE) {
-            logger.warn(`跳过超大文件 (${(stats.size / 1024).toFixed(2)}KB): ${filePath}`);
+            logger.warn(`跳过超大文件 (${(stats.size / 1024).toFixed(2)}KB): ${fullPath}`);
             continue;
           }
 
           if (totalSize + stats.size > MAX_TOTAL_SIZE) {
             logger.warn(`技能总大小超过限制，停止读取后续文件: ${skillDir}`);
-            break;
+            return;
           }
 
-          const content = await fs.readFile(filePath, 'utf8');
+          const fileContent = await fs.readFile(fullPath, 'utf8');
           files.push({
-            name: entry.name,
-            content
+            name: relativePath,
+            content: fileContent
           });
           totalSize += stats.size;
 
-          if (files.length >= MAX_FILES_COUNT) break;
+          if (files.length >= MAX_FILES_COUNT) return;
         }
+      }
+    };
+
+    try {
+      await readDirRecursive(skillDir);
+      if (files.length > MAX_FILES_COUNT) {
+        logger.warn(`技能目录文件数量超过限制 (${files.length} > ${MAX_FILES_COUNT}): ${skillDir}`);
       }
     } catch (error) {
       logger.error(`读取技能目录文件失败 ${skillDir}:`, error.message);
@@ -364,8 +372,8 @@ class SkillsManager {
       // 验证技能数据（验证失败会抛出异常）
       SkillFrontmatterSchema.parse(skillData.frontmatter);
 
-      // 验证目录名称
-      const dirName = skillData.name.replace(/[^a-z0-9-]/g, '-').toLowerCase();
+      // 验证目录名称（支持中文，保留大小写）
+      const dirName = skillData.name.replace(/[\\/:*?"<>|]/g, '-');
       const skillDir = path.join(this.customDir, dirName);
 
       // 检查目录是否已存在
@@ -401,9 +409,10 @@ class SkillsManager {
             throw new Error(`技能总大小超过限制 (最大 10MB)`);
           }
 
-          // 确保文件名安全
-          const safeName = file.name.replace(/[\\/]/g, '_');
-          await fs.writeFile(path.join(skillDir, safeName), file.content, 'utf8');
+          // 确保文件名安全并支持子目录
+          const filePath = path.join(skillDir, file.name);
+          await fs.ensureDir(path.dirname(filePath));
+          await fs.writeFile(filePath, file.content, 'utf8');
         }
       }
 
@@ -449,7 +458,7 @@ class SkillsManager {
       const newName = skillData.frontmatter?.name;
 
       if (newName && newName !== existingSkill.name) {
-        const newDirName = newName.replace(/[^a-z0-9-]/g, '-').toLowerCase();
+        const newDirName = newName.replace(/[\\/:*?"<>|]/g, '-');
         const newSkillDir = path.join(path.dirname(skillDir), newDirName);
 
         if (newSkillDir !== skillDir) {
@@ -486,7 +495,22 @@ class SkillsManager {
           throw new Error(`文件数量超过限制 (最多 ${MAX_FILES_COUNT} 个)`);
         }
 
-        const currentFiles = await fs.readdir(skillDir);
+        // 递归获取当前所有文件
+        const getAllFilesRecursive = async (currentDir, relativeToSkillDir = '') => {
+          let results = [];
+          const entries = await fs.readdir(currentDir, { withFileTypes: true });
+          for (const entry of entries) {
+            const relPath = path.join(relativeToSkillDir, entry.name);
+            if (entry.isDirectory()) {
+              results = results.concat(await getAllFilesRecursive(path.join(currentDir, entry.name), relPath));
+            } else {
+              results.push(relPath);
+            }
+          }
+          return results;
+        };
+
+        const currentFiles = await getAllFilesRecursive(skillDir);
         const newFileNames = skillData.files.map(f => f.name);
 
         // 写入/更新文件
@@ -504,15 +528,29 @@ class SkillsManager {
             throw new Error(`技能总大小超过限制 (最大 10MB)`);
           }
 
-          const safeName = file.name.replace(/[\\/]/g, '_');
-          await fs.writeFile(path.join(skillDir, safeName), file.content, 'utf8');
+          const filePath = path.join(skillDir, file.name);
+          await fs.ensureDir(path.dirname(filePath));
+          await fs.writeFile(filePath, file.content, 'utf8');
         }
 
         // 删除已移除的文件
         for (const fileName of currentFiles) {
           if (fileName === 'SKILL.md' || fileName.startsWith('.')) continue;
           if (!newFileNames.includes(fileName)) {
-            await fs.remove(path.join(skillDir, fileName));
+            const filePath = path.join(skillDir, fileName);
+            await fs.remove(filePath);
+
+            // 尝试删除空的父目录
+            let parentDir = path.dirname(filePath);
+            while (parentDir !== skillDir) {
+              const files = await fs.readdir(parentDir);
+              if (files.length === 0) {
+                await fs.remove(parentDir);
+                parentDir = path.dirname(parentDir);
+              } else {
+                break;
+              }
+            }
           }
         }
       }
@@ -600,8 +638,8 @@ class SkillsManager {
         throw new Error(`技能不存在: ${id}`);
       }
 
-      // 验证新名称
-      const newDirName = newName.replace(/[^a-z0-9-]/g, '-').toLowerCase();
+      // 验证新名称（支持中文，保留大小写）
+      const newDirName = newName.replace(/[\\/:*?"<>|]/g, '-');
       const newSkillDir = path.join(this.customDir, newDirName);
 
       if (fs.existsSync(newSkillDir)) {

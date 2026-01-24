@@ -4,7 +4,7 @@
   position: fixed;
   top: 0;
   right: 0;
-  width: calc(100% - 375px);
+  width: calc(100% - 338px);
   height: 100%;
   z-index: 1000;
   display: flex;

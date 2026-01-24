@@ -2364,7 +2364,7 @@ window.switchMetaTab = switchMetaTab;
 
 // 处理目录名输入框的键盘事件
 function handleNewFolderKeydown(event) {
-  if (event.key === 'Enter') {
+  if (event.key === 'Enter' && !event.isComposing) {
     event.preventDefault();
     createNewFolder();
   } else if (event.key === 'Escape') {
