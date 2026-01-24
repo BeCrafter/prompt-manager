@@ -64,18 +64,12 @@ export class SkillsArea {
             <button class="new-skill-btn-full" id="newSkillBtn">新建技能</button>
 
             <!-- 搜索区域 -->
-            <div class="skill-search-area">
-              <div class="skill-search-wrapper">
-                <span class="skill-search-icon">${ICONS.Search}</span>
-                <input type="text" class="skill-search-input" id="skillSearch" placeholder="搜索技能..." />
+            <div class="search-container">
+              <div class="search-box">
+                <input type="text" id="skillSearch" name="skillSearch" placeholder="搜索技能..." autocomplete="off" />
+                <button type="button" class="clear-btn" id="skillSearchClear" title="清除搜索"></button>
               </div>
-              <button class="skill-upload-btn" id="uploadSkillBtn" title="导入技能">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="17 8 12 3 7 8"></polyline>
-                  <line x1="12" y1="3" x2="12" y2="15"></line>
-                </svg>
-              </button>
+              <button class="folder-btn" id="uploadSkillBtn" title="导入技能"></button>
             </div>
           </div>
           <div class="skill-sidebar-list">
@@ -482,18 +476,17 @@ export class SkillsArea {
     
     if (searchInput) {
       searchInput.oninput = (e) => {
-        const val = e.target.value;
-        if (searchClear) searchClear.style.display = val ? 'flex' : 'none';
-        this.handleSearch(val);
+        this.handleSearch(e.target.value);
       };
     }
 
     if (searchClear) {
       searchClear.onclick = () => {
-        if (searchInput) searchInput.value = '';
-        if (searchClear) searchClear.style.display = 'none';
+        if (searchInput) {
+          searchInput.value = '';
+          searchInput.focus();
+        }
         this.handleSearch('');
-        if (searchInput) searchInput.focus();
       };
     }
 
@@ -504,7 +497,7 @@ export class SkillsArea {
     }
 
     // 上传技能按钮
-    const uploadBtn = document.getElementById('uploadSkillBtn') || document.querySelector('.skill-upload-btn') || document.querySelector('.upload-btn') || document.querySelector('.upload-btn-full');
+    const uploadBtn = document.getElementById('uploadSkillBtn');
     if (uploadBtn) {
       uploadBtn.onclick = (e) => {
         e.preventDefault();
