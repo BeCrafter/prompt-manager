@@ -7,6 +7,7 @@ import { syncSystemTools } from './toolm/tool-sync.service.js';
 import { syncAuthorConfig } from './toolm/author-sync.service.js';
 import { startLogCleanupTask } from './toolm/tool-logger.service.js';
 import { webSocketService } from './services/WebSocketService.js';
+import { skillSyncService } from './services/skill-sync.service.js';
 import { checkPortAvailable } from './utils/port-checker.js';
 
 // 动态导入 promptManager，以处理 Electron 打包后的路径问题
@@ -127,8 +128,11 @@ export async function startServer(options = {}) {
         const { skillsManager } = await import('./services/skills.service.js');
         await skillsManager.loadSkills();
         logger.info('技能加载完成');
+        
+        // 初始化技能同步服务
+        await skillSyncService.init();
       } catch (error) {
-        logger.warn('加载技能失败，继续启动服务', { error: error.message });
+        logger.warn('加载技能或初始化同步服务失败，继续启动服务', { error: error.message });
       }
 
       // 同步系统工具到沙箱环境

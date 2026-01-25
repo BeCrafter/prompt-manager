@@ -32,6 +32,7 @@ import { SkillsArea } from './components/SkillsArea';
 import { SkillsUploadModal } from './components/SkillsUploadModal';
 import { DeleteSkillModal } from './components/DeleteSkillModal';
 import { ExportSkillModal } from './components/ExportSkillModal';
+import { SkillSyncModal } from './components/SkillSyncModal';
 import { ModelConfigModal } from './components/ModelConfigModal';
 import { OptimizationConfigModal } from './components/OptimizationConfigModal';
 
@@ -182,6 +183,7 @@ function initDOMComponents() {
     ${SkillsUploadModal.getHTML()}
     ${DeleteSkillModal.getHTML()}
     ${ExportSkillModal.getHTML()}
+    ${SkillSyncModal.getHTML()}
     ${LoadingOverlay.getHTML()}
     ${OptimizationDrawer.getHTML()}
     ${TemplateListModal.getHTML()}
@@ -279,6 +281,9 @@ function showMessage(message, type = 'success', options = {}) {
 
   resumeTimer();
 }
+
+// 提供给其他模块使用
+window.showMessage = showMessage;
 
 // API请求封装
 async function apiCall(endpoint, options = {}) {
@@ -7220,6 +7225,8 @@ function initSkillsPage() {
       window.SkillsArea.init().catch(error => {
         console.error('初始化技能管理区域失败:', error);
       });
+      // 初始化同步配置弹窗
+      SkillSyncModal.init().catch(err => console.error('SkillSyncModal init error:', err));
       skillsArea.dataset.initialized = "true";
     }
   }

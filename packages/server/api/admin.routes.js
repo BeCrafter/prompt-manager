@@ -20,6 +20,7 @@ import { modelManager } from '../services/model.service.js';
 import { skillsManager } from '../services/skills.service.js';
 import { optimizationService } from '../services/optimization.service.js';
 import { webSocketService } from '../services/WebSocketService.js';
+import { skillSyncService } from '../services/skill-sync.service.js';
 
 const router = express.Router();
 
@@ -1253,6 +1254,42 @@ router.get('/skills/:id/export', adminAuthMiddleware, async (req, res) => {
       return res.status(404).json({ error: error.message });
     }
     logger.error('导出技能失败:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== 技能同步路由 ====================
+
+// 获取同步配置
+router.get('/skill-sync/config', adminAuthMiddleware, (req, res) => {
+  try {
+    const config = skillSyncService.getConfig();
+    res.json(config);
+  } catch (error) {
+    logger.error('获取技能同步配置失败:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 更新同步配置
+router.post('/skill-sync/config', adminAuthMiddleware, async (req, res) => {
+  try {
+    const newConfig = req.body;
+    await skillSyncService.updateConfig(newConfig);
+    res.json({ message: '同步配置已更新', config: skillSyncService.getConfig() });
+  } catch (error) {
+    logger.error('更新技能同步配置失败:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 手动执行同步
+router.post('/skill-sync/run', adminAuthMiddleware, async (req, res) => {
+  try {
+    const results = await skillSyncService.runSync();
+    res.json({ message: '同步已执行', results });
+  } catch (error) {
+    logger.error('手动执行技能同步失败:', error);
     res.status(500).json({ error: error.message });
   }
 });
