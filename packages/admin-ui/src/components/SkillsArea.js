@@ -38,13 +38,14 @@ const ICONS = {
   CheckCircle: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="16 12 12 16 8 12"></polyline></svg>`,
   AlertCircle: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`,
   Book: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>`,
-  Send: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`,
-  More: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>`,
-  Trash: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
-  Edit: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`,
-  Copy: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`,
-  Download: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`
-};
+    Send: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`,
+    More: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>`,
+    Trash: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
+    Edit: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`,
+    Copy: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`,
+    Download: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`,
+    Export: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`
+  };
 
 import { getBackendUrl } from '../utils/env-loader.js';
 import jsyaml from 'js-yaml';
@@ -131,6 +132,7 @@ export class SkillsArea {
               <button class="nav-toggle-btn" data-mode="tester">触发模拟器</button>
             </div>
             <div class="skill-navbar-right">
+              <button class="export-btn" id="exportSkillBtnTop" title="导出技能包">${ICONS.Export}</button>
               <button class="publish-btn" id="saveSkillBtn">发布技能</button>
             </div>
           </div>
@@ -571,6 +573,66 @@ export class SkillsArea {
     if (deleteSkillCloseBtn) deleteSkillCloseBtn.onclick = () => this.closeDeleteModal();
     if (deleteSkillCancelBtn) deleteSkillCancelBtn.onclick = () => this.closeDeleteModal();
     if (deleteSkillConfirmBtn) deleteSkillConfirmBtn.onclick = () => this.confirmDeleteSkill();
+
+    // 绑定导出技能弹窗事件
+    const exportSkillBtnTop = document.getElementById('exportSkillBtnTop');
+    const exportSkillCloseBtn = document.getElementById('exportSkillCloseBtn');
+    const exportSkillCancelBtn = document.getElementById('exportSkillCancelBtn');
+    const exportSkillConfirmBtn = document.getElementById('exportSkillConfirmBtn');
+
+    if (exportSkillBtnTop) exportSkillBtnTop.onclick = () => this.showExportConfirm();
+    if (exportSkillCloseBtn) exportSkillCloseBtn.onclick = () => this.closeExportModal();
+    if (exportSkillCancelBtn) exportSkillCancelBtn.onclick = () => this.closeExportModal();
+    if (exportSkillConfirmBtn) exportSkillConfirmBtn.onclick = () => this.confirmExportSkill();
+  }
+
+  static showExportConfirm() {
+    if (!currentSkillId) return;
+    const skillName = document.getElementById('skillName').value || '未命名技能';
+    document.getElementById('exportSkillName').textContent = skillName;
+    const modal = document.getElementById('exportSkillModal');
+    if (modal) modal.classList.remove('hidden');
+  }
+
+  static closeExportModal() {
+    const modal = document.getElementById('exportSkillModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  static async confirmExportSkill() {
+    if (!currentSkillId) return;
+
+    const btn = document.getElementById('exportSkillConfirmBtn');
+    const originalText = btn.textContent;
+    btn.textContent = '导出中...';
+    btn.disabled = true;
+
+    try {
+      const res = await fetch(`${getApiBase()}/skills/${currentSkillId}/export`);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '导出失败');
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const fileName = document.getElementById('skillName').value || 'skill';
+      a.download = `${fileName}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      if (window.showMessage) window.showMessage('技能导出成功');
+      this.closeExportModal();
+    } catch (e) {
+      if (window.showMessage) window.showMessage(e.message, 'error');
+    } finally {
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }
   }
 
   static addFile() {

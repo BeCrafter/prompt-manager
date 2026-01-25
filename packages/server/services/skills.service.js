@@ -606,6 +606,53 @@ class SkillsManager {
   }
 
   /**
+   * 导出技能为 ZIP Buffer
+   */
+  async exportSkill(id) {
+    try {
+      const skill = this.getSkill(id);
+      if (!skill) {
+        throw new Error(`技能不存在: ${id}`);
+      }
+
+      const AdmZip = (await import('adm-zip')).default;
+      const zip = new AdmZip();
+
+      // 将技能目录下的所有文件添加到 ZIP，放在以技能名命名的根目录下
+      const skillDir = skill.skillDir;
+      const skillName = skill.name;
+
+      // 递归添加文件
+      const addFilesToZip = async (currentDir, zipPathPrefix) => {
+        const entries = await fs.readdir(currentDir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (entry.name.startsWith('.')) continue;
+
+          const fullPath = path.join(currentDir, entry.name);
+          const zipPath = path.join(zipPathPrefix, entry.name);
+
+          if (entry.isDirectory()) {
+            await addFilesToZip(fullPath, zipPath);
+          } else if (entry.isFile()) {
+            const content = await fs.readFile(fullPath);
+            zip.addFile(zipPath, content);
+          }
+        }
+      };
+
+      await addFilesToZip(skillDir, skillName);
+
+      return {
+        buffer: zip.toBuffer(),
+        fileName: `${skillName}.zip`
+      };
+    } catch (error) {
+      logger.error(`导出技能 ${id} 失败:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * 重新加载技能
    */
   async reloadSkills() {

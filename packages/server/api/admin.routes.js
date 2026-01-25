@@ -1240,4 +1240,21 @@ router.post('/skills/validate', adminAuthMiddleware, (req, res) => {
   }
 });
 
+// 导出技能
+router.get('/skills/:id/export', adminAuthMiddleware, async (req, res) => {
+  try {
+    const { buffer, fileName } = await skillsManager.exportSkill(req.params.id);
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+    res.send(buffer);
+  } catch (error) {
+    if (error.message.includes('不存在')) {
+      return res.status(404).json({ error: error.message });
+    }
+    logger.error('导出技能失败:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export const adminRouter = router;

@@ -401,6 +401,30 @@
   filter: brightness(1.05);
 }
 
+.export-btn {
+  background-color: #f3f4f6;
+  color: #4b5563;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.625rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.export-btn:hover {
+  background-color: #e5e7eb;
+  color: #111827;
+}
+
+.export-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* 编辑器主体容器 */
 .skill-editor-body {
   flex: 1;

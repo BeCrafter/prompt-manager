@@ -31,6 +31,7 @@ import { TemplateEditorModal } from './components/TemplateEditorModal';
 import { SkillsArea } from './components/SkillsArea';
 import { SkillsUploadModal } from './components/SkillsUploadModal';
 import { DeleteSkillModal } from './components/DeleteSkillModal';
+import { ExportSkillModal } from './components/ExportSkillModal';
 import { ModelConfigModal } from './components/ModelConfigModal';
 import { OptimizationConfigModal } from './components/OptimizationConfigModal';
 
@@ -180,6 +181,7 @@ function initDOMComponents() {
     ${SyncPromptModal.getHTML()}
     ${SkillsUploadModal.getHTML()}
     ${DeleteSkillModal.getHTML()}
+    ${ExportSkillModal.getHTML()}
     ${LoadingOverlay.getHTML()}
     ${OptimizationDrawer.getHTML()}
     ${TemplateListModal.getHTML()}
