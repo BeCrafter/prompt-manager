@@ -760,10 +760,11 @@
 .skill-checkbox-label {
   display: flex;
   align-items: center;
+  font-size: 11px;
   gap: 0.625rem;
-  font-size: 0.875rem;
+  /* font-size: 0.875rem; */
   font-weight: 600;
-  color: #4b5563;
+  color: var(--skill-text-label);
   cursor: pointer;
   padding-right: 1.5rem;
   border-right: 1px solid var(--skill-border);

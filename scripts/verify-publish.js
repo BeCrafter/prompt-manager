@@ -192,21 +192,30 @@ class PublishVerifier {
       'packages/server/dist/index.js'
     ];
     
-    let allArtifactsExist = true;
-    
-    for (const artifact of requiredArtifacts) {
-      const fullPath = path.join(projectRoot, artifact);
-      if (!fs.existsSync(fullPath)) {
-        error(`Build artifact missing: ${artifact}`);
-        allArtifactsExist = false;
-      }
-    }
-    
-    if (allArtifactsExist) {
+    const artifactsMissing = () =>
+      requiredArtifacts.filter(artifact => !fs.existsSync(path.join(projectRoot, artifact)));
+
+    let missingArtifacts = artifactsMissing();
+    if (missingArtifacts.length === 0) {
       success('All build artifacts exist');
       return true;
     }
-    
+
+    missingArtifacts.forEach(artifact => error(`Build artifact missing: ${artifact}`));
+    info('Missing build artifacts detected, running build...');
+
+    const buildOk = this.runCommand('npm run build', 'Build', 600000);
+    if (!buildOk) {
+      return false;
+    }
+
+    missingArtifacts = artifactsMissing();
+    if (missingArtifacts.length === 0) {
+      success('All build artifacts exist');
+      return true;
+    }
+
+    missingArtifacts.forEach(artifact => error(`Build artifact missing: ${artifact}`));
     return false;
   }
 

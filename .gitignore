@@ -16,7 +16,7 @@ openspec
 **/dist/
 **/node_modules/
 web/
-packages/server/package-lock.json
-scripts/surge/package-lock.json
-app/desktop/package-lock.json
+# packages/server/package-lock.json
+# scripts/surge/package-lock.json
+# app/desktop/package-lock.json
 packages/server/html/**

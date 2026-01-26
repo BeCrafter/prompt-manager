@@ -45,7 +45,8 @@ class SkillSyncService {
   async init() {
     try {
       await this.loadConfig();
-      if (this.syncConfig.enabled) {
+      // 在测试环境下默认不启动监听，除非配置显式开启
+      if (this.syncConfig.enabled && process.env.NODE_ENV !== 'test') {
         await this.startWatching();
       }
       logger.info('SkillSyncService 初始化完成');
@@ -113,9 +114,7 @@ class SkillSyncService {
   }
 
   getResolvedTargets() {
-    return (this.syncConfig.targets || [])
-      .map(target => expandPath(target))
-      .filter(Boolean);
+    return (this.syncConfig.targets || []).map(target => expandPath(target)).filter(Boolean);
   }
 
   detectSyncMethod() {
@@ -154,7 +153,7 @@ class SkillSyncService {
     if (targets.length === 0) return;
 
     logger.info('开始监听技能目录变更并自动同步:', this.skillsDir);
-    
+
     this.watcher = createSyncer(this.skillsDir, targets, {
       preferLink: true,
       fallbackToCopy: true,
@@ -195,7 +194,7 @@ class SkillSyncService {
 
     try {
       logger.info('开始执行技能全局同步...');
-      
+
       const syncer = createSyncer(this.skillsDir, targets, {
         preferLink: true,
         fallbackToCopy: true,
@@ -204,12 +203,12 @@ class SkillSyncService {
       });
 
       const method = await syncer.sync();
-      
+
       this.syncConfig.lastSyncTime = new Date().toISOString();
       this.syncConfig.lastSyncMethod = method || null;
       this.syncConfig.error = null;
       await this.saveConfig();
-      
+
       logger.info('技能全局同步完成');
       return { method };
     } catch (error) {

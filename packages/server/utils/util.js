@@ -23,7 +23,7 @@ let _promptManager;
 export class Util {
   /**
    * 检查并初始化prompts目录，如果目录为空则从示例目录复制内容
-   * @returns
+   * @returns {Promise<void>}
    */
   async seedPromptsIfEmpty() {
     try {
@@ -100,8 +100,8 @@ export class Util {
 
   /**
    * 生成文件唯一标识码
-   * @param {*} relativePath
-   * @returns
+   * @param {string} relativePath
+   * @returns {string}
    */
   generateUniqueId(relativePath) {
     const hash = crypto.createHash('sha256');
@@ -112,7 +112,7 @@ export class Util {
 
   /**
    * 从文件中读取提示词
-   * @returns
+   * @returns {Array<Object>}
    */
   getPromptsFromFiles() {
     const prompts = [];
@@ -253,8 +253,8 @@ export class Util {
 
   /**
    * 验证目录名称是否有效
-   * @param {*} name
-   * @returns
+   * @param {string} name
+   * @returns {boolean}
    */
   isValidGroupName(name) {
     if (typeof name !== 'string') return false;
@@ -263,8 +263,8 @@ export class Util {
 
   /**
    * 验证目录名称
-   * @param {*} relativePath
-   * @returns
+   * @param {string} relativePath
+   * @returns {Array<string>|null}
    */
   validateGroupPath(relativePath) {
     if (!relativePath || typeof relativePath !== 'string') {
@@ -284,8 +284,8 @@ export class Util {
 
   /**
    *
-   * @param {*} relativePath
-   * @returns
+   * @param {string} relativePath
+   * @returns {Object|null}
    */
   resolveGroupDir(relativePath) {
     const segments = this.validateGroupPath(relativePath);
@@ -300,8 +300,8 @@ export class Util {
 
   /**
    * 获取目录元数据文件路径
-   * @param {*} dir
-   * @returns
+   * @param {string} dir
+   * @returns {string}
    */
   getGroupMetaPath(dir) {
     return path.join(dir, GROUP_META_FILENAME);
@@ -309,8 +309,8 @@ export class Util {
 
   /**
    * 读取目录元数据
-   * @param {*} dir
-   * @returns
+   * @param {string} dir
+   * @returns {Object}
    */
   readGroupMeta(dir) {
     try {
@@ -331,9 +331,9 @@ export class Util {
 
   /**
    * 获取所有分组（直接从目录读取）
-   * @param {*} baseDir
-   * @param {*} relativePath
-   * @returns
+   * @param {string} baseDir
+   * @param {string} relativePath
+   * @returns {Array<Object>}
    */
   buildGroupTree(baseDir, relativePath = '') {
     const nodes = [];

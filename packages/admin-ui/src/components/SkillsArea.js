@@ -173,7 +173,7 @@ export class SkillsArea {
                 <div class="meta-row-bottom">
                   <label class="skill-checkbox-label">
                     <input type="checkbox" id="skillInvocable" checked />
-                    允许用户通过 / 命令调用
+                    命令调用
                   </label>
                   <div class="skill-tools-area">
                     <div class="skill-tools-label">
