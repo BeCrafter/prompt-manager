@@ -98,7 +98,8 @@ jobs:
           rm -f *.bak *.tmp
       
       - name: Publish to NPM
-        run: npm publish --access public --registry=https://registry.npmjs.org/
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
           NPM_CONFIG_USERCONFIG: /home/runner/work/_temp/.npmrc
