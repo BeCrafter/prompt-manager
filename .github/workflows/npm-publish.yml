@@ -103,10 +103,6 @@ jobs:
           rm -f *.bak *.tmp
       
       - name: Publish to NPM
-        run: |
-          # 确保使用正确的 registry
-          npm config set registry https://registry.npmjs.org/
-          npm config list
-          npm publish --access public
+        run: npm publish --access public --tag ${{ needs.extract-version.outputs.publish-tag }} --registry=https://registry.npmjs.org/
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
