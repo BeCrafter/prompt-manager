@@ -29,9 +29,14 @@ jobs:
         run: |
           rm -f .npmrc
           npm config set registry https://registry.npmjs.org/
+          npm config list
       
       - name: Install dependencies
         run: npm ci
+      
+      - name: Verify npm registry
+        run: |
+          npm config get registry
 
       - name: Rebuild native modules
         run: |
@@ -98,8 +103,10 @@ jobs:
           rm -f *.bak *.tmp
       
       - name: Publish to NPM
-        run: npm publish --access public
+        run: |
+          # 确保使用正确的 registry
+          npm config set registry https://registry.npmjs.org/
+          npm config list
+          npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
-          NPM_CONFIG_USERCONFIG: /home/runner/work/_temp/.npmrc
