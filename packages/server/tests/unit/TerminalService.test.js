@@ -267,12 +267,12 @@ describe('TerminalService', () => {
 
       // 手动设置会话为非活跃状态
       session.isActive = false;
-      session.lastActivity = new Date(Date.now() - 40000); // 超过超时时间
+      session.lastActivity = new Date(Date.now() - 400000); // 超过默认的 300000ms (5分钟) 超时时间
 
       // 手动调用清理方法
       terminalService.cleanupInactiveSessions();
 
-      expect(terminalService.sessions.size).toBe(1);
+      expect(terminalService.sessions.size).toBe(0);
     });
   });
 

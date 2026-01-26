@@ -24,9 +24,19 @@ jobs:
         with:
           node-version: '22.x'
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Ensure npm registry is npmjs
+        run: |
+          rm -f .npmrc
+          npm config set registry https://registry.npmjs.org/
+          npm config list
       
       - name: Install dependencies
         run: npm ci
+      
+      - name: Verify npm registry
+        run: |
+          npm config get registry
 
       - name: Rebuild native modules
         run: |
@@ -93,6 +103,6 @@ jobs:
           rm -f *.bak *.tmp
       
       - name: Publish to NPM
-        run: npm publish --access public
+        run: npm publish --access public --tag ${{ needs.extract-version.outputs.publish-tag }} --registry=https://registry.npmjs.org/
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

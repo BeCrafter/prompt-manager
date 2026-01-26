@@ -128,7 +128,7 @@ export async function startServer(options = {}) {
         const { skillsManager } = await import('./services/skills.service.js');
         await skillsManager.loadSkills();
         logger.info('技能加载完成');
-        
+
         // 初始化技能同步服务
         await skillSyncService.init();
       } catch (error) {

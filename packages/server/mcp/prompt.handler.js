@@ -133,8 +133,8 @@ export async function handleReloadPrompts(_args) {
 
 /**
  * 格式化搜索结果
- * @param {*} results
- * @returns
+ * @param {Array} results
+ * @returns {Array}
  */
 function formatResults(results = []) {
   if (!Array.isArray(results)) return [];
@@ -161,8 +161,8 @@ function formatResults(results = []) {
 
 /**
  * 处理列表格式输出
- * @param {*} result
- * @returns
+ * @param {Object} result
+ * @returns {string}
  */
 function formatListOutput(result) {
   // 生成当前时间戳
@@ -244,9 +244,9 @@ function formatDetailOutput(result) {
 
 /**
  * 将对象转换为格式化的text类型输出
- * @param {*} result
+ * @param {Object} result
  * @param {string} format - 输出格式类型: 'list' 或 'detail'
- * @returns
+ * @returns {Object}
  */
 function convertToText(result, format) {
   let ret = '';

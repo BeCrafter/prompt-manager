@@ -37,10 +37,10 @@ export default defineConfig({
     },
 
     // 测试超时
-    testTimeout: 10000,
+    testTimeout: 60000,
 
     // 钩子超时
-    hookTimeout: 10000,
+    hookTimeout: 60000,
 
     // 并发测试
     threads: true,

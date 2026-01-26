@@ -4,15 +4,28 @@
  * 用于验证工具加载、工具管理等功能是否正常工作
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { toolLoaderService } from '../../toolm/tool-loader.service.js';
 import { handleToolM } from '../../toolm/tool-manager.handler.js';
+import { syncSystemTools } from '../../toolm/tool-sync.service.js';
+import fse from 'fs-extra';
+import { config } from '../../utils/config.js';
 
 describe('工具系统集成测试', () => {
   beforeAll(async () => {
+    // 同步系统工具到沙箱环境，确保测试时工具存在
+    await syncSystemTools();
     // 初始化工具加载器
     await toolLoaderService.initialize();
   }, 30000); // 增加超时时间
+
+  afterAll(async () => {
+    // 清理测试生成的工具目录
+    const toolboxDir = config.getToolboxDir();
+    if (await fse.pathExists(toolboxDir)) {
+      await fse.remove(toolboxDir);
+    }
+  });
 
   describe('工具加载服务', () => {
     it('应该成功初始化工具加载器', async () => {
