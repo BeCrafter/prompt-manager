@@ -77,6 +77,7 @@ class PublishVerifier {
       security: false,
       files: false,
       version: false,
+      dependencyIntegrity: false,
       publishReady: false,
       errors: []
     };
@@ -115,6 +116,9 @@ class PublishVerifier {
 
       // 测试8: Version consistency
       this.checkVersionConsistency();
+
+      // 测试9: Dependency integrity
+      this.results.dependencyIntegrity = this.checkDependencyIntegrity();
 
       // 验证发布就绪
       this.checkPublishReady();
@@ -275,6 +279,151 @@ class PublishVerifier {
     }
   }
 
+  checkDependencyIntegrity() {
+    info('Checking dependency integrity...');
+
+    const rootPackageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
+
+    // 只使用根package.json中声明的依赖，因为npm包发布时只使用根package.json
+    const allDeclaredDependencies = new Set([
+      ...Object.keys(rootPackageJson.dependencies || {}),
+      ...Object.keys(rootPackageJson.devDependencies || {})
+    ]);
+
+    // 扫描packages/server目录下的所有JS文件，提取import语句
+    const serverDir = path.join(projectRoot, 'packages/server');
+    const importedPackages = new Set();
+
+    function scanDirectory(dir) {
+      const files = fs.readdirSync(dir);
+      for (const file of files) {
+        const fullPath = path.join(dir, file);
+        const stat = fs.statSync(fullPath);
+
+        if (stat.isDirectory() && !file.startsWith('.') && file !== 'node_modules' && file !== 'dist' && file !== 'tests') {
+          scanDirectory(fullPath);
+        } else if (file.endsWith('.js') && file !== 'test' && !file.includes('.test.') && !file.includes('.spec.')) {
+          // 跳过node_modules目录中的文件
+          if (fullPath.includes('node_modules')) {
+            continue;
+          }
+
+          try {
+            const content = fs.readFileSync(fullPath, 'utf8');
+            // 匹配 import 语句中的包名
+            // 匹配模式: import ... from 'package-name' 或 import ... from "package-name"
+            const importRegex = /import\s+(?:[\s\S]*?)\s+from\s+['"]([^'"][^'"]*?)['"]/g;
+            let match;
+            while ((match = importRegex.exec(content)) !== null) {
+              const importPath = match[1];
+              // 只处理包名（不以 . 或 / 开头的）
+              if (!importPath.startsWith('.') && !importPath.startsWith('/')) {
+                // 提取包名（忽略子路径，如 'express/lib/router' -> 'express'）
+                const packageName = importPath.split('/')[0];
+                if (!packageName.startsWith('@') && packageName !== process.env.NODE_ENV) {
+                  importedPackages.add(packageName);
+                } else if (packageName.startsWith('@')) {
+                  // 对于作用域包，保留完整的 @scope/package
+                  const scopedPackage = importPath.split('/').slice(0, 2).join('/');
+                  importedPackages.add(scopedPackage);
+                }
+              }
+            }
+          } catch (err) {
+            // 忽略读取错误
+          }
+        }
+      }
+    }
+
+    try {
+      scanDirectory(serverDir);
+    } catch (err) {
+      warning(`Failed to scan dependencies: ${err.message}`);
+      return true; // 不因扫描失败而阻止发布
+    }
+
+    // 检查是否有导入的包未在dependencies中声明
+    const missingDependencies = [];
+    const builtInModules = new Set([
+      'fs', 'path', 'http', 'https', 'url', 'crypto', 'os', 'util', 'events',
+      'stream', 'buffer', 'child_process', 'cluster', 'net', 'dgram', 'dns',
+      'readline', 'repl', 'vm', 'tls', 'zlib', 'console', 'timers', 'async_hooks',
+      'worker_threads', 'module', 'perf_hooks', 'assert', 'string_decoder'
+    ]);
+
+    // 开发工具白名单（不需要在生产环境中声明）
+    const devToolsWhitelist = new Set([
+      'vitest',
+      '@vitest/ui',
+      '@vitest/runner',
+      '@vitest/utils',
+      '@vitest/snapshot',
+      'eslint',
+      'prettier',
+      '@playwright/test',
+      'playwright',
+      'jsdoc'
+    ]);
+
+    for (const pkg of importedPackages) {
+      // 跳过Node.js内置模块（包括带node:前缀的）
+      const cleanPkg = pkg.replace('node:', '');
+      if (builtInModules.has(cleanPkg)) {
+        continue;
+      }
+
+      // 跳过开发工具白名单
+      if (devToolsWhitelist.has(pkg)) {
+        continue;
+      }
+
+      // 检查是否在依赖中声明
+      if (!allDeclaredDependencies.has(pkg)) {
+        missingDependencies.push(pkg);
+      }
+    }
+
+    if (missingDependencies.length > 0) {
+      error(`Missing dependencies in package.json: ${missingDependencies.join(', ')}`);
+      missingDependencies.forEach(pkg => {
+        error(`  - ${pkg} is imported in code but not declared in dependencies`);
+        // 找出哪些文件导入了这个包
+        const serverDir = path.join(projectRoot, 'packages/server');
+        function findFilesWithImport(dir, targetPkg, results = []) {
+          const files = fs.readdirSync(dir);
+          for (const file of files) {
+            const fullPath = path.join(dir, file);
+            const stat = fs.statSync(fullPath);
+
+            if (stat.isDirectory() && !file.startsWith('.') && file !== 'node_modules' && file !== 'dist' && file !== 'tests') {
+              findFilesWithImport(fullPath, targetPkg, results);
+            } else if (file.endsWith('.js') && !fullPath.includes('node_modules') && file !== 'test' && !file.includes('.test.') && !file.includes('.spec.')) {
+              try {
+                const content = fs.readFileSync(fullPath, 'utf8');
+                if (content.includes(`from '${targetPkg}'`) || content.includes(`from "${targetPkg}"`)) {
+                  results.push(fullPath.replace(projectRoot, ''));
+                }
+              } catch (err) {
+                // 忽略读取错误
+              }
+            }
+          }
+          return results;
+        }
+
+        const filesWithImport = findFilesWithImport(serverDir, pkg);
+        if (filesWithImport.length > 0) {
+          error(`    Found in files: ${filesWithImport.join(', ')}`);
+        }
+      });
+      return false;
+    }
+
+    success(`Dependency integrity verified (${importedPackages.size} packages checked)`);
+    return true;
+  }
+
   checkPublishReady() {
     info('Checking npm publish readiness...');
 
@@ -303,7 +452,8 @@ class PublishVerifier {
       this.results.build,
       this.results.security,
       this.results.files,
-      this.results.version
+      this.results.version,
+      this.results.dependencyIntegrity
     ].every(check => check);
 
     if (allFilesExist && allChecksPass) {
@@ -319,7 +469,8 @@ class PublishVerifier {
       if (!this.results.security) failedChecks.push('Security');
       if (!this.results.files) failedChecks.push('Files');
       if (!this.results.version) failedChecks.push('Version');
-      
+      if (!this.results.dependencyIntegrity) failedChecks.push('Dependency Integrity');
+
       error(`Not ready for publish. Failed checks: ${failedChecks.join(', ')}`);
       this.results.publishReady = false;
     }
@@ -350,6 +501,7 @@ class PublishVerifier {
     console.log('Files & Version:');
     console.log(`  Package Files:     ${this.results.files ? '✅ PASS' : '❌ FAIL'}`);
     console.log(`  Version Consistency: ${this.results.version ? '✅ PASS' : '❌ FAIL'}`);
+    console.log(`  Dependency Integrity: ${this.results.dependencyIntegrity ? '✅ PASS' : '❌ FAIL'}`);
     console.log(`  Publish Ready:     ${this.results.publishReady ? '✅ PASS' : '❌ FAIL'}`);
     console.log('');
 
