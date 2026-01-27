@@ -51,6 +51,28 @@ jobs:
       - name: Extract version from tag
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Compute publish metadata
+        id: meta
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ "$VERSION" == *"-"* ]]; then
+            if [[ "$VERSION" == *"-dev."* ]]; then
+              NPM_TAG="dev"
+            elif [[ "$VERSION" == *"-alpha."* ]]; then
+              NPM_TAG="alpha"
+            elif [[ "$VERSION" == *"-beta."* ]]; then
+              NPM_TAG="beta"
+            elif [[ "$VERSION" == *"-rc."* ]]; then
+              NPM_TAG="rc"
+            else
+              NPM_TAG="next"
+            fi
+          else
+            NPM_TAG="latest"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "npm_tag=$NPM_TAG" >> "$GITHUB_OUTPUT"
       
       - name: Update version in files
         run: |
@@ -103,6 +125,6 @@ jobs:
           rm -f *.bak *.tmp
       
       - name: Publish to NPM
-        run: npm publish --access public --tag ${{ needs.extract-version.outputs.publish-tag }} --registry=https://registry.npmjs.org/
+        run: npm publish --access public --tag ${{ steps.meta.outputs.npm_tag }} --registry=https://registry.npmjs.org/
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

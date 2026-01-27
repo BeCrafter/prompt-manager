@@ -33,10 +33,10 @@ jobs:
         run: npm ci
         
       - name: Install server dependencies
-        run: cd packages/server && npm ci
+        run: cd packages/server && npm install && npm ci
         
       - name: Install admin-ui dependencies
-        run: cd packages/admin-ui && npm ci
+        run: cd packages/admin-ui && npm install && npm ci
         
       - name: Run ESLint
         run: cd packages/server && npm run lint:check
