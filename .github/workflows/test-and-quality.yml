@@ -2,9 +2,9 @@ name: Test and Quality
 
 on:
   push:
-    branches: [ main, dev-reui ]
+    branches: [ '*' ]
   pull_request:
-    branches: [ main, dev-reui ]
+    branches: [ '*' ]
 
 permissions:
   contents: read
@@ -30,7 +30,7 @@ jobs:
           cache: 'npm'
           
       - name: Install dependencies
-        run: npm ci
+        run: npm install && npm ci
         
       - name: Install server dependencies
         run: cd packages/server && npm install && npm ci
