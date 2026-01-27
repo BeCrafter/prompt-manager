@@ -2,9 +2,9 @@ name: Test and Quality
 
 on:
   push:
-    branches: [ main, dev-reui ]
+    branches: [ '*' ]
   pull_request:
-    branches: [ main, dev-reui ]
+    branches: [ '*' ]
 
 permissions:
   contents: read
@@ -30,13 +30,13 @@ jobs:
           cache: 'npm'
           
       - name: Install dependencies
-        run: npm ci
+        run: npm install && npm ci
         
       - name: Install server dependencies
-        run: cd packages/server && npm ci
+        run: cd packages/server && npm install && npm ci
         
       - name: Install admin-ui dependencies
-        run: cd packages/admin-ui && npm ci
+        run: cd packages/admin-ui && npm install && npm ci
         
       - name: Run ESLint
         run: cd packages/server && npm run lint:check
@@ -55,3 +55,32 @@ jobs:
         
       - name: Build admin-ui
         run: cd packages/admin-ui && npm run build
+
+      - name: Build npm package
+        run: npm pack
+
+      - name: Install npm package
+        run: |
+          cd /tmp
+          rm -rf test-npm-package || true
+          mkdir test-npm-package
+          cd test-npm-package
+          npm install ${{ github.workspace }}/becrafter-prompt-manager-*.tgz
+
+      - name: Test npm package startup
+        run: |
+          cd /tmp/test-npm-package
+          timeout 30 npx prompt-manager --port 5621 > /tmp/test-startup.log 2>&1 &
+          sleep 10
+          # 检查进程是否还在运行
+          if pgrep -f "prompt-manager"; then
+            echo "✅ Service started successfully"
+            # 测试API是否响应
+            curl -s http://localhost:5621/adminapi/config/public || exit 1
+            echo "✅ API responding correctly"
+            pkill -f "prompt-manager"
+          else
+            echo "❌ Service failed to start"
+            cat /tmp/test-startup.log
+            exit 1
+          fi

@@ -3,9 +3,7 @@ name: Simplified Release
 on:
   push:
     tags:
-      - 'v*'           # 正式版本: v1.0.0
-      - 'beta-v*'      # Beta版本: beta-v1.0.0
-      - 'canary-v*'    # Canary版本: canary-v1.0.0
+      - 'v*'           # 统一版本格式: v1.0.0 / v1.0.0-beta.1 / v1.0.0-rc.1
 
 env:
   NODE_VERSION: '22.x'
@@ -22,7 +20,6 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       clean-version: ${{ steps.version.outputs.clean-version }}
       is-beta: ${{ steps.version.outputs.is-beta }}
-      is-canary: ${{ steps.version.outputs.is-canary }}
       publish-tag: ${{ steps.version.outputs.publish-tag }}
     steps:
       - uses: actions/checkout@v4
@@ -34,26 +31,36 @@ jobs:
         run: |
           TAG=${GITHUB_REF#refs/tags/}
           echo "version=${TAG}" >> $GITHUB_OUTPUT
-          
-          if [[ $TAG == beta-* ]]; then
-            CLEAN_VERSION=${TAG#beta-}
-            echo "is-beta=true" >> $GITHUB_OUTPUT
-            echo "publish-tag=beta" >> $GITHUB_OUTPUT
-          elif [[ $TAG == canary-* ]]; then
-            CLEAN_VERSION=${TAG#canary-}
-            echo "is-canary=true" >> $GITHUB_OUTPUT
-            echo "publish-tag=canary" >> $GITHUB_OUTPUT
+
+          # 统一 tag 风格：
+          # v1.2.3 / v1.2.3-beta.1
+          CLEAN_VERSION="${TAG#v}"
+          IS_BETA=false
+
+          if [[ "$CLEAN_VERSION" == *"-"* ]]; then
+            if [[ "$CLEAN_VERSION" == *"-beta."* ]]; then
+              PUBLISH_TAG="beta"
+              IS_BETA=true
+            elif [[ "$CLEAN_VERSION" == *"-alpha."* ]]; then
+              PUBLISH_TAG="alpha"
+            elif [[ "$CLEAN_VERSION" == *"-rc."* ]]; then
+              PUBLISH_TAG="rc"
+            elif [[ "$CLEAN_VERSION" == *"-dev."* ]]; then
+              PUBLISH_TAG="dev"
+            else
+              echo "Unsupported pre-release tag format: ${TAG}"
+              exit 1
+            fi
           else
-            CLEAN_VERSION=${TAG#v}
-            echo "is-beta=false" >> $GITHUB_OUTPUT
-            echo "is-canary=false" >> $GITHUB_OUTPUT
-            echo "publish-tag=latest" >> $GITHUB_OUTPUT
+            PUBLISH_TAG="latest"
           fi
-          
+
+          echo "is-beta=${IS_BETA}" >> $GITHUB_OUTPUT
+          echo "publish-tag=${PUBLISH_TAG}" >> $GITHUB_OUTPUT
           echo "clean-version=${CLEAN_VERSION}" >> $GITHUB_OUTPUT
           echo "Version: ${TAG}"
           echo "Clean Version: ${CLEAN_VERSION}"
-          echo "Publish Tag: ${{ steps.version.outputs.publish-tag }}"
+          echo "Publish Tag: ${PUBLISH_TAG}"
 
   # 预发布检查
   pre-checks:
@@ -61,7 +68,9 @@ jobs:
     needs: extract-version
     steps:
       - uses: actions/checkout@v4
-      
+        with:
+          fetch-depth: 0
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -97,10 +106,21 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
-      
+
+      - name: Ensure npm registry is npmjs
+        run: |
+          rm -f .npmrc
+          npm config set registry https://registry.npmjs.org/
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Check and install all dependencies
+        run: npm run check:deps
       
+      - name: Build artifacts
+        run: npm run build
+
       - name: Update version files
         run: node scripts/update-version.js ${{ needs.extract-version.outputs.clean-version }}
       
@@ -134,7 +154,7 @@ jobs:
           tag_name: ${{ needs.extract-version.outputs.version }}
           release_name: Release ${{ needs.extract-version.outputs.version }}
           draft: false
-          prerelease: ${{ needs.extract-version.outputs.is-beta == 'true' || needs.extract-version.outputs.is-canary == 'true' }}
+          prerelease: ${{ needs.extract-version.outputs.is-beta == 'true' }}
           body: |
             ## Release ${{ needs.extract-version.outputs.version }}
             
@@ -147,6 +167,7 @@ jobs:
         run: npm publish --access public --tag ${{ needs.extract-version.outputs.publish-tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_USERCONFIG: /home/runner/work/_temp/.npmrc
 
   # 发布成功通知
   notify-success:

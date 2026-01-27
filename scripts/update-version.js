@@ -16,7 +16,6 @@ class VersionManager {
       'package.json',
       'packages/server/package.json',
       'app/desktop/package.json',
-      // 'env.example',
       'README.md',
       'packages/server/utils/config.js'
     ];
@@ -45,6 +44,9 @@ class VersionManager {
       // 更新 app/desktop/package-lock.json
       await this.updateDesktopPackageLock(newVersion);
 
+      // 更新 packages/server/package-lock.json
+      await this.updateServerPackageLock(newVersion);
+
       console.log('✅ Version update completed successfully');
       console.log(`📝 Updated version: ${newVersion}`);
     } catch (error) {
@@ -57,10 +59,9 @@ class VersionManager {
    * 验证版本格式
    */
   isValidVersion(version) {
-    // 支持 semver 格式和 beta/canary 前缀
-    const semverRegex = /^(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z0-9\-\.]+))?$/;
-    const prefixedRegex = /^(beta|canary)-(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z0-9\-\.]+))?$/;
-    return semverRegex.test(version) || prefixedRegex.test(version);
+    // 支持 semver 和所有预发布格式（如 1.2.3, 1.2.3-beta.1, 1.2.3-alpha.1, 1.2.3-rc.1, 1.2.3-dev.4）
+    const semverRegex = /^(\d+)\.(\d+)\.(\d+)(?:-(?:beta|alpha|rc|dev)\.(\d+))?$/;
+    return semverRegex.test(version);
   }
 
   /**
@@ -140,16 +141,30 @@ class VersionManager {
    */
   async updateConfigFile(filePath, version) {
     let content = await fs.readFile(filePath, 'utf8');
-    
+
     // 更新 serverVersion 默认值
-    const versionRegex = /this\.serverVersion\s*=\s*process\.env\.MCP_SERVER_VERSION\s*\|\|\s*['"][^'"]*['"];?/;
-    if (versionRegex.test(content)) {
+    // 匹配两种模式：
+    // 1. 简单赋值: this.serverVersion = '0.1.22';
+    // 2. 环境变量优先: this.serverVersion = process.env.MCP_SERVER_VERSION || '0.1.22';
+
+    // 先尝试匹配环境变量优先的模式
+    const envVersionRegex = /this\.serverVersion\s*=\s*process\.env\.MCP_SERVER_VERSION\s*\|\|\s*['"][^'"]*['"];?/;
+    if (envVersionRegex.test(content)) {
       content = content.replace(
-        versionRegex,
+        envVersionRegex,
         `this.serverVersion = process.env.MCP_SERVER_VERSION || '${version}';`
       );
+    } else {
+      // 如果没有找到环境变量优先的模式，尝试匹配简单赋值模式
+      const simpleVersionRegex = /this\.serverVersion\s*=\s*['"][^'"]*['"];?/;
+      if (simpleVersionRegex.test(content)) {
+        content = content.replace(
+          simpleVersionRegex,
+          `this.serverVersion = '${version}';`
+        );
+      }
     }
-    
+
     await fs.writeFile(filePath, content);
   }
 
@@ -198,6 +213,24 @@ class VersionManager {
   }
 
   /**
+   * 更新服务端的 package-lock.json
+   */
+  async updateServerPackageLock(newVersion) {
+    const lockFile = path.join(this.projectRoot, 'packages/server/package-lock.json');
+
+    if (!fs.existsSync(lockFile)) {
+      console.warn('⚠️  packages/server/package-lock.json not found');
+      return;
+    }
+
+    try {
+      await this.updatePackageLockJson(lockFile, newVersion);
+    } catch (error) {
+      console.warn(`⚠️  Failed to update server package-lock.json: ${error.message}`);
+    }
+  }
+
+  /**
    * JavaScript 方式更新 package-lock.json
    */
   async updatePackageLockJson(lockFile, newVersion) {
@@ -242,7 +275,7 @@ Usage:
   node scripts/update-version.js <version> [options]
 
 Arguments:
-  version           New version number (e.g., 1.0.0, beta-1.0.0, canary-1.0.0)
+  version           New version number (e.g., 1.0.0, 1.0.0-beta.1)
 
 Options:
   --dry-run         Show what would be changed without making changes
@@ -250,8 +283,10 @@ Options:
 
 Examples:
   node scripts/update-version.js 1.0.0
-  node scripts/update-version.js beta-1.0.0
-  node scripts/update-version.js canary-1.0.1-rc.1
+  node scripts/update-version.js 1.0.0-beta.1
+  node scripts/update-version.js 1.0.0-alpha.1
+  node scripts/update-version.js 1.0.0-rc.1
+  node scripts/update-version.js 1.0.0-dev.1
 `);
   }
 }
