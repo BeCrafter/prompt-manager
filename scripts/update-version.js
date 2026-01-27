@@ -59,8 +59,8 @@ class VersionManager {
    * 验证版本格式
    */
   isValidVersion(version) {
-    // 仅支持 semver 和 beta 预发布格式（如 1.2.3 或 1.2.3-beta.1）
-    const semverRegex = /^(\d+)\.(\d+)\.(\d+)(?:-beta\.(\d+))?$/;
+    // 支持 semver 和所有预发布格式（如 1.2.3, 1.2.3-beta.1, 1.2.3-alpha.1, 1.2.3-rc.1, 1.2.3-dev.4）
+    const semverRegex = /^(\d+)\.(\d+)\.(\d+)(?:-(?:beta|alpha|rc|dev)\.(\d+))?$/;
     return semverRegex.test(version);
   }
 
