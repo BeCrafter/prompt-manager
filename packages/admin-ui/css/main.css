@@ -962,7 +962,8 @@ aside {
 
 /* 启用状态边框样式 */
 .prompt-item.enabled {
-  border-left: 4px solid #b8b3b3; /* 浅30%的深灰色，原#333调浅30%约为#666 */
+  /* border-left: 4px solid #b8b3b3; */ /* 浅30%的深灰色，原#333调浅30%约为#666 */
+  border-left: 4px solid var(--primary);
 }
 
 /* 操作按钮样式 */
