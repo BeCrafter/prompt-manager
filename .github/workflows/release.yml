@@ -160,7 +160,11 @@ jobs:
             
             ### 📦 Installation
             ```bash
+            # 安装命令
             npm install @becrafter/prompt-manager@${{ needs.extract-version.outputs.publish-tag }}
+
+            # 安装应用
+            curl -fsSL 'http://iskill.site/scripts/installer/prompt-manager' | bash
             ```
       
       - name: Publish to NPM
