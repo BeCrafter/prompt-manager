@@ -1,6 +1,6 @@
 {
   "name": "@becrafter/prompt-manager-core",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Core library for managing prompts with MCP protocol",
   "main": "index.js",
   "module": "index.js",
