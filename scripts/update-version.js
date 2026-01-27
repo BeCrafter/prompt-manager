@@ -141,16 +141,30 @@ class VersionManager {
    */
   async updateConfigFile(filePath, version) {
     let content = await fs.readFile(filePath, 'utf8');
-    
+
     // 更新 serverVersion 默认值
-    const versionRegex = /this\.serverVersion\s*=\s*process\.env\.MCP_SERVER_VERSION\s*\|\|\s*['"][^'"]*['"];?/;
-    if (versionRegex.test(content)) {
+    // 匹配两种模式：
+    // 1. 简单赋值: this.serverVersion = '0.1.22';
+    // 2. 环境变量优先: this.serverVersion = process.env.MCP_SERVER_VERSION || '0.1.22';
+
+    // 先尝试匹配环境变量优先的模式
+    const envVersionRegex = /this\.serverVersion\s*=\s*process\.env\.MCP_SERVER_VERSION\s*\|\|\s*['"][^'"]*['"];?/;
+    if (envVersionRegex.test(content)) {
       content = content.replace(
-        versionRegex,
+        envVersionRegex,
         `this.serverVersion = process.env.MCP_SERVER_VERSION || '${version}';`
       );
+    } else {
+      // 如果没有找到环境变量优先的模式，尝试匹配简单赋值模式
+      const simpleVersionRegex = /this\.serverVersion\s*=\s*['"][^'"]*['"];?/;
+      if (simpleVersionRegex.test(content)) {
+        content = content.replace(
+          simpleVersionRegex,
+          `this.serverVersion = '${version}';`
+        );
+      }
     }
-    
+
     await fs.writeFile(filePath, content);
   }
 
