@@ -76,7 +76,7 @@ jobs:
           cache: 'npm'
       
       - name: Install dependencies
-        run: npm ci
+        run: npm install && npm ci
 
       - name: Check and install all dependencies
         run: npm run check:deps
