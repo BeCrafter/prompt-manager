@@ -68,7 +68,9 @@ jobs:
     needs: extract-version
     steps:
       - uses: actions/checkout@v4
-      
+        with:
+          fetch-depth: 0
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -109,10 +111,10 @@ jobs:
         run: |
           rm -f .npmrc
           npm config set registry https://registry.npmjs.org/
-      
+
       - name: Install dependencies
-        run: npm install && npm ci
-      
+        run: npm ci
+
       - name: Check and install all dependencies
         run: npm run check:deps
       
