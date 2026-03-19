@@ -3,10 +3,10 @@
 /**
  * NPM Package Verification Script
  * 完整的npm包本地验证流程
- * 
+ *
  * 使用方法:
  *   node scripts/test-npm-package.js
- * 
+ *
  * 验证步骤:
  *   1. 运行发布前验证 (lint, test, build, security等)
  *   2. 打包npm包
@@ -24,6 +24,40 @@ import { randomUUID } from 'node:crypto';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
+
+// 跨平台进程检查函数
+function checkProcessRunning(processName) {
+  try {
+    if (process.platform === 'win32') {
+      // Windows 使用 tasklist
+      execSync(`tasklist /FI "IMAGENAME eq node.exe" | findstr /I "node.exe"`, { stdio: 'pipe' });
+      return true;
+    } else {
+      // Unix-like 系统使用 pgrep
+      execSync(`pgrep -f "${processName}"`, { stdio: 'pipe' });
+      return true;
+    }
+  } catch (error) {
+    return false;
+  }
+}
+
+// 跨平台进程终止函数
+function killProcess(processName) {
+  try {
+    if (process.platform === 'win32') {
+      // Windows 使用 taskkill
+      execSync(`taskkill /F /IM node.exe /FI "WINDOWTITLE eq prompt-manager*"`, { stdio: 'pipe' });
+    } else {
+      // Unix-like 系统使用 pkill
+      execSync(`pkill -f "${processName}"`, { stdio: 'pipe' });
+    }
+    return true;
+  } catch (error) {
+    // 进程可能不存在，忽略错误
+    return false;
+  }
+}
 
 // ANSI 颜色代码
 const colors = {
@@ -236,8 +270,10 @@ class NpmPackageVerifier {
 
       while (attempts < maxAttempts) {
         try {
-          // 检查进程是否在运行
-          execSync('pgrep -f "prompt-manager"', { stdio: 'pipe' });
+          // 检查进程是否在运行（跨平台）
+          if (!checkProcessRunning('prompt-manager')) {
+            throw new Error('Process not running');
+          }
 
           // 尝试连接API
           const response = execSync(
@@ -312,7 +348,7 @@ class NpmPackageVerifier {
   stopService() {
     try {
       info('停止服务...');
-      execSync('pkill -f "prompt-manager"', { stdio: 'pipe' });
+      killProcess('prompt-manager');
       success('服务已停止');
     } catch (err) {
       // 忽略停止失败

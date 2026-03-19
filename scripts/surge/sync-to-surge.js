@@ -130,7 +130,7 @@ if (shouldDeploy) {
     
     // 检查是否安装了surge
     try {
-      execSync('which surge', { stdio: 'ignore' });
+      execSync('surge --version', { stdio: 'ignore' });
     } catch (error) {
       console.error('错误: 未找到surge命令，请先安装surge: npm install -g surge');
       process.exit(1);

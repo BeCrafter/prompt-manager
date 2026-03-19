@@ -633,9 +633,13 @@ export default {
    */
   buildRuntimeEnvironment(toolDir) {
     const nodeModulesBinPath = path.join(toolDir, 'node_modules', '.bin');
+    const defaultPath = process.platform === 'win32'
+      ? 'C:\\Windows\\System32;C:\\Windows'
+      : '/usr/local/bin:/usr/bin:/bin';
+
     return {
-      // 系统必需变量
-      PATH: `${nodeModulesBinPath}:${process.env.PATH || '/usr/local/bin:/usr/bin:/bin'}`,
+      // 系统必需变量（使用 path.delimiter 实现跨平台）
+      PATH: `${nodeModulesBinPath}${path.delimiter}${process.env.PATH || defaultPath}`,
       HOME: process.env.HOME || os.homedir(),
       USER: process.env.USER || 'user',
       // Node.js 相关
@@ -645,7 +649,7 @@ export default {
       // 确保使用工具目录的 node_modules
       npm_config_prefix: toolDir,
       // 平台相关
-      ...(process.platform === 'win32' ? { 
+      ...(process.platform === 'win32' ? {
         PATHEXT: process.env.PATHEXT || '.EXE;.CMD;.BAT;.COM'
       } : {})
     };

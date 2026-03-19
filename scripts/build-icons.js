@@ -76,11 +76,17 @@ async function buildIcons() {
     // 创建 ICNS 文件 (macOS) - 使用 iconutil 工具
     console.log('Creating ICNS file for macOS...');
     try {
-      const icnsPath = path.join(assetsDir, 'icon.icns');
-      
-      // 使用 iconutil 创建 ICNS 文件
-      await new Promise((resolve, reject) => {
-        const iconutil = spawn('iconutil', ['-c', 'icns', '-o', icnsPath, macIconDir]);
+      // 只在 macOS 上使用 iconutil
+      if (process.platform !== 'darwin') {
+        console.log('  - Skipping ICNS creation (not on macOS)');
+        // 清理临时文件
+        fs.rmSync(macIconDir, { recursive: true, force: true });
+      } else {
+        const icnsPath = path.join(assetsDir, 'icon.icns');
+
+        // 使用 iconutil 创建 ICNS 文件
+        await new Promise((resolve, reject) => {
+          const iconutil = spawn('iconutil', ['-c', 'icns', '-o', icnsPath, macIconDir]);
         
         iconutil.on('close', (code) => {
           if (code === 0) {

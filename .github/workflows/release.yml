@@ -4,6 +4,18 @@ on:
   push:
     tags:
       - 'v*'           # 统一版本格式: v1.0.0 / v1.0.0-beta.1 / v1.0.0-rc.1
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: '测试模式（跳过 NPM 发布，只构建桌面应用）'
+        required: false
+        default: false
+        type: boolean
+      version:
+        description: '版本号（测试模式时使用）'
+        required: false
+        default: '0.0.0-test'
+        type: string
 
 env:
   NODE_VERSION: '22.x'
@@ -21,16 +33,63 @@ jobs:
       clean-version: ${{ steps.version.outputs.clean-version }}
       is-beta: ${{ steps.version.outputs.is-beta }}
       publish-tag: ${{ steps.version.outputs.publish-tag }}
+      test_mode: ${{ steps.version.outputs.test_mode }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Extract version information
         id: version
         run: |
-          TAG=${GITHUB_REF#refs/tags/}
-          echo "version=${TAG}" >> $GITHUB_OUTPUT
+          # 检查是否为测试模式
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.test_mode }}" = "true" ]; then
+            TEST_MODE="true"
+            VERSION="${{ inputs.version }}"
+            CLEAN_VERSION="${VERSION#v}"
+            echo "test_mode=${TEST_MODE}" >> $GITHUB_OUTPUT
+            echo "version=${VERSION}" >> $GITHUB_OUTPUT
+            echo "clean-version=${CLEAN_VERSION}" >> $GITHUB_OUTPUT
+            echo "is-beta=true" >> $GITHUB_OUTPUT
+            echo "publish-tag=beta" >> $GITHUB_OUTPUT
+            echo "Test Mode: ${TEST_MODE}"
+            echo "Version: ${VERSION}"
+          else
+            TEST_MODE="false"
+            TAG=${GITHUB_REF#refs/tags/}
+            echo "test_mode=${TEST_MODE}" >> $GITHUB_OUTPUT
+            echo "version=${TAG}" >> $GITHUB_OUTPUT
+
+            # 统一 tag 风格：
+            # v1.2.3 / v1.2.3-beta.1
+            CLEAN_VERSION="${TAG#v}"
+            IS_BETA=false
+
+            if [[ "$CLEAN_VERSION" == *"-"* ]]; then
+              if [[ "$CLEAN_VERSION" == *"-beta."* ]]; then
+                PUBLISH_TAG="beta"
+                IS_BETA=true
+              elif [[ "$CLEAN_VERSION" == *"-alpha."* ]]; then
+                PUBLISH_TAG="alpha"
+              elif [[ "$CLEAN_VERSION" == *"-rc."* ]]; then
+                PUBLISH_TAG="rc"
+              elif [[ "$CLEAN_VERSION" == *"-dev."* ]]; then
+                PUBLISH_TAG="dev"
+              else
+                echo "Unsupported pre-release tag format: ${TAG}"
+                exit 1
+              fi
+            else
+              PUBLISH_TAG="latest"
+            fi
+
+            echo "is-beta=${IS_BETA}" >> $GITHUB_OUTPUT
+            echo "publish-tag=${PUBLISH_TAG}" >> $GITHUB_OUTPUT
+            echo "clean-version=${CLEAN_VERSION}" >> $GITHUB_OUTPUT
+            echo "Version: ${TAG}"
+            echo "Clean Version: ${CLEAN_VERSION}"
+            echo "Publish Tag: ${PUBLISH_TAG}"
+          fi
 
           # 统一 tag 风格：
           # v1.2.3 / v1.2.3-beta.1
@@ -89,10 +148,12 @@ jobs:
   # 发布到NPM
   publish:
     runs-on: ubuntu-latest
-    needs: 
+    needs:
       - extract-version
       - pre-checks
-    if: needs.pre-checks.result == 'success'
+    if: |
+      needs.pre-checks.result == 'success' &&
+      needs.extract-version.outputs.test_mode != 'true'
     
     steps:
       - uses: actions/checkout@v4
@@ -154,18 +215,32 @@ jobs:
           tag_name: ${{ needs.extract-version.outputs.version }}
           release_name: Release ${{ needs.extract-version.outputs.version }}
           draft: false
-          prerelease: ${{ needs.extract-version.outputs.is-beta == 'true' }}
+          prerelease: ${{ needs.extract-version.outputs.is-beta == 'true' || needs.extract-version.outputs.test_mode == 'true' }}
           body: |
             ## Release ${{ needs.extract-version.outputs.version }}
-            
-            ### 📦 Installation
-            ```bash
+
+            ${{ needs.extract-version.outputs.test_mode == 'true' && '### 🧪 Test Release' || '### 📦 Installation' }}
+
+            ${{ needs.extract-version.outputs.test_mode == 'true' && 'This is a test release for testing the desktop application build process.' || '' }}
+
+            ${{ needs.extract-version.outputs.test_mode != 'true' && '```bash
             # 安装命令
             npm install @becrafter/prompt-manager@${{ needs.extract-version.outputs.publish-tag }}
 
             # 安装应用
-            curl -fsSL 'http://iskill.site/scripts/installer/prompt-manager' | bash
-            ```
+            curl -fsSL \'http://iskill.site/scripts/installer/prompt-manager\' | bash
+            ```' || '' }}
+
+            ### 📥 Desktop Applications
+
+            **macOS**: Download the `.dmg` file and drag to Applications
+            **Windows**: Download the `.exe` installer or portable `.zip` file
+            **Linux**: Download the `.AppImage` or `.tar.xz` file
+
+            ### 🧪 Testing
+
+            If you encounter any issues, please report them at:
+            https://github.com/BeCrafter/prompt-manager/issues
       
       - name: Publish to NPM
         run: npm publish --access public --tag ${{ needs.extract-version.outputs.publish-tag }}
@@ -173,15 +248,80 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_USERCONFIG: /home/runner/work/_temp/.npmrc
 
+  # 桌面应用构建
+  build-desktop:
+    runs-on: ${{ matrix.os }}
+    needs: [extract-version, pre-checks]
+    if: needs.pre-checks.result == 'success'
+    
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+          - os: windows-latest
+            platform: win
+          - os: ubuntu-latest
+            platform: linux
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Check and install all dependencies
+        run: npm run check:deps
+      
+      - name: Build admin-ui
+        run: npm run build:admin-ui
+      
+      - name: Build desktop app
+        run: npm run build:desktop:${{ matrix.platform }}
+        working-directory: ./app/desktop
+      
+      - name: Upload artifacts to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/*.dmg
+            dist/*.exe
+            dist/*.zip
+            dist/*.AppImage
+            dist/*.tar.xz
+          draft: false
+          prerelease: ${{ needs.extract-version.outputs.is_beta == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
   # 发布成功通知
   notify-success:
     runs-on: ubuntu-latest
-    needs: [extract-version, publish]
-    if: needs.publish.result == 'success'
-    
+    needs: [extract-version, publish, build-desktop]
+    if: |
+      always() &&
+      (needs.publish.result == 'success' || needs.extract-version.outputs.test_mode == 'true')
+  
     steps:
       - name: Success notification
         run: |
-          echo "🎉 Release ${{ needs.extract-version.outputs.version }} completed successfully!"
-          echo "📦 Published to NPM with tag: ${{ needs.extract-version.outputs.publish-tag }}"
-          echo "🔗 GitHub Release: https://github.com/${{ github.repository }}/releases/tag/${{ needs.extract-version.outputs.version }}"
+          if [ "${{ needs.extract-version.outputs.test_mode }}" = "true" ]; then
+            echo "🧪 Test build completed successfully!"
+            echo "📦 Version: ${{ needs.extract-version.outputs.version }}"
+            echo "🔗 GitHub Release: https://github.com/${{ github.repository }}/releases/tag/${{ needs.extract-version.outputs.version }}"
+            echo ""
+            echo "Download the desktop applications from the release page for testing."
+          else
+            echo "🎉 Release ${{ needs.extract-version.outputs.version }} completed successfully!"
+            echo "📦 Published to NPM with tag: ${{ needs.extract-version.outputs.publish-tag }}"
+            echo "🔗 GitHub Release: https://github.com/${{ github.repository }}/releases/tag/${{ needs.extract-version.outputs.version }}"
+          fi

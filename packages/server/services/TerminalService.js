@@ -43,7 +43,8 @@ async function tryLoadNodePty() {
       const { spawn } = await import('child_process');
 
       logger.info('正在重新编译 node-pty...');
-      const rebuildProcess = spawn('npm', ['rebuild', 'node-pty'], {
+      const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+      const rebuildProcess = spawn(npmCommand, ['rebuild', 'node-pty'], {
         stdio: 'inherit',
         cwd: process.cwd()
       });

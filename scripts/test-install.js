@@ -9,8 +9,46 @@ import { execSync, spawn } from 'child_process';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
+import tar from 'tar';
 import { fileURLToPath } from 'url';
 import http from 'http';
+
+
+// 辅助函数：检查 tar 包中是否包含指定文件
+function checkTarContains(tarPath, pattern) {
+  try {
+    const entries = [];
+    tar.list({
+      file: tarPath,
+      sync: true,
+      onentry: (entry) => {
+        entries.push(entry.path);
+      }
+    });
+    const matches = entries.filter(e => e.includes(pattern));
+    return matches.length > 0;
+  } catch (error) {
+    return false;
+  }
+}
+
+// 辅助函数：获取 tar 包中匹配的文件列表
+function getTarFiles(tarPath, pattern) {
+  try {
+    const entries = [];
+    tar.list({
+      file: tarPath,
+      sync: true,
+      onentry: (entry) => {
+        entries.push(entry.path);
+      }
+    });
+    const matches = entries.filter(e => pattern.test(e));
+    return matches.slice(0, 10);
+  } catch (error) {
+    return [];
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -71,14 +109,16 @@ async function main() {
     // 验证发布包中包含 web 目录
     console.log('验证: 发布包包含 packages/web 目录');
     try {
-      const result = execSync(`tar -tzf "${packPath}" | grep -c "packages/web/index.html"`, { encoding: 'utf8' });
-      if (parseInt(result.trim()) > 0) {
+      const hasWebFiles = checkTarContains(packPath, 'packages/web/index.html');
+      if (hasWebFiles) {
         console.log('✅ 发布包包含 Web 界面文件\n');
       } else {
         console.log('❌ 发布包不包含 Web 界面文件\n');
         console.log('检查包文件:', packPath);
         console.log('包内容预览:');
-        execSync(`tar -tzf "${packPath}" | grep -E "(packages/web|package)" | head -10`, { stdio: 'inherit' });
+        const webFiles = getTarFiles(packPath, /packages\/web|package/);
+        console.log('包内容预览:');
+        webFiles.forEach(f => console.log('  ' + f));
         throw new Error('发布包不包含 Web 界面文件');
       }
     } catch (error) {
@@ -89,14 +129,16 @@ async function main() {
     // 验证发布包中包含 examples 目录
     console.log('验证: 发布包包含 examples 目录');
     try {
-      const result = execSync(`tar -tzf "${packPath}" | grep -c "examples/prompts"`, { encoding: 'utf8' });
-      if (parseInt(result.trim()) > 0) {
+      const hasExampleFiles = checkTarContains(packPath, 'examples/prompts');
+      if (hasExampleFiles) {
         console.log('✅ 发布包包含 Examples 目录\n');
       } else {
         console.log('❌ 发布包不包含 Examples 目录\n');
         console.log('检查包文件:', packPath);
         console.log('包内容预览:');
-        execSync(`tar -tzf "${packPath}" | grep -E "(examples|package)" | head -10`, { stdio: 'inherit' });
+        const exampleFiles = getTarFiles(packPath, /examples|package/);
+        console.log('包内容预览:');
+        exampleFiles.forEach(f => console.log('  ' + f));
         throw new Error('发布包不包含 Examples 目录');
       }
     } catch (error) {

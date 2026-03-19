@@ -1,0 +1,133 @@
+name: Test Desktop Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - mac
+          - win
+          - linux
+      run_tests:
+        description: 'Run automated tests'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  NODE_VERSION: '22.x'
+
+permissions:
+  contents: read
+
+jobs:
+  # 构建和测试桌面应用
+  build-desktop:
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+          - os: windows-latest
+            platform: win
+          - os: ubuntu-latest
+            platform: linux
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Check and install all dependencies
+        run: npm run check:deps
+      
+      - name: Build admin-ui
+        run: npm run build:admin-ui
+      
+      - name: Build desktop app
+        run: npm run build:desktop:${{ matrix.platform }}
+        working-directory: ./app/desktop
+      
+      - name: Run automated tests
+        if: inputs.run_tests == true
+        run: node scripts/test-desktop-build.js ${{ matrix.platform }}
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.platform }}-build
+          path: |
+            dist/*.dmg
+            dist/*.exe
+            dist/*.zip
+            dist/*.AppImage
+            dist/*.tar.xz
+          retention-days: 7
+          if-no-files-found: warn
+      
+      - name: Display build artifacts
+        run: |
+          echo "=== Build Artifacts ==="
+          ls -lh dist/ || true
+        shell: bash
+
+  # 汇总测试结果
+  summary:
+    runs-on: ubuntu-latest
+    needs: build-desktop
+    if: always()
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-builds
+      
+      - name: Display build summary
+        run: |
+          echo "==================================="
+          echo "Desktop Build Test Summary"
+          echo "==================================="
+          echo ""
+          echo "Build Status:"
+          echo "  macOS: ${{ needs.build-desktop.result }}"
+          echo "  Windows: ${{ needs.build-desktop.result }}"
+          echo "  Linux: ${{ needs.build-desktop.result }}"
+          echo ""
+          echo "==================================="
+          echo "Build Artifacts:"
+          echo "==================================="
+          find all-builds -type f -exec ls -lh {} \; 2>/dev/null || true
+          echo ""
+          echo "==================================="
+          echo "Next Steps:"
+          echo "==================================="
+          echo "1. Download artifacts from this workflow run"
+          echo "2. Test the desktop application on your target platform"
+          echo "3. Report any issues to the issue tracker"
+          echo ""
+      
+      - name: Upload combined artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-desktop-builds
+          path: all-builds/
+          retention-days: 7
+          if-no-files-found: warn
