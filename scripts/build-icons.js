@@ -105,6 +105,7 @@ async function buildIcons() {
           resolve(); // 继续执行，不阻止其他图标生成
         });
       });
+      }
     } catch (error) {
       console.log('  - Failed to create ICNS file:', error.message);
     }

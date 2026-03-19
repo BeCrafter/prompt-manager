@@ -61,7 +61,10 @@
     "clean:reinstall": "npm run clean && npm install",
     "test:build": "bash scripts/build.sh test-build",
     "test:npm-package": "node scripts/test-npm-package.js",
-    "postinstall": "npm rebuild node-pty"
+    "postinstall": "npm rebuild node-pty",
+    "build:desktop:mac": "node scripts/build.js build:mac",
+    "build:desktop:win": "node scripts/build.js build:win",
+    "build:desktop:linux": "node scripts/build.js build:linux"
   },
   "keywords": [
     "mcp",

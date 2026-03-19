@@ -135,6 +135,9 @@
       "description": "Prompt Manager is a desktop application that provides a menu bar interface for managing prompts via MCP (Model Context Protocol).",
       "desktop": {},
       "artifactName": "${productName}-${version}.${ext}"
+    },
+    "electronDownload": {
+      "mirror": "https://npmmirror.com/mirrors/electron/"
     }
   }
 }
