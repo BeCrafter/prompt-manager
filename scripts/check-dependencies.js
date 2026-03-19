@@ -7,7 +7,7 @@
  */
 
 import { existsSync } from 'fs';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -39,7 +39,7 @@ function log(message, color = colors.reset) {
 function execCommand(command, args = [], options = {}) {
   return new Promise((resolve, reject) => {
     const cmd = process.platform === 'win32' && command === 'npm' ? 'npm.cmd' : command;
-    const { spawn } = require('child_process');
+
     const proc = spawn(cmd, args, {
       stdio: 'inherit',
       cwd: options.cwd || PROJECT_ROOT,

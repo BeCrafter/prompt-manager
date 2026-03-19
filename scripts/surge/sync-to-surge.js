@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
-const yaml = require('js-yaml');
+import fs from 'fs';
+import path from 'path';
+import { execSync } from 'child_process';
+import yaml from 'js-yaml';
 
 // 源目录和目标目录
 const SOURCE_DIR = path.join(__dirname, '../../examples/prompts');

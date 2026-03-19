@@ -214,22 +214,18 @@ jobs:
         with:
           tag_name: ${{ needs.extract-version.outputs.version }}
           release_name: Release ${{ needs.extract-version.outputs.version }}
-          draft: false
-          prerelease: ${{ needs.extract-version.outputs.is-beta == 'true' || needs.extract-version.outputs.test_mode == 'true' }}
           body: |
             ## Release ${{ needs.extract-version.outputs.version }}
 
-            ${{ needs.extract-version.outputs.test_mode == 'true' && '### 🧪 Test Release' || '### 📦 Installation' }}
+            ### 📦 Installation
 
-            ${{ needs.extract-version.outputs.test_mode == 'true' && 'This is a test release for testing the desktop application build process.' || '' }}
-
-            ${{ needs.extract-version.outputs.test_mode != 'true' && '```bash
+            ```bash
             # 安装命令
             npm install @becrafter/prompt-manager@${{ needs.extract-version.outputs.publish-tag }}
 
             # 安装应用
-            curl -fsSL \'http://iskill.site/scripts/installer/prompt-manager\' | bash
-            ```' || '' }}
+            curl -fsSL 'http://iskill.site/scripts/installer/prompt-manager' | bash
+            ```
 
             ### 📥 Desktop Applications
 
@@ -241,7 +237,7 @@ jobs:
 
             If you encounter any issues, please report them at:
             https://github.com/BeCrafter/prompt-manager/issues
-      
+          prerelease: ${{ needs.extract-version.outputs.is_beta == 'true' || needs.extract-version.outputs.test_mode == 'true' }}
       - name: Publish to NPM
         run: npm publish --access public --tag ${{ needs.extract-version.outputs.publish-tag }}
         env:
