@@ -42,18 +42,18 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
       
       - name: Cache Electron binaries
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cache/electron
@@ -71,16 +71,16 @@ jobs:
       - name: Build admin-ui
         run: npm run build:admin-ui
       
-      - name: Configure Electron mirror
+      - name: Configure Electron mirror (optional override)
         run: |
-          echo "ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/" >> $GITHUB_ENV
-          echo "ELECTRON_BUILDER_CACHE=/.cache/electron" >> $GITHUB_ENV
+          if [ -n "${ELECTRON_MIRROR_OVERRIDE:-}" ]; then
+            echo "ELECTRON_MIRROR=${ELECTRON_MIRROR_OVERRIDE}" >> "$GITHUB_ENV"
+          fi
+        env:
+          ELECTRON_MIRROR_OVERRIDE: ${{ vars.ELECTRON_MIRROR }}
 
       - name: Build desktop app
         run: npm run build:desktop:${{ matrix.platform }}
-        env:
-          ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
-          ELECTRON_BUILDER_CACHE: /.cache/electron
         working-directory: ./app/desktop
       
       - name: Run automated tests
@@ -88,7 +88,7 @@ jobs:
         run: node scripts/test-desktop-build.js ${{ matrix.platform }}
       
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-${{ matrix.platform }}-build
           path: |
@@ -114,7 +114,7 @@ jobs:
     
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: all-builds
       
@@ -143,7 +143,7 @@ jobs:
           echo ""
       
       - name: Upload combined artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: all-desktop-builds
           path: all-builds/

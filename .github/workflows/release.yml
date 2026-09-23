@@ -35,109 +35,61 @@ jobs:
       publish-tag: ${{ steps.version.outputs.publish-tag }}
       test_mode: ${{ steps.version.outputs.test_mode }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Extract version information
         id: version
         run: |
-          # 检查是否为测试模式
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.test_mode }}" = "true" ]; then
             TEST_MODE="true"
             VERSION="${{ inputs.version }}"
             CLEAN_VERSION="${VERSION#v}"
-            echo "test_mode=${TEST_MODE}" >> $GITHUB_OUTPUT
-            echo "version=${VERSION}" >> $GITHUB_OUTPUT
-            echo "clean-version=${CLEAN_VERSION}" >> $GITHUB_OUTPUT
-            echo "is-beta=true" >> $GITHUB_OUTPUT
-            echo "publish-tag=beta" >> $GITHUB_OUTPUT
-            echo "Test Mode: ${TEST_MODE}"
-            echo "Version: ${VERSION}"
+            echo "test_mode=${TEST_MODE}" >> "$GITHUB_OUTPUT"
+            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+            echo "clean-version=${CLEAN_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "is-beta=true" >> "$GITHUB_OUTPUT"
+            echo "publish-tag=beta" >> "$GITHUB_OUTPUT"
           else
             TEST_MODE="false"
-            TAG=${GITHUB_REF#refs/tags/}
-            echo "test_mode=${TEST_MODE}" >> $GITHUB_OUTPUT
-            echo "version=${TAG}" >> $GITHUB_OUTPUT
-
-            # 统一 tag 风格：
-            # v1.2.3 / v1.2.3-beta.1
+            TAG="${GITHUB_REF#refs/tags/}"
             CLEAN_VERSION="${TAG#v}"
+            echo "test_mode=${TEST_MODE}" >> "$GITHUB_OUTPUT"
+            echo "version=${TAG}" >> "$GITHUB_OUTPUT"
+            echo "clean-version=${CLEAN_VERSION}" >> "$GITHUB_OUTPUT"
+
             IS_BETA=false
+            case "$CLEAN_VERSION" in
+              *-beta.*)  PUBLISH_TAG="beta";  IS_BETA=true ;;
+              *-alpha.*) PUBLISH_TAG="alpha" ;;
+              *-rc.*)    PUBLISH_TAG="rc" ;;
+              *-dev.*)   PUBLISH_TAG="dev" ;;
+              *-*)       echo "Unsupported pre-release tag format: ${TAG}"; exit 1 ;;
+              *)         PUBLISH_TAG="latest" ;;
+            esac
 
-            if [[ "$CLEAN_VERSION" == *"-"* ]]; then
-              if [[ "$CLEAN_VERSION" == *"-beta."* ]]; then
-                PUBLISH_TAG="beta"
-                IS_BETA=true
-              elif [[ "$CLEAN_VERSION" == *"-alpha."* ]]; then
-                PUBLISH_TAG="alpha"
-              elif [[ "$CLEAN_VERSION" == *"-rc."* ]]; then
-                PUBLISH_TAG="rc"
-              elif [[ "$CLEAN_VERSION" == *"-dev."* ]]; then
-                PUBLISH_TAG="dev"
-              else
-                echo "Unsupported pre-release tag format: ${TAG}"
-                exit 1
-              fi
-            else
-              PUBLISH_TAG="latest"
-            fi
-
-            echo "is-beta=${IS_BETA}" >> $GITHUB_OUTPUT
-            echo "publish-tag=${PUBLISH_TAG}" >> $GITHUB_OUTPUT
-            echo "clean-version=${CLEAN_VERSION}" >> $GITHUB_OUTPUT
-            echo "Version: ${TAG}"
-            echo "Clean Version: ${CLEAN_VERSION}"
-            echo "Publish Tag: ${PUBLISH_TAG}"
+            echo "is-beta=${IS_BETA}" >> "$GITHUB_OUTPUT"
+            echo "publish-tag=${PUBLISH_TAG}" >> "$GITHUB_OUTPUT"
           fi
-
-          # 统一 tag 风格：
-          # v1.2.3 / v1.2.3-beta.1
-          CLEAN_VERSION="${TAG#v}"
-          IS_BETA=false
-
-          if [[ "$CLEAN_VERSION" == *"-"* ]]; then
-            if [[ "$CLEAN_VERSION" == *"-beta."* ]]; then
-              PUBLISH_TAG="beta"
-              IS_BETA=true
-            elif [[ "$CLEAN_VERSION" == *"-alpha."* ]]; then
-              PUBLISH_TAG="alpha"
-            elif [[ "$CLEAN_VERSION" == *"-rc."* ]]; then
-              PUBLISH_TAG="rc"
-            elif [[ "$CLEAN_VERSION" == *"-dev."* ]]; then
-              PUBLISH_TAG="dev"
-            else
-              echo "Unsupported pre-release tag format: ${TAG}"
-              exit 1
-            fi
-          else
-            PUBLISH_TAG="latest"
-          fi
-
-          echo "is-beta=${IS_BETA}" >> $GITHUB_OUTPUT
-          echo "publish-tag=${PUBLISH_TAG}" >> $GITHUB_OUTPUT
-          echo "clean-version=${CLEAN_VERSION}" >> $GITHUB_OUTPUT
-          echo "Version: ${TAG}"
-          echo "Clean Version: ${CLEAN_VERSION}"
-          echo "Publish Tag: ${PUBLISH_TAG}"
 
   # 预发布检查
   pre-checks:
     runs-on: ubuntu-latest
     needs: extract-version
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      
+
       - name: Cache Electron binaries
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cache/electron
@@ -152,10 +104,7 @@ jobs:
       - name: Check and install all dependencies
         run: npm run check:deps
 
-  #     - name: Run quick pre-release checks
-  #       run: node scripts/pre-release-check.js ${{ needs.extract-version.outputs.version }} --quick
-
-  # 发布到NPM
+  # 发布到 NPM（预检 + 版本同步 + 发布统一走 scripts/release.sh）
   publish:
     runs-on: ubuntu-latest
     needs:
@@ -164,76 +113,61 @@ jobs:
     if: |
       needs.pre-checks.result == 'success' &&
       needs.extract-version.outputs.test_mode != 'true'
-    
+
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-      
+
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Ensure npm registry is npmjs
-        run: |
-          rm -f .npmrc
-          npm config set registry https://registry.npmjs.org/
+      - name: Publish to npm
+        run: ./scripts/release.sh
 
-      - name: Install dependencies
-        run: npm ci
+      # 版本文件同步回 main（切回目标分支再提交，避免 detached HEAD 下 push HEAD:main）
+      - name: Checkout main for version sync
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
-      - name: Check and install all dependencies
-        run: npm run check:deps
-      
-      - name: Build artifacts
-        run: npm run build
-
-      - name: Update version files
+      - name: Sync version files on main
         run: node scripts/update-version.js ${{ needs.extract-version.outputs.clean-version }}
-      
-      - name: Commit version updates
+
+      - name: Commit and push version bump
         run: |
-          git config --global user.email "actions@github.com"
-          git config --global user.name "GitHub Actions"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git diff --staged --quiet || git commit -m "chore: update version to ${{ needs.extract-version.outputs.version }}"
-          git push origin HEAD:main
-      
-      # - name: Build admin UI
-      #   run: npm run build:admin-ui
-      #   env:
-      #     DISPLAY: ':99'
-      
-      # - name: Build core package
-      #   run: npm run build:core
-      
-      - name: Rebuild native modules
-        run: npm rebuild node-pty
-        env:
-          DISPLAY: ':99'
-      
+          if git diff --staged --quiet; then
+            echo "No version changes to commit"
+          else
+            git commit -m "chore: update version to ${{ needs.extract-version.outputs.version }}"
+            git push origin main
+          fi
+
       - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.extract-version.outputs.version }}
-          release_name: Release ${{ needs.extract-version.outputs.version }}
+          name: Release ${{ needs.extract-version.outputs.version }}
           body: |
             ## Release ${{ needs.extract-version.outputs.version }}
 
             ### 📦 Installation
 
             ```bash
-            # 安装命令
             npm install @becrafter/prompt-manager@${{ needs.extract-version.outputs.publish-tag }}
 
-            # 安装应用
             curl -fsSL 'http://iskill.site/scripts/installer/prompt-manager' | bash
             ```
 
@@ -248,18 +182,13 @@ jobs:
             If you encounter any issues, please report them at:
             https://github.com/BeCrafter/prompt-manager/issues
           prerelease: ${{ needs.extract-version.outputs.is_beta == 'true' || needs.extract-version.outputs.test_mode == 'true' }}
-      - name: Publish to NPM
-        run: npm publish --access public --tag ${{ needs.extract-version.outputs.publish-tag }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_USERCONFIG: /home/runner/work/_temp/.npmrc
 
   # 桌面应用构建
   build-desktop:
     runs-on: ${{ matrix.os }}
     needs: [extract-version, pre-checks]
     if: needs.pre-checks.result == 'success'
-    
+
     strategy:
       matrix:
         include:
@@ -269,42 +198,42 @@ jobs:
             platform: win
           - os: ubuntu-latest
             platform: linux
-    
+
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-      
+
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Check and install all dependencies
         run: npm run check:deps
-      
+
       - name: Build admin-ui
         run: npm run build:admin-ui
-      
-      - name: Configure Electron mirror
+
+      - name: Configure Electron mirror (optional override)
         run: |
-          echo "ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/" >> $GITHUB_ENV
-          echo "ELECTRON_BUILDER_CACHE=/.cache/electron" >> $GITHUB_ENV
+          if [ -n "${ELECTRON_MIRROR_OVERRIDE:-}" ]; then
+            echo "ELECTRON_MIRROR=${ELECTRON_MIRROR_OVERRIDE}" >> "$GITHUB_ENV"
+          fi
+        env:
+          ELECTRON_MIRROR_OVERRIDE: ${{ vars.ELECTRON_MIRROR }}
 
       - name: Build desktop app
         run: npm run build:desktop:${{ matrix.platform }}
-        env:
-          ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
-          ELECTRON_BUILDER_CACHE: /.cache/electron
         working-directory: ./app/desktop
-      
+
       - name: Upload artifacts to GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/*.dmg
@@ -316,7 +245,7 @@ jobs:
           prerelease: ${{ needs.extract-version.outputs.is_beta == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  
+
   # 发布成功通知
   notify-success:
     runs-on: ubuntu-latest
@@ -324,7 +253,7 @@ jobs:
     if: |
       always() &&
       (needs.publish.result == 'success' || needs.extract-version.outputs.test_mode == 'true')
-  
+
     steps:
       - name: Success notification
         run: |
